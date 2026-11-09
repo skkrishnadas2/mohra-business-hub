@@ -177,7 +177,7 @@ describe("server-authoritative pricing", () => {
     const sale = useStore.getState().sales[0]!;
     expect(sale.total).toBe(450);
     expect(sale.cost).toBe(280);
-    expect(sale.profit).toBe(170);
+    expect(useStore.getState().txns[0]!.profit).toBe(170);
   });
 });
 
