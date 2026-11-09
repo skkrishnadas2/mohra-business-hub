@@ -30,7 +30,7 @@ export function cipherEncode(value: number, key = DEFAULT_CIPHER_KEY): string {
 
 const BN = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
 export function bn(n: number | string): string {
-  return String(n).replace(/\d/g, (d) => BN[Number(d)]);
+  return String(n).replace(/\d/g, (d) => BN[Number(d)] ?? d);
 }
 export function taka(n: number): string {
   const s = Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
