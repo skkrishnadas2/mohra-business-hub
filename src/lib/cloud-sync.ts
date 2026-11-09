@@ -33,7 +33,8 @@ function savedShopId() {
   return typeof window === "undefined" ? null : window.localStorage.getItem(SHOP_KEY);
 }
 function adopt(shop: CloudShop) {
-  useStore.setState({ ...shop.state, setupDone: true, role: shop.role });
+  // A refresh started before a local sale must not wipe that sale while its action is queued.
+  if (pendingActions === 0) useStore.setState({ ...shop.state, setupDone: true, role: shop.role });
   useCloud.setState({
     status: "connected", shopId: shop.shopId, shopName: shop.name, role: shop.role,
     version: shop.version, joinCode: shop.joinCode, error: null,
