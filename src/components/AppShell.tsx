@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   { to: "/accounts", label: "হিসাব ও ব্যাংক", icon: Landmark },
   { to: "/khata", label: "বাকি খাতা", icon: BookUser },
   { to: "/closing", label: "দিন শেষ", icon: MoonStar },
+  { to: "/cloud", label: "Cloud সিঙ্ক", icon: Cloud },
   { to: "/monitor", label: "লাইভ মনিটর", icon: Activity, owner: true },
   { to: "/settings", label: "রোল ও সেটিংস", icon: Settings, owner: true },
 ];
