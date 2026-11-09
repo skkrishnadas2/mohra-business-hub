@@ -1,6 +1,7 @@
-# Business logic hardening
+# Cloud sync and live monitoring
 
-- [x] Enforce stock, payment, balance, due and repair rules before saving
-- [x] Enforce owner/cashier permissions inside store actions, not only in the UI
-- [x] Show rule failures without clearing valid form input
-- [x] Add business-rule regression tests and verify the main sale flow
+- [ ] Add secure shops, memberships, invitations and versioned shop state
+- [ ] Reuse the business-rule store for authoritative server-side actions
+- [ ] Add email sign-in, owner shop creation and cashier shop joining
+- [ ] Sync actions with conflict protection and realtime remote refresh
+- [ ] Test permissions, cloud actions and the existing local sale flow
