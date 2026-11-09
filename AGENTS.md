@@ -28,3 +28,6 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+- All money movements must go through the store's ledger `post()` (src/lib/store.ts) so balances and profit stay auditable; pure rules live in src/lib/rules.ts.
+- Data is device-local (zustand persist, skipHydration + rehydrate in AppShell) to avoid SSR hydration mismatch; migrate entities 1:1 to Cloud tables when multi-device is needed.

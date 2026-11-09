@@ -1,0 +1,77 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useStore } from "@/lib/store";
+import { Page, Money, BigButton, Chips, NumInput, TextInput, Label } from "@/components/kit";
+import { B2BForm } from "@/components/B2BForm";
+import { agentCommission, AGENT_RATE_PER_THOUSAND, bn, taka, type MfsProvider } from "@/lib/rules";
+
+export const Route = createFileRoute("/mfs")({
+  head: () => ({
+    meta: [
+      { title: "MFS ওয়ালেট হাব — মোহরা POS" },
+      { name: "description", content: "bKash, Nagad, Rocket, Upay agent cash-in/out with auto commission." },
+      { property: "og:title", content: "MFS ওয়ালেট হাব — মোহরা POS" },
+      { property: "og:description", content: "Agent cash-in/out with automatic commission." },
+    ],
+  }),
+  component: Mfs,
+});
+
+function Mfs() {
+  const { accounts, mfsAgent, mfsPersonal } = useStore();
+  const [tab, setTab] = useState<"agent" | "personal" | "b2b">("agent");
+  const [dir, setDir] = useState<"in" | "out">("in");
+  const [pdir, setPdir] = useState<"send" | "receive">("send");
+  const list = accounts.filter((a) => a.kind === (tab === "personal" ? "mfs_personal" : "mfs_agent"));
+  const [wallet, setWallet] = useState(list[0]?.id ?? "");
+  const [num, setNum] = useState("");
+  const [amt, setAmt] = useState("");
+  const [fee, setFee] = useState("");
+  const a = Number(amt) || 0;
+  const w = accounts.find((x) => x.id === wallet);
+  const com = w && w.kind === "mfs_agent" ? agentCommission(w.provider as MfsProvider, a) : 0;
+
+  const switchTab = (t: typeof tab) => {
+    setTab(t);
+    setWallet(accounts.find((x) => x.kind === (t === "personal" ? "mfs_personal" : "mfs_agent"))?.id ?? "");
+  };
+
+  return (
+    <Page title="MFS হাব" sub="বিকাশ · নগদ · রকেট · উপায়">
+      <div className="mb-4"><Chips value={tab} onChange={switchTab} options={[{ value: "agent", label: "এজেন্ট" }, { value: "personal", label: "পার্সোনাল" }, { value: "b2b", label: "B2B (SR)" }]} /></div>
+      <div className="grid gap-4 md:grid-cols-[1fr_300px]">
+        <div className="rounded-2xl border bg-card p-4 shadow-soft">
+          {tab === "b2b" ? <B2BForm kind="mfs" /> : (
+            <div className="space-y-4">
+              {tab === "agent"
+                ? <Chips value={dir} onChange={setDir} options={[{ value: "in", label: "ক্যাশ-ইন" }, { value: "out", label: "ক্যাশ-আউট" }]} />
+                : <Chips value={pdir} onChange={setPdir} options={[{ value: "send", label: "সেন্ড মানি" }, { value: "receive", label: "রিসিভ মানি" }]} />}
+              <div><Label>ওয়ালেট</Label><Chips value={wallet} onChange={setWallet} options={list.map((x) => ({ value: x.id, label: x.name }))} /></div>
+              <div><Label>কাস্টমার নম্বর</Label><TextInput inputMode="tel" value={num} onChange={(e) => setNum(e.target.value)} placeholder="01XXXXXXXXX" /></div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div><Label>পরিমাণ</Label><NumInput value={amt} onChange={setAmt} /></div>
+                {tab === "personal" && <div><Label>সার্ভিস চার্জ (ম্যানুয়াল)</Label><NumInput value={fee} onChange={setFee} /></div>}
+              </div>
+              {tab === "agent" && a > 0 && w && (
+                <div className="rounded-xl bg-accent p-3 text-sm text-accent-foreground">
+                  অটো কমিশন: <b>{taka(com)}</b> <span className="opacity-70">(প্রতি হাজারে ৳{bn(AGENT_RATE_PER_THOUSAND[w.provider as MfsProvider].toFixed(2))})</span>
+                </div>
+              )}
+              <BigButton disabled={!a || !wallet} onClick={() => {
+                if (tab === "agent") { const c = mfsAgent(wallet, dir, a, num); toast.success(`সম্পন্ন · কমিশন ${taka(c)}`); }
+                else { mfsPersonal(wallet, pdir, a, Number(fee) || 0, num); toast.success("সম্পন্ন"); }
+                setAmt(""); setNum(""); setFee("");
+              }}>নিশ্চিত করুন</BigButton>
+            </div>
+          )}
+        </div>
+        <div className="space-y-2">
+          {accounts.filter((x) => x.kind.startsWith("mfs")).map((s) => (
+            <div key={s.id} className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3 text-sm"><span>{s.name}</span><Money v={s.balance} className="font-semibold" /></div>
+          ))}
+        </div>
+      </div>
+    </Page>
+  );
+}

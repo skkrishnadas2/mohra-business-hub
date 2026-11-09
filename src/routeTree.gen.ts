@@ -10,33 +10,167 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountsRouteImport } from './routes/accounts'
+import { Route as ClosingRouteImport } from './routes/closing'
+import { Route as KhataRouteImport } from './routes/khata'
+import { Route as MfsRouteImport } from './routes/mfs'
+import { Route as MonitorRouteImport } from './routes/monitor'
+import { Route as PosRouteImport } from './routes/pos'
+import { Route as ProductsRouteImport } from './routes/products'
+import { Route as RechargeRouteImport } from './routes/recharge'
+import { Route as ServicesRouteImport } from './routes/services'
+import { Route as SettingsRouteImport } from './routes/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountsRoute = AccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClosingRoute = ClosingRouteImport.update({
+  id: '/closing',
+  path: '/closing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KhataRoute = KhataRouteImport.update({
+  id: '/khata',
+  path: '/khata',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MfsRoute = MfsRouteImport.update({
+  id: '/mfs',
+  path: '/mfs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MonitorRoute = MonitorRouteImport.update({
+  id: '/monitor',
+  path: '/monitor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PosRoute = PosRouteImport.update({
+  id: '/pos',
+  path: '/pos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RechargeRoute = RechargeRouteImport.update({
+  id: '/recharge',
+  path: '/recharge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServicesRoute = ServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
+  '/closing': typeof ClosingRoute
+  '/khata': typeof KhataRoute
+  '/mfs': typeof MfsRoute
+  '/monitor': typeof MonitorRoute
+  '/pos': typeof PosRoute
+  '/products': typeof ProductsRoute
+  '/recharge': typeof RechargeRoute
+  '/services': typeof ServicesRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
+  '/closing': typeof ClosingRoute
+  '/khata': typeof KhataRoute
+  '/mfs': typeof MfsRoute
+  '/monitor': typeof MonitorRoute
+  '/pos': typeof PosRoute
+  '/products': typeof ProductsRoute
+  '/recharge': typeof RechargeRoute
+  '/services': typeof ServicesRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
+  '/closing': typeof ClosingRoute
+  '/khata': typeof KhataRoute
+  '/mfs': typeof MfsRoute
+  '/monitor': typeof MonitorRoute
+  '/pos': typeof PosRoute
+  '/products': typeof ProductsRoute
+  '/recharge': typeof RechargeRoute
+  '/services': typeof ServicesRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/accounts'
+    | '/closing'
+    | '/khata'
+    | '/mfs'
+    | '/monitor'
+    | '/pos'
+    | '/products'
+    | '/recharge'
+    | '/services'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/accounts'
+    | '/closing'
+    | '/khata'
+    | '/mfs'
+    | '/monitor'
+    | '/pos'
+    | '/products'
+    | '/recharge'
+    | '/services'
+    | '/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/accounts'
+    | '/closing'
+    | '/khata'
+    | '/mfs'
+    | '/monitor'
+    | '/pos'
+    | '/products'
+    | '/recharge'
+    | '/services'
+    | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountsRoute: typeof AccountsRoute
+  ClosingRoute: typeof ClosingRoute
+  KhataRoute: typeof KhataRoute
+  MfsRoute: typeof MfsRoute
+  MonitorRoute: typeof MonitorRoute
+  PosRoute: typeof PosRoute
+  ProductsRoute: typeof ProductsRoute
+  RechargeRoute: typeof RechargeRoute
+  ServicesRoute: typeof ServicesRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +182,91 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accounts': {
+      id: '/accounts'
+      path: '/accounts'
+      fullPath: '/accounts'
+      preLoaderRoute: typeof AccountsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/closing': {
+      id: '/closing'
+      path: '/closing'
+      fullPath: '/closing'
+      preLoaderRoute: typeof ClosingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/khata': {
+      id: '/khata'
+      path: '/khata'
+      fullPath: '/khata'
+      preLoaderRoute: typeof KhataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mfs': {
+      id: '/mfs'
+      path: '/mfs'
+      fullPath: '/mfs'
+      preLoaderRoute: typeof MfsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/monitor': {
+      id: '/monitor'
+      path: '/monitor'
+      fullPath: '/monitor'
+      preLoaderRoute: typeof MonitorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pos': {
+      id: '/pos'
+      path: '/pos'
+      fullPath: '/pos'
+      preLoaderRoute: typeof PosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recharge': {
+      id: '/recharge'
+      path: '/recharge'
+      fullPath: '/recharge'
+      preLoaderRoute: typeof RechargeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/services': {
+      id: '/services'
+      path: '/services'
+      fullPath: '/services'
+      preLoaderRoute: typeof ServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountsRoute: AccountsRoute,
+  ClosingRoute: ClosingRoute,
+  KhataRoute: KhataRoute,
+  MfsRoute: MfsRoute,
+  MonitorRoute: MonitorRoute,
+  PosRoute: PosRoute,
+  ProductsRoute: ProductsRoute,
+  RechargeRoute: RechargeRoute,
+  ServicesRoute: ServicesRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
