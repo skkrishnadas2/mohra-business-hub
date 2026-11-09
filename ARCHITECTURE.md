@@ -74,7 +74,7 @@ The `avatars` storage bucket is private; signed URLs expire and storage policies
 5. If the replay violates a business rule (for example, another device sold the last item), the server returns a final rejection without committing. The client removes only that action, restores the authoritative snapshot, notifies the user, and continues with later queued actions. Network failures remain queued for retry.
 6. Owners receive Realtime version updates; cashiers poll every 15 seconds. The saved shop ID and version let a sale made immediately after a page reload wait for Cloud instead of being dropped.
 
-`stateForRole` (`src/lib/cloud-view.ts`) removes the owner PIN and applies cost, profit and bank visibility before cashier data leaves the server. Permission changes use the same versioned action path, so owner switches propagate to other devices.
+`stateForRole` (`src/lib/cloud-view.ts`) removes the owner PIN and applies cost, profit and bank visibility before cashier data leaves the server. Permission changes use the same versioned action path, so owner switches propagate to other devices. Internal SECURITY DEFINER helpers are not callable by PUBLIC, anon or authenticated roles; only service_role retains access. The automatic-RLS event trigger remains enabled.
 
 ### Durable offline outbox and idempotency
 Every browser action receives a UUID and is stored in a per-shop localStorage outbox before network submission. A failed or offline write leaves the action in order; the `online` event, periodic refresh and Cloud page retry button resume it. Remote refreshes never replace local state while that shop has unacknowledged actions.
