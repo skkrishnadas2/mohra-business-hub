@@ -114,6 +114,14 @@ export const applyCloudAction = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const role = await membership(context, data.shopId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // A retry with the same ID is acknowledged without executing the money movement again.
+    const { data: receipt, error: receiptError } = await supabaseAdmin
+      .from("shop_action_receipts").select("version")
+      .eq("shop_id", data.shopId).eq("action_id", data.action.id).maybeSingle();
+    if (receiptError) throw new Error("লেনদেনের পূর্বের অবস্থা যাচাই করা যায়নি");
+    if (receipt) return { status: "ok" as const, version: receipt.version };
+
     const current = await currentState(supabaseAdmin, data.shopId);
     if (current.version !== data.baseVersion) {
       return { status: "conflict" as const, version: current.version, state: stateForRole(current.state, role) };
@@ -126,15 +134,15 @@ export const applyCloudAction = createServerFn({ method: "POST" })
     action(...data.action.args);
     const nextState = shopSnapshot(fresh.getState());
 
-    // The browser cannot write shop_states directly. Only this validated server action can.
-    const { data: updated, error } = await supabaseAdmin
-      .from("shop_states")
-      .update({ data: nextState as unknown as Json, version: data.baseVersion + 1, updated_at: new Date().toISOString(), updated_by: context.userId })
-      .eq("shop_id", data.shopId).eq("version", data.baseVersion).select("version").maybeSingle();
-    if (error) throw new Error("অনলাইন লেনদেন সংরক্ষণ করা যায়নি");
-    if (!updated) {
+    // The receipt and state version commit in one database transaction.
+    const { data: committed, error } = await supabaseAdmin.rpc("commit_cloud_action", {
+      _shop_id: data.shopId, _action_id: data.action.id, _base_version: data.baseVersion,
+      _data: nextState as unknown as Json, _user_id: context.userId,
+    }).single();
+    if (error || !committed) throw new Error("অনলাইন লেনদেন সংরক্ষণ করা যায়নি");
+    if (committed.result_status === "conflict") {
       const latest = await currentState(supabaseAdmin, data.shopId);
       return { status: "conflict" as const, version: latest.version, state: stateForRole(latest.state, role) };
     }
-    return { status: "ok" as const, version: updated.version };
+    return { status: "ok" as const, version: committed.result_version };
   });
