@@ -110,28 +110,27 @@ export function disconnectCloud() {
 
 export function queueCloudAction(action: CloudAction) {
   const connected = useCloud.getState();
-  console.debug("[cloud-sync] queue", connected.status, connected.shopId, connected.version, action?.name);
-  if (!connected.shopId || connected.status === "idle" || connected.status === "error") return;
-  const shopId = connected.shopId;
+  const shopId = connected.shopId ?? savedShopId();
+  if (!shopId || connected.status === "error") return;
   pendingActions += 1;
   actionQueue = actionQueue.then(async () => {
     try {
-      if (useCloud.getState().version < 1) await openCloudShop(shopId);
-      const baseVersion = useCloud.getState().version;
-      console.debug("[cloud-sync] apply", baseVersion, action.name);
+      if (useCloud.getState().version < 1 && savedVersion() < 1) await openCloudShop(shopId);
+      const baseVersion = useCloud.getState().version || savedVersion();
+      if (baseVersion < 1) throw new Error("Cloud সংযোগের সংস্করণ পাওয়া যায়নি");
       const result = await applyCloudAction({ data: { shopId, baseVersion, action } });
-      console.debug("[cloud-sync] result", result.status);
       if (result.status === "conflict") {
         const role = useCloud.getState().role ?? "cashier";
         useStore.setState({ ...result.state, setupDone: true, role });
         useCloud.setState({ version: result.version, error: "অন্য ডিভাইসে নতুন পরিবর্তন এসেছে। সর্বশেষ ডেটা লোড হয়েছে; শেষ কাজটি আবার করুন।" });
+        saveVersion(result.version);
         toast.error("সর্বশেষ অনলাইন ডেটা লোড হয়েছে। শেষ কাজটি আবার করুন।");
       } else {
         useCloud.setState({ version: result.version, error: null });
+        saveVersion(result.version);
       }
     } catch (error) {
       const message = actionError(error);
-      console.debug("[cloud-sync] error", message);
       useCloud.setState({ status: "error", error: message });
       toast.error(`Cloud সিঙ্ক হয়নি: ${message}`);
     } finally {
