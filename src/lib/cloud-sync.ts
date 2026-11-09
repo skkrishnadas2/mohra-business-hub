@@ -98,6 +98,7 @@ export function disconnectCloud() {
 
 export function queueCloudAction(action: CloudAction) {
   const connected = useCloud.getState();
+  console.debug("[cloud-sync] queue", connected.status, connected.shopId, action?.name);
   if (!connected.shopId || connected.status === "idle" || connected.status === "error") return;
   const shopId = connected.shopId;
   pendingActions += 1;
