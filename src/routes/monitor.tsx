@@ -12,6 +12,8 @@ export const Route = createFileRoute("/monitor")({
       { name: "description", content: "Owner live activity monitor of cashier transactions and sales." },
       { property: "og:title", content: "লাইভ মনিটর — মোহরা POS" },
       { property: "og:description", content: "Owner live activity monitor." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Monitor,

@@ -12,6 +12,8 @@ export const Route = createFileRoute("/accounts")({
       { name: "description", content: "Cash, bank, MFS and recharge balances with deposits and withdrawals." },
       { property: "og:title", content: "হিসাব ও ব্যাংক — মোহরা POS" },
       { property: "og:description", content: "All balances with bank deposit and withdrawal." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Accounts,

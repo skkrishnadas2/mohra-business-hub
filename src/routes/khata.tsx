@@ -12,6 +12,8 @@ export const Route = createFileRoute("/khata")({
       { name: "description", content: "Customer due ledger with one-tap collection." },
       { property: "og:title", content: "বাকি খাতা — মোহরা POS" },
       { property: "og:description", content: "Customer due ledger." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Khata,

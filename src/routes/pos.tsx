@@ -16,6 +16,8 @@ export const Route = createFileRoute("/pos")({
       { name: "description", content: "Barcode POS with one-tap cash checkout." },
       { property: "og:title", content: "বিক্রি টার্মিনাল — মোহরা POS" },
       { property: "og:description", content: "Barcode POS with one-tap cash checkout." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Pos,

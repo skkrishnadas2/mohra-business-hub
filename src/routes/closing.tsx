@@ -12,6 +12,8 @@ export const Route = createFileRoute("/closing")({
       { name: "description", content: "Shift closing and end-of-day cash reconciliation." },
       { property: "og:title", content: "দিন শেষ হিসাব — মোহরা POS" },
       { property: "og:description", content: "Shift closing and cash reconciliation." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Closing,
@@ -47,7 +49,7 @@ function Closing() {
             <Money v={diff} className={`text-2xl font-semibold ${diff === 0 ? "text-primary" : "text-destructive"}`} />
           </Tile>
           {can("viewProfit") && <Tile><div className="text-sm text-muted-foreground">শিফটের নেট লাভ</div><Money v={profit} className="text-2xl font-semibold text-primary" /></Tile>}
-          <BigButton className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 h-auto min-h-14 border border-primary px-4 py-3 text-base leading-snug lg:static" onClick={() => { const c = closeDay(counted); toast.success(`শিফট বন্ধ · পার্থক্য ${taka(c.diff)}`); setCnt({}); }}>শিফট বন্ধ করুন</BigButton>
+          <BigButton className="min-h-14" onClick={() => { const c = closeDay(counted); toast.success(`শিফট বন্ধ · পার্থক্য ${taka(c.diff)}`); setCnt({}); }}>শিফট বন্ধ করুন</BigButton>
         </div>
       </div>
       {closings.length > 0 && (

@@ -35,6 +35,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [more, setMore] = useState(false);
   const loc = useLocation();
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [loc.pathname, setupDone, role]);
+
   if (!hydrated) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">লোড হচ্ছে…</div>;
   if (!setupDone) return <Setup />;
   if (!role)

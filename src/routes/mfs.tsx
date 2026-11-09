@@ -13,6 +13,8 @@ export const Route = createFileRoute("/mfs")({
       { name: "description", content: "bKash, Nagad, Rocket, Upay agent cash-in/out with auto commission." },
       { property: "og:title", content: "MFS ওয়ালেট হাব — মোহরা POS" },
       { property: "og:description", content: "Agent cash-in/out with automatic commission." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Mfs,

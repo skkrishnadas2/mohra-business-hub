@@ -13,6 +13,8 @@ export const Route = createFileRoute("/recharge")({
       { name: "description", content: "Operator flexiload quick pad and recharge B2B stock-in." },
       { property: "og:title", content: "মোবাইল রিচার্জ — মোহরা POS" },
       { property: "og:description", content: "Operator flexiload quick pad and recharge B2B." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Recharge,

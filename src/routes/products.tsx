@@ -16,6 +16,8 @@ export const Route = createFileRoute("/products")({
       { name: "description", content: "Product catalog, barcodes and cipher sticker printing." },
       { property: "og:title", content: "পণ্য ও স্টক — মোহরা POS" },
       { property: "og:description", content: "Product catalog, barcodes and sticker printing." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Products,

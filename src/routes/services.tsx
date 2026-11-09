@@ -12,6 +12,8 @@ export const Route = createFileRoute("/services")({
       { name: "description", content: "Quick IT service slips and device repair tracker." },
       { property: "og:title", content: "সার্ভিস ও রিপেয়ার — মোহরা POS" },
       { property: "og:description", content: "Quick IT service slips and device repair tracker." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Services,

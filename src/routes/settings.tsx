@@ -13,6 +13,8 @@ export const Route = createFileRoute("/settings")({
       { name: "description", content: "Owner permission switchboard, PINs and cipher settings." },
       { property: "og:title", content: "রোল ও পারমিশন — মোহরা POS" },
       { property: "og:description", content: "Owner permission switchboard." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Settings,
