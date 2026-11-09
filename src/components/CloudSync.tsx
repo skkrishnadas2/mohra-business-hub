@@ -7,6 +7,7 @@ import {
 
 export function CloudSync() {
   const shopId = useCloud((s) => s.shopId);
+  const role = useCloud((s) => s.role);
   const connected = useCloud((s) => s.status === "connected");
 
   useEffect(() => {
