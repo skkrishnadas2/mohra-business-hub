@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as ClosingRouteImport } from './routes/closing'
+import { Route as CloudRouteImport } from './routes/cloud'
 import { Route as KhataRouteImport } from './routes/khata'
 import { Route as MfsRouteImport } from './routes/mfs'
 import { Route as MonitorRouteImport } from './routes/monitor'
@@ -34,6 +35,11 @@ const AccountsRoute = AccountsRouteImport.update({
 const ClosingRoute = ClosingRouteImport.update({
   id: '/closing',
   path: '/closing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CloudRoute = CloudRouteImport.update({
+  id: '/cloud',
+  path: '/cloud',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KhataRoute = KhataRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/closing': typeof ClosingRoute
+  '/cloud': typeof CloudRoute
   '/khata': typeof KhataRoute
   '/mfs': typeof MfsRoute
   '/monitor': typeof MonitorRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/closing': typeof ClosingRoute
+  '/cloud': typeof CloudRoute
   '/khata': typeof KhataRoute
   '/mfs': typeof MfsRoute
   '/monitor': typeof MonitorRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/closing': typeof ClosingRoute
+  '/cloud': typeof CloudRoute
   '/khata': typeof KhataRoute
   '/mfs': typeof MfsRoute
   '/monitor': typeof MonitorRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounts'
     | '/closing'
+    | '/cloud'
     | '/khata'
     | '/mfs'
     | '/monitor'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounts'
     | '/closing'
+    | '/cloud'
     | '/khata'
     | '/mfs'
     | '/monitor'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounts'
     | '/closing'
+    | '/cloud'
     | '/khata'
     | '/mfs'
     | '/monitor'
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountsRoute: typeof AccountsRoute
   ClosingRoute: typeof ClosingRoute
+  CloudRoute: typeof CloudRoute
   KhataRoute: typeof KhataRoute
   MfsRoute: typeof MfsRoute
   MonitorRoute: typeof MonitorRoute
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/closing'
       fullPath: '/closing'
       preLoaderRoute: typeof ClosingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cloud': {
+      id: '/cloud'
+      path: '/cloud'
+      fullPath: '/cloud'
+      preLoaderRoute: typeof CloudRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/khata': {
@@ -259,6 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountsRoute: AccountsRoute,
   ClosingRoute: ClosingRoute,
+  CloudRoute: CloudRoute,
   KhataRoute: KhataRoute,
   MfsRoute: MfsRoute,
   MonitorRoute: MonitorRoute,

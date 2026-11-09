@@ -2,10 +2,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   LayoutGrid, ScanBarcode, Smartphone, Wallet, Package, Wrench, Landmark, BookUser,
-  MoonStar, Settings, Activity, Menu, LogOut,
+  MoonStar, Settings, Activity, Menu, LogOut, Cloud,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Setup } from "./Setup";
+import { CloudSync } from "./CloudSync";
 import { PinPad } from "./kit";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
@@ -21,6 +22,7 @@ const NAV: NavItem[] = [
   { to: "/accounts", label: "হিসাব ও ব্যাংক", icon: Landmark },
   { to: "/khata", label: "বাকি খাতা", icon: BookUser },
   { to: "/closing", label: "দিন শেষ", icon: MoonStar },
+  { to: "/cloud", label: "Cloud সিঙ্ক", icon: Cloud },
   { to: "/monitor", label: "লাইভ মনিটর", icon: Activity, owner: true },
   { to: "/settings", label: "রোল ও সেটিংস", icon: Settings, owner: true },
 ];
@@ -61,6 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-background md:flex">
+      <CloudSync />
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar p-3 md:flex lg:w-64">
         <div className="mb-4 flex items-center gap-3 border-b px-2 pb-5 pt-3">
           <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground">ম</div>

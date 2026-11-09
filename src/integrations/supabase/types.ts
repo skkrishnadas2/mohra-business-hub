@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          avatar_path: string | null
+          created_at: string
+          display_name: string
+          id: string
+          preferences: Json
+          updated_at: string
+        }
+        Insert: {
+          avatar_path?: string | null
+          created_at?: string
+          display_name?: string
+          id: string
+          preferences?: Json
+          updated_at?: string
+        }
+        Update: {
+          avatar_path?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          preferences?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       shop_invites: {
         Row: {
           created_at: string

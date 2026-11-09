@@ -15,6 +15,7 @@ App (TanStack Start + React 19, Tailwind v4, Hind Siliguri)
 ├── /khata      Customer due ledger, one-tap collection
 ├── /closing    Note counting, expected vs counted, shift close
 ├── /monitor    Owner-only live activity log, void invoices
+├── /cloud      Email auth, online shop creation/joining, profile and private avatar
 └── /settings   Owner-only permission switchboard, PINs, cipher preview
 ```
 
@@ -50,5 +51,25 @@ Every money movement goes through `post()` which writes one `Txn` and applies it
 - **Roles**: owner has all permissions; cashier only what the owner toggles.
 - **Day close**: counted − expected cash; a non-zero diff is posted as an adjustment.
 
-## Storage
-Currently device-local (localStorage via zustand `persist`, key `mohra-pos-v1`). Owner monitor reflects this device. Moving to Lovable Cloud (Postgres) maps each entity above to a table with the `Txn` ledger as an append-only table, enabling true remote multi-device monitoring.
+## Storage and Cloud synchronization
+The app uses a hybrid model: zustand `persist` (`mohra-pos-v1`) is the immediate device cache, while an authenticated Cloud shop is authoritative once connected.
+
+### Supabase tables
+| Table | Purpose |
+|---|---|
+| `profiles` | Display name, private avatar path and preferences for each auth user |
+| `shops` | Shop name and owner |
+| `shop_members` | Owner/cashier membership; roles never live in editable profile metadata |
+| `shop_invites` | UUID joining code, visible only to the owner |
+| `shop_states` | Versioned JSON snapshot of the complete business store |
+
+The `avatars` storage bucket is private; signed URLs expire and storage policies restrict each user to their own folder. Raw `shop_states` rows are owner-readable only. Cashiers receive a field-filtered snapshot through a server function, never direct table access.
+
+### Action flow
+1. The browser executes the normal store action immediately and emits `mohra:cloud-action` for an allow-listed business action.
+2. `src/lib/cloud-sync.ts` serializes actions and sends the shop ID, last known version and action arguments to `applyCloudAction`.
+3. `src/lib/cloud.functions.ts` re-validates the bearer user and membership, loads the authoritative snapshot, and executes the same `shopStoreCreator` action with the server-side role. Product price/cost therefore come from the authoritative catalog, not the browser payload.
+4. A conditional `version = baseVersion` write increments the version. A stale write returns the latest filtered snapshot instead of overwriting another device's work; the user is asked to repeat the last action.
+5. Owners receive Realtime version updates; cashiers poll every 15 seconds. The saved shop ID and version let a sale made immediately after a page reload wait for Cloud instead of being dropped.
+
+`stateForRole` (`src/lib/cloud-view.ts`) removes the owner PIN and applies cost, profit and bank visibility before cashier data leaves the server. Permission changes use the same versioned action path, so owner switches propagate to other devices. Offline action persistence/automatic retry is not yet implemented; a failed Cloud write shows an error and must be reconciled before further shared work.

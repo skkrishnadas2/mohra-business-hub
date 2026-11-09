@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StateCreator } from "zustand";
 import { persist } from "zustand/middleware";
 import { agentCommission, round2, type MfsProvider, type Operator, DEFAULT_CIPHER_KEY } from "./rules";
 
@@ -172,9 +172,10 @@ const initial: State = {
   lastClosedAt: 0,
 };
 
-export const useStore = create<State & Actions>()(
-  persist(
-    (set, get) => {
+export type ShopStore = State & Actions;
+
+/** Framework-free store creator: the browser persists it and the server uses a fresh instance per action. */
+export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
       const acc = (id: string) => get().accounts.find((a) => a.id === id);
       const requireAccount = (id: string) => acc(id) ?? fail("হিসাবটি পাওয়া যায়নি");
       const validateMoves = (accounts: Account[], moves: Txn["moves"]) => {
@@ -284,8 +285,9 @@ export const useStore = create<State & Actions>()(
           const cleanLines = lines.map((line) => {
             const product = get().products.find((p) => p.id === line.productId) ?? fail("কার্টের একটি পণ্য আর পাওয়া যায়নি");
             if (!Number.isInteger(line.qty) || line.qty <= 0) fail(`${product.name} এর পরিমাণ সঠিক নয়`);
-            const price = nonNegative(line.price, "বিক্রি দাম");
-            const cost = nonNegative(line.cost, "কেনা দাম");
+            // Product prices and costs are authoritative; a client cannot alter profit by editing cart data.
+            const price = product.price;
+            const cost = product.cost;
             quantities.set(line.productId, (quantities.get(line.productId) ?? 0) + line.qty);
             return { productId: product.id, name: product.name, qty: line.qty, price, cost };
           });
@@ -459,7 +461,49 @@ export const useStore = create<State & Actions>()(
           set({ ...initial });
         },
       };
-    },
+};
+
+export const CLOUD_ACTIONS = [
+  "completeSetup", "setPerm", "setPins", "addAccount", "setBalance", "transfer",
+  "upsertProduct", "deleteProduct", "checkout", "deleteSale", "recharge", "mfsAgent",
+  "mfsPersonal", "b2b", "serviceSlip", "addRepair", "setRepairStatus", "collectDue",
+  "closeDay", "resetAll",
+] as const;
+export type CloudActionName = (typeof CLOUD_ACTIONS)[number];
+export interface CloudAction { name: CloudActionName; args: unknown[] }
+export const CLOUD_ACTION_EVENT = "mohra:cloud-action";
+
+function withCloudActions(store: ShopStore): ShopStore {
+  const wrapped = { ...store };
+  const target = wrapped as unknown as Record<string, unknown>;
+  const source = store as unknown as Record<string, unknown>;
+  for (const name of CLOUD_ACTIONS) {
+    const original = source[name] as (...args: unknown[]) => unknown;
+    target[name] = (...args: unknown[]) => {
+      const result = original(...args);
+      if (result !== false && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent<CloudAction>(CLOUD_ACTION_EVENT, { detail: { name, args } }));
+      }
+      return result;
+    };
+  }
+  return wrapped;
+}
+
+/** Only serializable shop data crosses the Cloud boundary; device login state stays local. */
+export function shopSnapshot(state: State): State {
+  return {
+    setupDone: state.setupDone, shopName: state.shopName, ownerPin: state.ownerPin,
+    cashierPin: state.cashierPin, cipherKey: state.cipherKey, perms: state.perms,
+    role: null, accounts: state.accounts, products: state.products, sales: state.sales,
+    txns: state.txns, customers: state.customers, repairs: state.repairs,
+    closings: state.closings, lastClosedAt: state.lastClosedAt,
+  };
+}
+
+export const useStore = create<ShopStore>()(
+  persist(
+    (set, get, api) => withCloudActions(shopStoreCreator(set, get, api)),
     { name: "mohra-pos-v1", skipHydration: true },
   ),
 );

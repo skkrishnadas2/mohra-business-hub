@@ -30,4 +30,4 @@ use the editor.
 <!-- LOVABLE:END -->
 
 - All money movements must go through the store's ledger `post()` (src/lib/store.ts) so balances and profit stay auditable; pure rules live in src/lib/rules.ts.
-- Data is device-local (zustand persist, skipHydration + rehydrate in AppShell) to avoid SSR hydration mismatch; migrate entities 1:1 to Cloud tables when multi-device is needed.
+- Device-local zustand is the offline cache; authenticated Cloud shop snapshots are authoritative for shared actions, with server-side role checks and optimistic versions preventing stale overwrites.
