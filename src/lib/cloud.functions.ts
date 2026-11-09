@@ -128,9 +128,10 @@ export const applyCloudAction = createServerFn({ method: "POST" })
   .inputValidator((input) => actionSchema.parse(input))
   .handler(async ({ data, context }) => {
     const role = await membership(context, data.shopId);
-    const current = await currentState(context, data.shopId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const current = await currentState(supabaseAdmin, data.shopId);
     if (current.version !== data.baseVersion) {
-      return { status: "conflict" as const, version: current.version, state: { ...current.state, role: null } };
+      return { status: "conflict" as const, version: current.version, state: stateForRole(current.state, role) };
     }
 
     const fresh = createStore<ShopStore>()(shopStoreCreator);
