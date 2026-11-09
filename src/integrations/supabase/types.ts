@@ -131,13 +131,11 @@ export type Database = {
     }
     Functions: {
       create_cloud_shop: {
-        Args: { _data: Json; _name: string }
+        Args: { _data: Json; _name: string; _user_id: string }
         Returns: string
       }
-      is_shop_member: { Args: { _shop_id: string }; Returns: boolean }
-      is_shop_owner: { Args: { _shop_id: string }; Returns: boolean }
       join_cloud_shop: {
-        Args: { _join_code: string; _shop_id: string }
+        Args: { _join_code: string; _shop_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
     }
