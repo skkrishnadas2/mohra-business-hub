@@ -18,6 +18,11 @@ export function CloudSync() {
 
   useEffect(() => {
     if (!shopId || !connected) return;
+    if (role === "cashier") {
+      // Cashiers receive a server-filtered snapshot; they never subscribe to the raw private state.
+      const timer = window.setInterval(refreshCloudIfIdle, 15_000);
+      return () => window.clearInterval(timer);
+    }
     const channel = supabase
       .channel(`shop-state-${shopId}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "shop_states", filter: `shop_id=eq.${shopId}` }, (payload) => {
@@ -26,7 +31,7 @@ export function CloudSync() {
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [shopId, connected]);
+  }, [shopId, connected, role]);
 
   return null;
 }
