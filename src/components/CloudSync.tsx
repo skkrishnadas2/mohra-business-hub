@@ -12,8 +12,13 @@ export function CloudSync() {
 
   useEffect(() => {
     void initializeCloud();
+    const retryPending = () => void flushCloudOutbox();
     window.addEventListener(CLOUD_ACTION_EVENT, handleCloudActionEvent);
-    return () => window.removeEventListener(CLOUD_ACTION_EVENT, handleCloudActionEvent);
+    window.addEventListener("online", retryPending);
+    return () => {
+      window.removeEventListener(CLOUD_ACTION_EVENT, handleCloudActionEvent);
+      window.removeEventListener("online", retryPending);
+    };
   }, []);
 
   useEffect(() => {
