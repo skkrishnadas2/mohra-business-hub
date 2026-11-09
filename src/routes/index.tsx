@@ -70,7 +70,7 @@ function Dashboard() {
     <Page
       title="আজকের হিসাব"
       sub={new Date().toLocaleDateString("bn-BD", { weekday: "long", day: "numeric", month: "long" })}
-      action={<Link to="/closing" className="inline-flex min-h-10 items-center gap-2 rounded-lg border bg-card px-3 text-sm font-medium transition-colors hover:bg-secondary"><MoonStar className="h-4 w-4" /> দিন শেষ</Link>}
+      action={<Link to="/closing" className="inline-flex min-h-11 items-center gap-2 rounded-lg border bg-card px-3 text-sm font-medium transition-colors hover:bg-secondary"><MoonStar className="h-4 w-4" /> দিন শেষ</Link>}
     >
       <div className="space-y-5">
         <section aria-label="আজকের গুরুত্বপূর্ণ সংখ্যা" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -95,10 +95,10 @@ function Dashboard() {
           </div>
           <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             {[
-              { to: "/pos", icon: ScanBarcode, label: "নতুন বিক্রি", detail: "স্ক্যান ও পেমেন্ট" },
+              { to: "/pos", icon: ScanBarcode, label: "বিক্রি", detail: "স্ক্যান ও পেমেন্ট" },
               { to: "/recharge", icon: Smartphone, label: "রিচার্জ", detail: "সব অপারেটর" },
-              { to: "/mfs", icon: Wallet, label: "ক্যাশ-ইন/আউট", detail: "MFS লেনদেন" },
-              { to: "/services", icon: Wrench, label: "সার্ভিস ও রিপেয়ার", detail: `${bn(openRepairs)}টি চলমান` },
+              { to: "/mfs", icon: Wallet, label: "MFS", detail: "ক্যাশ-ইন/আউট" },
+              { to: "/services", icon: Wrench, label: "রিপেয়ার", detail: `${bn(openRepairs)}টি চলমান` },
             ].map((q) => (
               <Link key={q.to} to={q.to} className="group flex min-h-14 items-center gap-3 rounded-lg border bg-card px-3 py-2.5 transition-colors hover:border-primary/30 hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-secondary text-primary transition-colors group-hover:bg-card"><q.icon className="h-4 w-4" /></span>
