@@ -10,10 +10,10 @@ beforeEach(() => {
 
 describe("money flows", () => {
   it("cash sale lowers stock and raises cash", () => {
-    const p = useStore.getState().products[0];
+    const p = useStore.getState().products[0]!;
     useStore.getState().checkout([{ productId: p.id, name: p.name, qty: 2, price: p.price, cost: p.cost }], [{ accountId: "cash", amount: p.price * 2 }]);
     expect(bal("cash")).toBe(10000 + p.price * 2);
-    expect(useStore.getState().products[0].stock).toBe(p.stock - 2);
+    expect(useStore.getState().products[0]!.stock).toBe(p.stock - 2);
   });
   it("bKash agent cash-in of 1000: cash +1000, wallet -1000 +3.70 commission", () => {
     useStore.getState().mfsAgent("bk_a1", "in", 1000, "017");
