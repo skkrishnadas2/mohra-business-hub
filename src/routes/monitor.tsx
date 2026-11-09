@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Trash2 } from "lucide-react";
+import { MonitorSmartphone, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { actionError, useStore, sinceToday, todayProfit } from "@/lib/store";
+import { useCloud } from "@/lib/cloud-sync";
+import { useCloudPresence } from "@/lib/cloud-presence";
 import { Page, Money, Tile } from "@/components/kit";
 import { bn } from "@/lib/rules";
 
@@ -9,9 +11,9 @@ export const Route = createFileRoute("/monitor")({
   head: () => ({
     meta: [
       { title: "লাইভ মনিটর — মোহরা POS" },
-      { name: "description", content: "Owner live activity monitor of cashier transactions and sales." },
+      { name: "description", content: "Owner live activity monitor of connected devices, cashier transactions and sales." },
       { property: "og:title", content: "লাইভ মনিটর — মোহরা POS" },
-      { property: "og:description", content: "Owner live activity monitor." },
+      { property: "og:description", content: "Owner live activity and connected device monitor." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -21,20 +23,52 @@ export const Route = createFileRoute("/monitor")({
 
 function Monitor() {
   const { role, txns, sales, deleteSale, can } = useStore();
+  const cloudShopId = useCloud((s) => s.shopId);
+  const presence = useCloudPresence();
   if (role !== "owner") return <Page title="লাইভ মনিটর"><p className="text-muted-foreground">শুধু মালিকের জন্য।</p></Page>;
   const today = txns.filter((t) => sinceToday(t.at));
   const cashierTx = today.filter((t) => t.by === "cashier");
   const p = todayProfit(txns);
   const todaySales = sales.filter((s) => sinceToday(s.at));
+  const ownerDevices = presence.devices.filter((device) => device.role === "owner").length;
+  const cashierDevices = presence.devices.filter((device) => device.role === "cashier").length;
 
   return (
-    <Page title="লাইভ মনিটর" sub="ক্যাশিয়ারের সব কার্যক্রম">
+    <Page title="লাইভ মনিটর" sub="অনলাইন ডিভাইস ও ক্যাশিয়ারের কার্যক্রম">
       <div className="grid grid-cols-2 items-start gap-3 md:grid-cols-4">
         <Tile><div className="text-xs text-muted-foreground">আজ লেনদেন</div><div className="tnum text-2xl font-semibold">{bn(today.length)}</div></Tile>
         <Tile><div className="text-xs text-muted-foreground">ক্যাশিয়ারের লেনদেন</div><div className="tnum text-2xl font-semibold">{bn(cashierTx.length)}</div></Tile>
         <Tile><div className="text-xs text-muted-foreground">আজ বিক্রি</div><Money v={todaySales.reduce((s, x) => s + x.total, 0)} className="text-2xl font-semibold" /></Tile>
         <Tile><div className="text-xs text-muted-foreground">নেট লাভ</div><Money v={p.total} className="text-2xl font-semibold text-primary" /></Tile>
       </div>
+
+      <Tile className="mt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 font-medium"><MonitorSmartphone className="h-4 w-4 text-muted-foreground" /> অনলাইন ডিভাইস</div>
+          {cloudShopId && <span className="rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground">মালিক {bn(ownerDevices)} · ক্যাশিয়ার {bn(cashierDevices)}</span>}
+        </div>
+        {!cloudShopId ? (
+          <p className="mt-3 text-sm text-muted-foreground">অন্য ডিভাইসের উপস্থিতি দেখতে Cloud সিঙ্ক চালু করুন। এই ডিভাইসের কার্যক্রম নিচে দেখা যাচ্ছে।</p>
+        ) : presence.status === "error" ? (
+          <p className="mt-3 text-sm text-muted-foreground">ডিভাইসের উপস্থিতি এখন পাওয়া যাচ্ছে না; লেনদেনের সিঙ্ক ও হিসাব চালু থাকবে।</p>
+        ) : !presence.devices.length ? (
+          <p className="mt-3 text-sm text-muted-foreground">অনলাইন ডিভাইস খোঁজা হচ্ছে…</p>
+        ) : (
+          <div className="mt-2 divide-y">
+            {presence.devices.map((device) => (
+              <div key={device.id} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span aria-label="অনলাইন" className="h-2 w-2 shrink-0 rounded-full bg-primary" />
+                  <span>{device.role === "owner" ? "মালিক" : "ক্যাশিয়ার"} · {device.deviceType === "mobile" ? "মোবাইল" : "ডেস্কটপ"}</span>
+                  {device.current && <span className="rounded-md bg-accent px-2 py-0.5 text-xs text-accent-foreground">এই ডিভাইস</span>}
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">#{device.id.slice(0, 6).toUpperCase()} · {new Date(device.onlineAt).toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit" })}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Tile>
+
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
         <Tile>
           <div className="mb-2 font-medium">কার্যক্রম লগ</div>
