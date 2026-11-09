@@ -63,6 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-background md:flex">
+      <CloudSync />
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar p-3 md:flex lg:w-64">
         <div className="mb-4 flex items-center gap-3 border-b px-2 pb-5 pt-3">
           <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground">ম</div>
