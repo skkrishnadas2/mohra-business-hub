@@ -94,6 +94,27 @@ describe("Cloud conflict recovery", () => {
     expect(readOutbox(shopId)).toEqual([]);
   });
 
+  it("continues with the next queued action after a final business-rule rejection", async () => {
+    const authoritative = shopSnapshot(useStore.getState());
+    appendOutbox(shopId, {
+      id: actionId, name: "deleteSale", args: ["missing-sale"],
+    });
+    appendOutbox(shopId, {
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      name: "transfer", args: ["dbbl", "cash", 100, "Test transfer"],
+    });
+    mocks.apply
+      .mockResolvedValueOnce({ status: "rejected", message: "বিক্রির মেমোটি পাওয়া যায়নি", version: 1, state: authoritative })
+      .mockResolvedValueOnce({ status: "ok", version: 2 });
+    mocks.get.mockResolvedValue(cloudShop(authoritative, 2));
+
+    await flushCloudOutbox();
+
+    expect(mocks.apply).toHaveBeenCalledTimes(2);
+    expect(readOutbox(shopId)).toEqual([]);
+    expect(useCloud.getState().version).toBe(2);
+  });
+
   it("keeps an action queued when the failure is a network error", async () => {
     appendOutbox(shopId, {
       id: actionId, name: "transfer", args: ["dbbl", "cash", 100, "Test transfer"],

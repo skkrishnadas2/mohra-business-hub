@@ -62,6 +62,7 @@ The app uses a hybrid model: zustand `persist` (`mohra-pos-v1`) is the immediate
 | `shop_members` | Owner/cashier membership; roles never live in editable profile metadata |
 | `shop_invites` | UUID joining code, visible only to the owner |
 | `shop_states` | Versioned JSON snapshot of the complete business store |
+| `shop_action_receipts` | Committed action UUIDs and resulting versions for idempotent retries |
 
 The `avatars` storage bucket is private; signed URLs expire and storage policies restrict each user to their own folder. Raw `shop_states` rows are owner-readable only. Cashiers receive a field-filtered snapshot through a server function, never direct table access.
 
