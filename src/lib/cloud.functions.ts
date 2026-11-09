@@ -142,7 +142,6 @@ export const applyCloudAction = createServerFn({ method: "POST" })
     const nextState = shopSnapshot(fresh.getState());
 
     // The browser cannot write shop_states directly. Only this validated server action can.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: updated, error } = await supabaseAdmin
       .from("shop_states")
       .update({ data: nextState as unknown as Json, version: data.baseVersion + 1, updated_at: new Date().toISOString(), updated_by: context.userId })
