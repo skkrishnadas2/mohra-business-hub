@@ -1,5 +1,5 @@
-# Modern SaaS refinement
+# Friendly premium SaaS redesign
 
-- [x] Replace the bubbly card-heavy styling with a crisp Linear/Shopify-inspired design system
-- [x] Make the dashboard and POS more compact and data-focused
-- [x] Verify the stronger SaaS direction on mobile and desktop
+- [ ] Replace the dashboard's oversized cards with useful KPI, activity and fund views
+- [ ] Keep navigation and daily workflows calm, friendly and uncluttered
+- [ ] Verify real data, mobile/desktop layouts and all business-rule tests
