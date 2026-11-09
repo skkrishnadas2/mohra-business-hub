@@ -104,7 +104,7 @@ export function queueCloudAction(action: CloudAction) {
   pendingActions += 1;
   actionQueue = actionQueue.then(async () => {
     try {
-      if (useCloud.getState().status !== "connected" || useCloud.getState().version < 1) await openCloudShop(shopId);
+      if (useCloud.getState().version < 1) await openCloudShop(shopId);
       const baseVersion = useCloud.getState().version;
       console.debug("[cloud-sync] apply", baseVersion, action.name);
       const result = await applyCloudAction({ data: { shopId, baseVersion, action } });
