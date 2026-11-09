@@ -7,6 +7,7 @@ import {
   CLOUD_ACTIONS, shopSnapshot, shopStoreCreator,
   type CloudActionName, type Role, type ShopStore, type State,
 } from "@/lib/store";
+import { stateForRole } from "@/lib/cloud-view";
 
 const shopIdSchema = z.object({ shopId: z.string().uuid() });
 const snapshotSchema = z.object({
