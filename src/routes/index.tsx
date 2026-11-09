@@ -51,15 +51,15 @@ function Dashboard() {
             </dl>
           </Tile>
 
-          <Tile className="min-w-0 border-primary/20 bg-accent p-5">
-            <h2 className="text-sm font-medium text-accent-foreground">আজকের নেট লাভ</h2>
-            <Money v={p.total} hidden={!showProfit} className="mt-2 block break-words text-3xl font-semibold tracking-tight text-accent-foreground md:text-4xl" />
-            {!showProfit && <p className="mt-1 text-xs text-accent-foreground">আপনার রোলে লাভের তথ্য গোপন রাখা হয়েছে</p>}
-            <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4 border-t border-accent-foreground/15 pt-4">
+          <Tile className="min-w-0 p-5">
+            <h2 className="text-sm font-medium text-muted-foreground">আজকের নেট লাভ</h2>
+            <Money v={p.total} hidden={!showProfit} className="mt-2 block break-words text-3xl font-semibold tracking-tight text-primary" />
+            {!showProfit && <p className="mt-1 text-xs text-muted-foreground">আপনার রোলে লাভের তথ্য গোপন রাখা হয়েছে</p>}
+            <dl className="mt-4 grid grid-cols-4 gap-2 border-t pt-3">
               {[["পণ্য", p.product], ["MFS", p.mfs], ["রিচার্জ", p.recharge], ["সার্ভিস", p.service]].map(([label, value]) => (
-                <div key={label as string} className="min-w-0 text-accent-foreground">
-                  <dt className="text-xs">{label as string}</dt>
-                  <dd className="mt-1"><Money v={value as number} hidden={!showProfit} className="break-words text-base font-semibold" /></dd>
+                <div key={label as string} className="min-w-0">
+                  <dt className="text-[11px] text-muted-foreground">{label as string}</dt>
+                  <dd className="mt-1"><Money v={value as number} hidden={!showProfit} className="break-words text-sm font-semibold" /></dd>
                 </div>
               ))}
             </dl>
