@@ -5,6 +5,7 @@ import {
   applyCloudAction, createCloudShop, getCloudShop, joinCloudShop,
   type CloudShop,
 } from "@/lib/cloud.functions";
+import { acknowledgeOutbox, appendOutbox, readOutbox, type OutboxAction } from "@/lib/cloud-outbox";
 import {
   CLOUD_ACTION_EVENT, actionError, shopSnapshot, useStore,
   type CloudAction, type Role,
@@ -18,17 +19,17 @@ interface CloudUiState {
   role: Role | null;
   version: number;
   joinCode: string | null;
+  pending: number;
   error: string | null;
 }
 
 const SHOP_KEY = "mohra-cloud-shop-v1";
 const VERSION_KEY = "mohra-cloud-version-v1";
 export const useCloud = create<CloudUiState>(() => ({
-  status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, error: null,
+  status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null,
 }));
 
-let actionQueue: Promise<void> = Promise.resolve();
-let pendingActions = 0;
+let activeFlush: Promise<void> | null = null;
 
 function savedShopId() {
   return typeof window === "undefined" ? null : window.localStorage.getItem(SHOP_KEY);
@@ -40,12 +41,16 @@ function savedVersion() {
 function saveVersion(version: number) {
   if (typeof window !== "undefined") window.localStorage.setItem(VERSION_KEY, String(version));
 }
+function setPending(shopId: string, pending: number) {
+  useCloud.setState((state) => state.shopId === shopId ? { pending } : state);
+}
 function adopt(shop: CloudShop) {
-  // A refresh started before a local sale must not wipe that sale while its action is queued.
-  if (pendingActions === 0) useStore.setState({ ...shop.state, setupDone: true, role: shop.role });
+  const pending = readOutbox(shop.shopId).length;
+  // A remote refresh must not wipe local work that has not been acknowledged yet.
+  if (pending === 0) useStore.setState({ ...shop.state, setupDone: true, role: shop.role });
   useCloud.setState({
     status: "connected", shopId: shop.shopId, shopName: shop.name, role: shop.role,
-    version: shop.version, joinCode: shop.joinCode, error: null,
+    version: shop.version, joinCode: shop.joinCode, pending, error: null,
   });
   if (typeof window !== "undefined") window.localStorage.setItem(SHOP_KEY, shop.shopId);
   saveVersion(shop.version);
@@ -53,7 +58,10 @@ function adopt(shop: CloudShop) {
 
 export async function openCloudShop(shopId: string) {
   const current = useCloud.getState();
-  useCloud.setState({ status: current.status === "connected" && current.shopId === shopId ? "connected" : "connecting", shopId, error: null });
+  useCloud.setState({
+    status: current.status === "connected" && current.shopId === shopId ? "connected" : "connecting",
+    shopId, pending: readOutbox(shopId).length, error: null,
+  });
   try {
     const shop = await getCloudShop({ data: { shopId } });
     adopt(shop);
@@ -91,17 +99,18 @@ export async function joinOnlineShop(shopId: string, joinCode: string) {
 export async function initializeCloud() {
   const { data } = await supabase.auth.getSession();
   if (!data.session) {
-    useCloud.setState({ status: "idle", shopId: null, role: null, error: null });
+    useCloud.setState({ status: "idle", shopId: null, role: null, pending: 0, error: null });
     return;
   }
   const shopId = savedShopId();
   if (shopId) {
-    try { await openCloudShop(shopId); } catch { /* Cloud page shows the saved connection error. */ }
+    try { await openCloudShop(shopId); } catch { /* The saved outbox remains available for retry. */ }
+    if (readOutbox(shopId).length) void flushCloudOutbox();
   }
 }
 
 export function disconnectCloud() {
-  useCloud.setState({ status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, error: null });
+  useCloud.setState({ status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null });
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(SHOP_KEY);
     window.localStorage.removeItem(VERSION_KEY);
@@ -111,32 +120,67 @@ export function disconnectCloud() {
 export function queueCloudAction(action: CloudAction) {
   const connected = useCloud.getState();
   const shopId = connected.shopId ?? savedShopId();
-  if (!shopId || connected.status === "error") return;
-  pendingActions += 1;
-  actionQueue = actionQueue.then(async () => {
+  if (!shopId) return;
+  const queued: OutboxAction = { ...action, id: crypto.randomUUID() };
+  const pending = appendOutbox(shopId, queued).length;
+  useCloud.setState({
+    shopId, pending,
+    version: connected.version || savedVersion(),
+    status: connected.status === "idle" ? "connecting" : connected.status,
+  });
+  void flushCloudOutbox();
+}
+
+async function runFlush() {
+  const shopId = useCloud.getState().shopId ?? savedShopId();
+  if (!shopId) return;
+  let synced = false;
+
+  while (readOutbox(shopId).length) {
+    const action = readOutbox(shopId)[0]!;
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      useCloud.setState({ status: "error", error: "ইন্টারনেট ফিরলে জমা থাকা কাজ নিজে থেকেই সিঙ্ক হবে।" });
+      break;
+    }
     try {
       if (useCloud.getState().version < 1 && savedVersion() < 1) await openCloudShop(shopId);
       const baseVersion = useCloud.getState().version || savedVersion();
       if (baseVersion < 1) throw new Error("Cloud সংযোগের সংস্করণ পাওয়া যায়নি");
       const result = await applyCloudAction({ data: { shopId, baseVersion, action } });
       if (result.status === "conflict") {
-        const role = useCloud.getState().role ?? "cashier";
-        useStore.setState({ ...result.state, setupDone: true, role });
-        useCloud.setState({ version: result.version, error: "অন্য ডিভাইসে নতুন পরিবর্তন এসেছে। সর্বশেষ ডেটা লোড হয়েছে; শেষ কাজটি আবার করুন।" });
+        // Rebase the same durable action on the latest snapshot; never overwrite the other device.
+        useCloud.setState({ version: result.version });
         saveVersion(result.version);
-        toast.error("সর্বশেষ অনলাইন ডেটা লোড হয়েছে। শেষ কাজটি আবার করুন।");
-      } else {
-        useCloud.setState({ version: result.version, error: null });
-        saveVersion(result.version);
+        continue;
       }
+      const pending = acknowledgeOutbox(shopId, action.id).length;
+      useCloud.setState({ status: "connected", version: result.version, pending, error: null });
+      saveVersion(result.version);
+      synced = true;
     } catch (error) {
       const message = actionError(error);
-      useCloud.setState({ status: "error", error: message });
-      toast.error(`Cloud সিঙ্ক হয়নি: ${message}`);
-    } finally {
-      pendingActions = Math.max(0, pendingActions - 1);
+      const shouldNotify = useCloud.getState().status !== "error";
+      useCloud.setState({ status: "error", error: `${message} · ${readOutbox(shopId).length}টি কাজ জমা আছে` });
+      if (shouldNotify) toast.error("Cloud সিঙ্ক হয়নি—কাজটি ডিভাইসে জমা আছে");
+      break;
     }
-  });
+  }
+
+  // Re-read the authoritative result after the whole batch, including other devices' changes.
+  if (synced && readOutbox(shopId).length === 0) {
+    try { await openCloudShop(shopId); } catch { /* The next poll/online event will retry. */ }
+  }
+}
+
+export function flushCloudOutbox(): Promise<void> {
+  if (!activeFlush) activeFlush = runFlush().finally(() => { activeFlush = null; });
+  return activeFlush;
+}
+
+export async function retryCloudSync() {
+  await flushCloudOutbox();
+  const shopId = useCloud.getState().shopId ?? savedShopId();
+  if (shopId && readOutbox(shopId).length === 0) await openCloudShop(shopId);
 }
 
 export function handleCloudActionEvent(event: Event) {
@@ -145,11 +189,13 @@ export function handleCloudActionEvent(event: Event) {
 
 export function handleRealtimeVersion(version: number) {
   const cloud = useCloud.getState();
-  if (!cloud.shopId || version <= cloud.version || pendingActions > 0) return;
+  if (!cloud.shopId || version <= cloud.version || readOutbox(cloud.shopId).length > 0) return;
   void openCloudShop(cloud.shopId).catch(() => undefined);
 }
 
 export function refreshCloudIfIdle() {
-  const shopId = useCloud.getState().shopId;
-  if (shopId && pendingActions === 0) void openCloudShop(shopId).catch(() => undefined);
+  const shopId = useCloud.getState().shopId ?? savedShopId();
+  if (!shopId) return;
+  if (readOutbox(shopId).length) void flushCloudOutbox();
+  else void openCloudShop(shopId).catch(() => undefined);
 }
