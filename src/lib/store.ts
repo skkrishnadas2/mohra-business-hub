@@ -460,7 +460,49 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           set({ ...initial });
         },
       };
-    },
+};
+
+export const CLOUD_ACTIONS = [
+  "completeSetup", "setPerm", "setPins", "addAccount", "setBalance", "transfer",
+  "upsertProduct", "deleteProduct", "checkout", "deleteSale", "recharge", "mfsAgent",
+  "mfsPersonal", "b2b", "serviceSlip", "addRepair", "setRepairStatus", "collectDue",
+  "closeDay", "resetAll",
+] as const;
+export type CloudActionName = (typeof CLOUD_ACTIONS)[number];
+export interface CloudAction { name: CloudActionName; args: unknown[] }
+export const CLOUD_ACTION_EVENT = "mohra:cloud-action";
+
+function withCloudActions(store: ShopStore): ShopStore {
+  const wrapped = { ...store };
+  const target = wrapped as unknown as Record<string, unknown>;
+  const source = store as unknown as Record<string, unknown>;
+  for (const name of CLOUD_ACTIONS) {
+    const original = source[name] as (...args: unknown[]) => unknown;
+    target[name] = (...args: unknown[]) => {
+      const result = original(...args);
+      if (result !== false && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent<CloudAction>(CLOUD_ACTION_EVENT, { detail: { name, args } }));
+      }
+      return result;
+    };
+  }
+  return wrapped;
+}
+
+/** Only serializable shop data crosses the Cloud boundary; device login state stays local. */
+export function shopSnapshot(state: State): State {
+  return {
+    setupDone: state.setupDone, shopName: state.shopName, ownerPin: state.ownerPin,
+    cashierPin: state.cashierPin, cipherKey: state.cipherKey, perms: state.perms,
+    role: null, accounts: state.accounts, products: state.products, sales: state.sales,
+    txns: state.txns, customers: state.customers, repairs: state.repairs,
+    closings: state.closings, lastClosedAt: state.lastClosedAt,
+  };
+}
+
+export const useStore = create<ShopStore>()(
+  persist(
+    (set, get, api) => withCloudActions(shopStoreCreator(set, get, api)),
     { name: "mohra-pos-v1", skipHydration: true },
   ),
 );
