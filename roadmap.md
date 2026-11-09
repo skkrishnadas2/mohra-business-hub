@@ -1,6 +1,5 @@
-# Design refinement
+# Modern SaaS refinement
 
-- [x] Create a premium, friendly, low-clutter design system with three specialist reviews
-- [x] Refine responsive navigation and dashboard hierarchy
-- [x] Polish every sales, recharge, MFS, service, accounts and settings workflow
-- [x] Verify mobile and desktop layouts, core sale flow, tests and preview health
+- [ ] Replace the bubbly card-heavy styling with a crisp Linear/Shopify-inspired design system
+- [ ] Make the dashboard and POS more compact and data-focused
+- [ ] Verify the stronger SaaS direction on mobile and desktop
