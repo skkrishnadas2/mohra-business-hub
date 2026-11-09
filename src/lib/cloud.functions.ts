@@ -77,8 +77,9 @@ export const getCloudShop = createServerFn({ method: "GET" })
   .inputValidator((input) => shopIdSchema.parse(input))
   .handler(async ({ data, context }): Promise<CloudShop> => {
     const role = await membership(context, data.shopId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [current, shop] = await Promise.all([
-      currentState(context, data.shopId),
+      currentState(supabaseAdmin, data.shopId),
       context.supabase.from("shops").select("name").eq("id", data.shopId).single(),
     ]);
     let joinCode: string | null = null;
