@@ -25,7 +25,7 @@ const STATUS: { value: RepairStatus; label: string }[] = [
 function Services() {
   const { serviceSlip, addRepair, repairs, setRepairStatus } = useStore();
   const [tab, setTab] = useState<"slip" | "repair">("slip");
-  const [svc, setSvc] = useState(QUICK[0]);
+  const [svc, setSvc] = useState<string>(QUICK[0] ?? "");
   const [amt, setAmt] = useState("");
   const [r, setR] = useState({ customer: "", phone: "", device: "", problem: "", estimate: "", advance: "" });
 
