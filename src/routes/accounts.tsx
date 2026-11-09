@@ -89,7 +89,10 @@ function Accounts() {
               <Chips value={nw.kind} onChange={(kind) => setNw({ ...nw, kind })} options={(Object.keys(KIND_LABEL) as Account["kind"][]).filter((k) => k !== "cash").map((k) => ({ value: k, label: KIND_LABEL[k] }))} />
               <TextInput placeholder="নাম (যেমন: বিকাশ এজেন্ট ৩)" value={nw.name} onChange={(e) => setNw({ ...nw, name: e.target.value })} />
               {nw.kind.startsWith("mfs") && <Chips value={nw.provider} onChange={(provider) => setNw({ ...nw, provider })} options={[{ value: "bkash", label: "বিকাশ" }, { value: "nagad", label: "নগদ" }, { value: "rocket", label: "রকেট" }, { value: "upay", label: "উপায়" }]} />}
-              <BigButton disabled={!nw.name || (nw.kind.startsWith("mfs") && !nw.provider)} onClick={() => { addAccount({ name: nw.name, kind: nw.kind, provider: nw.provider || undefined, balance: 0 }); setNw(null); }}>যোগ করুন</BigButton>
+              <BigButton disabled={!nw.name || (nw.kind.startsWith("mfs") && !nw.provider)} onClick={() => {
+                try { addAccount({ name: nw.name, kind: nw.kind, provider: nw.provider || undefined, balance: 0 }); setNw(null); }
+                catch (error) { toast.error(actionError(error)); }
+              }}>যোগ করুন</BigButton>
             </div>
           )}
         </SheetContent>

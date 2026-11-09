@@ -71,7 +71,9 @@ function Services() {
                 <div className="flex justify-between gap-2"><div><div className="font-medium">{x.device}</div><div className="text-xs text-muted-foreground">{x.customer} · {x.phone}</div></div>
                   <div className="text-right text-sm"><Money v={x.estimate} className="font-semibold" /><div className="text-xs text-muted-foreground">অগ্রিম {taka(x.advance)}</div></div></div>
                 {x.problem && <p className="mt-2 text-sm text-muted-foreground">{x.problem}</p>}
-                <div className="mt-3"><Chips value={x.status} onChange={(s) => setRepairStatus(x.id, s)} options={STATUS} /></div>
+                <div className="mt-3"><Chips value={x.status} onChange={(s) => {
+                  try { setRepairStatus(x.id, s); } catch (error) { toast.error(actionError(error)); }
+                }} options={STATUS} /></div>
               </div>
             ))}
           </div>
