@@ -46,7 +46,7 @@ export function Money({ v, className, hidden }: { v: number; className?: string;
 }
 
 export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
-  const className = "mb-1.5 block text-sm font-medium text-foreground";
+  const className = "mb-1.5 block text-xs font-medium text-muted-foreground";
   return htmlFor
     ? <label htmlFor={htmlFor} className={className}>{children}</label>
     : <div className={className}>{children}</div>;
@@ -54,7 +54,7 @@ export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: st
 
 export function Chips<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[] }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border bg-muted p-1">
       {options.map((o) => (
         <button
           key={o.value}
@@ -62,10 +62,10 @@ export function Chips<T extends string>({ value, onChange, options }: { value: T
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "min-h-11 rounded-full border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             value === o.value
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-card text-card-foreground hover:border-primary/40 hover:bg-secondary active:bg-accent",
+              ? "border-border bg-card font-semibold text-foreground shadow-soft"
+              : "border-transparent bg-transparent text-muted-foreground hover:text-foreground",
           )}
         >
           {o.label}
@@ -95,7 +95,7 @@ export function NumInput({
       placeholder={placeholder ?? "০"}
       onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ""))}
       className={cn(
-        "tnum h-12 min-h-11 w-full rounded-lg border border-input bg-card px-3 text-lg font-semibold text-foreground transition-colors placeholder:text-muted-foreground hover:enabled:border-primary/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground aria-invalid:border-destructive",
+        "tnum h-11 min-h-11 w-full rounded-md border border-input bg-card px-3 text-base font-medium text-foreground transition-colors placeholder:text-muted-foreground hover:enabled:border-primary/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground aria-invalid:border-destructive",
         className,
       )}
     />
@@ -103,12 +103,12 @@ export function NumInput({
 }
 
 export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement> & { ref?: React.Ref<HTMLInputElement> }) {
-  return <input {...props} className={cn("h-12 min-h-11 w-full rounded-lg border border-input bg-card px-3 text-base text-foreground transition-colors placeholder:text-muted-foreground hover:enabled:border-primary/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground aria-invalid:border-destructive", props.className)} />;
+  return <input {...props} className={cn("h-11 min-h-11 w-full rounded-md border border-input bg-card px-3 text-base text-foreground transition-colors placeholder:text-muted-foreground hover:enabled:border-primary/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground aria-invalid:border-destructive", props.className)} />;
 }
 
 export function BigButton({ children, className, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button {...p} className={cn("inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-base font-semibold leading-snug text-primary-foreground shadow-soft transition-colors hover:enabled:bg-primary/90 active:enabled:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none", className)}>
+    <button {...p} className={cn("inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold leading-snug text-primary-foreground transition-colors hover:enabled:bg-primary/90 active:enabled:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none", className)}>
       {children}
     </button>
   );
