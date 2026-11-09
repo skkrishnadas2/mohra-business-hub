@@ -4,6 +4,19 @@ import { CLOUD_ACTION_EVENT } from "@/lib/store";
 import {
   flushCloudOutbox, handleCloudActionEvent, handleRealtimeVersion, initializeCloud, refreshCloudIfIdle, useCloud,
 } from "@/lib/cloud-sync";
+import {
+  presenceDevices, useCloudPresence, type DeviceType, type PresencePayload,
+} from "@/lib/cloud-presence";
+
+function deviceIdentity(): { id: string; deviceType: DeviceType } {
+  const key = "mohra-cloud-device-v1";
+  let id = window.sessionStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    window.sessionStorage.setItem(key, id);
+  }
+  return { id, deviceType: window.matchMedia("(pointer: coarse)").matches ? "mobile" : "desktop" };
+}
 
 export function CloudSync() {
   const shopId = useCloud((s) => s.shopId);
@@ -36,6 +49,36 @@ export function CloudSync() {
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
+  }, [shopId, connected, role]);
+
+  useEffect(() => {
+    if (!shopId || !connected || !role) return;
+    const identity = deviceIdentity();
+    useCloudPresence.setState({ status: "connecting", devices: [] });
+    const channel = supabase.channel(`shop-presence-${shopId}`, {
+      config: { presence: { key: identity.id } },
+    });
+    channel
+      .on("presence", { event: "sync" }, () => {
+        useCloudPresence.setState({
+          status: "online",
+          devices: presenceDevices(channel.presenceState<PresencePayload>(), identity.id),
+        });
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          useCloudPresence.setState({ status: "online" });
+          void channel.track({ role, deviceType: identity.deviceType, onlineAt: Date.now() } satisfies PresencePayload)
+            .then((result) => { if (result !== "ok") useCloudPresence.setState({ status: "error" }); })
+            .catch(() => useCloudPresence.setState({ status: "error" }));
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          useCloudPresence.setState({ status: "error" });
+        }
+      });
+    return () => {
+      useCloudPresence.setState({ status: "idle", devices: [] });
+      void supabase.removeChannel(channel);
+    };
   }, [shopId, connected, role]);
 
   return null;

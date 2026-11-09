@@ -14,7 +14,7 @@ App (TanStack Start + React 19, Tailwind v4, Hind Siliguri)
 ├── /accounts   All balances, Cash⇄Bank, add accounts, PIN-protected balance adjust
 ├── /khata      Customer due ledger, one-tap collection
 ├── /closing    Note counting, expected vs counted, shift close
-├── /monitor    Owner-only live activity log, void invoices
+├── /monitor    Owner-only live device presence, activity log and invoice voids
 ├── /cloud      Email auth, online shop creation/joining, profile and private avatar
 └── /settings   Owner-only permission switchboard, PINs, cipher preview
 ```
@@ -73,6 +73,7 @@ The `avatars` storage bucket is private; signed URLs expire and storage policies
 4. A conditional `version = baseVersion` write increments the version. A stale write returns the latest version instead of overwriting another device's work; the client automatically retries the same action UUID against that version.
 5. If the replay violates a business rule (for example, another device sold the last item), the server returns a final rejection without committing. The client removes only that action, restores the authoritative snapshot, notifies the user, and continues with later queued actions. Network failures remain queued for retry.
 6. Owners receive Realtime version updates; cashiers poll every 15 seconds. The saved shop ID and version let a sale made immediately after a page reload wait for Cloud instead of being dropped.
+7. `src/lib/cloud-presence.ts` and the `shop-presence-{shopId}` Realtime channel track owner/cashier devices per browser tab. The monitor shows role, mobile/desktop type, a short device ID and whether it is the current device. Presence carries no PIN, balance or customer data and is never used for authorization.
 
 `stateForRole` (`src/lib/cloud-view.ts`) removes the owner PIN and applies cost, profit and bank visibility before cashier data leaves the server. Permission changes use the same versioned action path, so owner switches propagate to other devices. Internal SECURITY DEFINER helpers are not callable by PUBLIC, anon or authenticated roles; only service_role retains access. The automatic-RLS event trigger remains enabled.
 
