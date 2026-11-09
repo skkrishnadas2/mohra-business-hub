@@ -1,29 +1,20 @@
-# Welcome to your Lovable project
+# মোহরা আইটি কেয়ার এন্ড টেলিকম সেন্টার — POS & Telecom Hub
 
-This project was built with [Lovable](https://lovable.dev).
+Ultra-clean Bengali POS, mobile recharge, MFS agent hub, IT service & repair tracker for a Bangladeshi telecom shop. Thumb-first on phone (installable to home screen), sidebar layout on desktop.
 
-## Build with Lovable
-
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
+## Quick start
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install
+bun run dev
+bunx vitest run   # business-rule tests
 ```
+First launch opens the setup wizard: shop name, owner PIN, cashier PIN, and starting balances for cash, banks, MFS wallets and recharge SIMs.
 
-## Built with
+## Where things live
+- `src/lib/rules.ts` — pure rules (commission rates, cipher, Bengali number/Taka formatting, barcode generation)
+- `src/lib/store.ts` — all state and money-moving actions (ledger)
+- `src/lib/print.ts` — thermal receipt and barcode sticker printing
+- `src/components/` — AppShell (nav + PIN lock), Setup wizard, shared UI kit, B2B form
+- `src/routes/` — one file per screen
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+See **ARCHITECTURE.md** for the full mind map, data model and business rules.
