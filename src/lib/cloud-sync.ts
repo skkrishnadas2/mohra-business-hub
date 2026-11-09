@@ -42,7 +42,8 @@ function adopt(shop: CloudShop) {
 }
 
 export async function openCloudShop(shopId: string) {
-  useCloud.setState({ status: "connecting", error: null });
+  const current = useCloud.getState();
+  useCloud.setState({ status: current.status === "connected" && current.shopId === shopId ? "connected" : "connecting", shopId, error: null });
   try {
     const shop = await getCloudShop({ data: { shopId } });
     adopt(shop);
