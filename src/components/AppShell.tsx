@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh bg-background md:flex">
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar p-3 md:flex lg:w-64">
         <div className="mb-4 flex items-center gap-3 border-b px-2 pb-5 pt-3">
-          <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground">ম</div>
+          <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground">ম</div>
           <div className="min-w-0">
             <div className="break-words text-sm font-semibold leading-snug">{shopName}</div>
             <div className="mt-1 text-xs text-muted-foreground">{roleLabel} হিসেবে কাজ করছেন</div>
@@ -73,14 +73,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav aria-label="প্রধান নেভিগেশন" className="min-h-0 flex-1 space-y-1 overflow-y-auto">
           {items.map((n) => (
             <Link key={n.to} to={n.to} aria-current={active(n.to) ? "page" : undefined}
-              className={cn("flex min-h-11 items-center gap-3 rounded-xl border-l-2 px-3 py-2.5 text-sm transition-colors", focusClass,
+              className={cn("flex min-h-11 items-center gap-3 rounded-lg border-l-2 px-3 py-2.5 text-sm transition-colors", focusClass,
                 active(n.to) ? "border-primary bg-sidebar-accent font-semibold text-sidebar-accent-foreground" : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground")}>
               <n.icon aria-hidden="true" className="h-4 w-4 shrink-0" /> {n.label}
             </Link>
           ))}
         </nav>
         <div className="mt-3 border-t pt-3">
-          <button type="button" onClick={logout} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", focusClass)}>
+          <button type="button" onClick={logout} className={cn("flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", focusClass)}>
             <LogOut aria-hidden="true" className="h-4 w-4" /> লক করুন
           </button>
         </div>
@@ -88,7 +88,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="min-w-0 flex-1">
         <header className="flex items-center gap-3 border-b bg-card px-4 py-3 md:hidden">
-          <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary font-bold text-primary-foreground">ম</div>
+          <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">ম</div>
           <div className="min-w-0 flex-1">
             <div className="break-words text-sm font-semibold">{shopName}</div>
             <div className="text-xs text-muted-foreground">{roleLabel} হিসেবে কাজ করছেন</div>
@@ -101,13 +101,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="grid grid-cols-5 gap-1 px-2 py-2">
           {items.slice(0, 4).map((n) => (
             <Link key={n.to} to={n.to} aria-current={active(n.to) ? "page" : undefined}
-              className={cn("flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] transition-colors", focusClass,
+              className={cn("flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] transition-colors", focusClass,
                 active(n.to) ? "bg-accent font-semibold text-accent-foreground" : "text-muted-foreground hover:bg-secondary")}>
               <n.icon aria-hidden="true" className="h-5 w-5 shrink-0" /> {n.label}
             </Link>
           ))}
           <button type="button" onClick={() => setMore(true)} aria-expanded={more} aria-controls="more-navigation" aria-label={moreActive ? "আরো মেনু — বর্তমান পৃষ্ঠা এখানে" : "আরো মেনু"}
-            className={cn("flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] transition-colors", focusClass,
+            className={cn("flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] transition-colors", focusClass,
               moreActive ? "bg-accent font-semibold text-accent-foreground" : "text-muted-foreground hover:bg-secondary")}>
             <Menu aria-hidden="true" className="h-5 w-5" /> আরো
           </button>
@@ -119,14 +119,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           <nav aria-label="অতিরিক্ত নেভিগেশন" className="grid grid-cols-2 gap-2 px-4 pb-4">
             {items.slice(4).map((n) => (
               <Link key={n.to} to={n.to} onClick={() => setMore(false)} aria-current={active(n.to) ? "page" : undefined}
-                className={cn("flex min-h-14 items-center gap-3 rounded-xl border px-3 py-3 text-sm transition-colors", focusClass,
+                className={cn("flex min-h-14 items-center gap-3 rounded-lg border px-3 py-3 text-sm transition-colors", focusClass,
                   active(n.to) ? "border-primary bg-accent font-semibold text-accent-foreground" : "border-border bg-card text-foreground hover:bg-secondary")}>
                 <n.icon aria-hidden="true" className="h-5 w-5 shrink-0" /> <span>{n.label}</span>
               </Link>
             ))}
           </nav>
           <div className="mx-4 border-t pt-3">
-            <button type="button" onClick={() => { setMore(false); logout(); }} className={cn("flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm text-muted-foreground hover:bg-secondary", focusClass)}>
+            <button type="button" onClick={() => { setMore(false); logout(); }} className={cn("flex min-h-12 w-full items-center justify-center gap-2 rounded-lg text-sm text-muted-foreground hover:bg-secondary", focusClass)}>
               <LogOut aria-hidden="true" className="h-4 w-4" /> লক করুন
             </button>
           </div>

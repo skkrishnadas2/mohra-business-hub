@@ -30,13 +30,13 @@ function Dashboard() {
 
   return (
     <Page title="আজকের হিসাব" sub={new Date().toLocaleDateString("bn-BD", { weekday: "long", day: "numeric", month: "long" })}>
-      <div className="space-y-6 md:space-y-8">
+      <div className="space-y-5">
         <section aria-label="ফান্ড ও লাভের সারাংশ" className="grid gap-4 lg:grid-cols-2">
-          <Tile className="min-w-0 border-primary bg-primary p-5 text-primary-foreground md:p-6">
+          <Tile className="min-w-0 border-primary bg-primary p-5 text-primary-foreground">
             <h2 className="text-sm font-medium text-primary-foreground/75">মোট ফান্ড</h2>
-            <Money v={cash + (showBank ? bank : 0) + mfs + rc} className="mt-2 block break-words text-3xl font-semibold tracking-tight md:text-4xl" />
+            <Money v={cash + (showBank ? bank : 0) + mfs + rc} className="mt-2 block break-words text-3xl font-semibold tracking-tight" />
             {!showBank && <p className="mt-1 text-xs text-primary-foreground/70">ব্যাংক ব্যালেন্স এই মোটে অন্তর্ভুক্ত নয়</p>}
-            <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4 border-t border-primary-foreground/15 pt-4">
+            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-primary-foreground/15 pt-3">
               {[
                 ["ক্যাশ", cash, false],
                 ["ব্যাংক", bank, !showBank],
@@ -51,15 +51,15 @@ function Dashboard() {
             </dl>
           </Tile>
 
-          <Tile className="min-w-0 border-primary/20 bg-accent p-5 md:p-6">
-            <h2 className="text-sm font-medium text-accent-foreground">আজকের নেট লাভ</h2>
-            <Money v={p.total} hidden={!showProfit} className="mt-2 block break-words text-3xl font-semibold tracking-tight text-accent-foreground md:text-4xl" />
-            {!showProfit && <p className="mt-1 text-xs text-accent-foreground">আপনার রোলে লাভের তথ্য গোপন রাখা হয়েছে</p>}
-            <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4 border-t border-accent-foreground/15 pt-4">
+          <Tile className="min-w-0 p-5">
+            <h2 className="text-sm font-medium text-muted-foreground">আজকের নেট লাভ</h2>
+            <Money v={p.total} hidden={!showProfit} className="mt-2 block break-words text-3xl font-semibold tracking-tight text-primary" />
+            {!showProfit && <p className="mt-1 text-xs text-muted-foreground">আপনার রোলে লাভের তথ্য গোপন রাখা হয়েছে</p>}
+            <dl className="mt-4 grid grid-cols-4 gap-2 border-t pt-3">
               {[["পণ্য", p.product], ["MFS", p.mfs], ["রিচার্জ", p.recharge], ["সার্ভিস", p.service]].map(([label, value]) => (
-                <div key={label as string} className="min-w-0 text-accent-foreground">
-                  <dt className="text-xs">{label as string}</dt>
-                  <dd className="mt-1"><Money v={value as number} hidden={!showProfit} className="break-words text-base font-semibold" /></dd>
+                <div key={label as string} className="min-w-0">
+                  <dt className="text-[11px] text-muted-foreground">{label as string}</dt>
+                  <dd className="mt-1"><Money v={value as number} hidden={!showProfit} className="break-words text-sm font-semibold" /></dd>
                 </div>
               ))}
             </dl>
@@ -75,7 +75,7 @@ function Dashboard() {
               { to: "/mfs", icon: Wallet, label: "ক্যাশ-ইন/আউট" },
               { to: "/services", icon: Wrench, label: `রিপেয়ার (${bn(openRepairs)})` },
             ].map((q) => (
-              <Link key={q.to} to={q.to} className="flex min-h-14 items-center gap-2 rounded-xl border bg-card px-3 py-3 text-sm font-medium shadow-soft transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:gap-3">
+              <Link key={q.to} to={q.to} className="flex min-h-12 items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-sm font-medium transition-colors hover:border-primary/30 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 sm:gap-3">
                 <q.icon aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" /><span>{q.label}</span>
               </Link>
             ))}
@@ -83,7 +83,7 @@ function Dashboard() {
         </section>
 
         <div className="grid items-start gap-4 lg:grid-cols-3">
-          <Tile className="min-w-0 p-5 md:p-6 lg:col-span-2">
+          <Tile className="min-w-0 p-5 lg:col-span-2">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="font-semibold">আজকের লেনদেন</h2><span className="text-xs text-muted-foreground">{bn(todays.length)}টি</span>
             </div>
@@ -91,7 +91,7 @@ function Dashboard() {
               <div className="border-t py-6">
                 <p className="text-sm font-medium">আজকের প্রথম লেনদেনের অপেক্ষায়</p>
                 <p className="mt-1 text-sm text-muted-foreground">বিক্রি, রিচার্জ বা MFS লেনদেন করলে এখানে দেখা যাবে।</p>
-                <Link to="/pos" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                <Link to="/pos" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                   <ScanBarcode aria-hidden="true" className="h-4 w-4" /> প্রথম বিক্রি শুরু করুন
                 </Link>
               </div>
@@ -111,7 +111,7 @@ function Dashboard() {
             )}
           </Tile>
 
-          <Tile className="min-w-0 p-5 md:p-6">
+          <Tile className="min-w-0 p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="font-semibold">স্টকের খোঁজখবর</h2>
               {low.length > 0 && <span className="text-xs text-muted-foreground">{bn(low.length)}টি পণ্য</span>}
