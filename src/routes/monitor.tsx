@@ -27,7 +27,7 @@ function Monitor() {
 
   return (
     <Page title="লাইভ মনিটর" sub="ক্যাশিয়ারের সব কার্যক্রম">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 items-start gap-3 md:grid-cols-4">
         <Tile><div className="text-xs text-muted-foreground">আজ লেনদেন</div><div className="tnum text-2xl font-semibold">{bn(today.length)}</div></Tile>
         <Tile><div className="text-xs text-muted-foreground">ক্যাশিয়ারের লেনদেন</div><div className="tnum text-2xl font-semibold">{bn(cashierTx.length)}</div></Tile>
         <Tile><div className="text-xs text-muted-foreground">আজ বিক্রি</div><Money v={todaySales.reduce((s, x) => s + x.total, 0)} className="text-2xl font-semibold" /></Tile>

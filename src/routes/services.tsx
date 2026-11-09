@@ -33,9 +33,9 @@ function Services() {
     <Page title="সার্ভিস ও রিপেয়ার">
       <div className="mb-4"><Chips value={tab} onChange={setTab} options={[{ value: "slip", label: "কুইক সার্ভিস" }, { value: "repair", label: "রিপেয়ার ট্র্যাকার" }]} /></div>
       {tab === "slip" ? (
-        <div className="max-w-xl space-y-4 rounded-2xl border bg-card p-4 shadow-soft">
+        <div className="max-w-xl space-y-4 rounded-xl border bg-card p-4 shadow-soft sm:p-5">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {QUICK.map((q) => <button key={q} onClick={() => setSvc(q)} className={`h-14 rounded-xl border text-sm ${svc === q ? "border-primary bg-accent font-semibold" : ""}`}>{q}</button>)}
+            {QUICK.map((q) => <button key={q} onClick={() => setSvc(q)} className={`min-h-14 rounded-xl border px-3 py-2 text-sm ${svc === q ? "border-primary bg-accent font-semibold text-accent-foreground" : "bg-card hover:bg-secondary"}`}>{q}</button>)}
           </div>
           <div><Label>বিল</Label><NumInput value={amt} onChange={setAmt} /></div>
           <BigButton disabled={!Number(amt)} onClick={() => { serviceSlip(svc, Number(amt), "cash"); toast.success(`${svc} · ${taka(Number(amt))}`); setAmt(""); }}>ক্যাশে জমা</BigButton>

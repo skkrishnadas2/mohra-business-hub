@@ -33,8 +33,8 @@ function Recharge() {
   return (
     <Page title="রিচার্জ" sub="ফ্লেক্সিলোড বিক্রি ও SR থেকে ব্যালেন্স লোড">
       <div className="mb-4"><Chips value={tab} onChange={setTab} options={[{ value: "sell", label: "রিচার্জ বিক্রি" }, { value: "b2b", label: "B2B লোড" }]} /></div>
-      <div className="grid gap-4 md:grid-cols-[1fr_300px]">
-        <div className="rounded-2xl border bg-card p-4 shadow-soft">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="rounded-xl border bg-card p-4 shadow-soft sm:p-5">
           {tab === "b2b" ? <B2BForm kind="recharge" /> : (
             <div className="space-y-4">
               <div className="grid grid-cols-5 gap-2">

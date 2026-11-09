@@ -36,10 +36,10 @@ function Settings() {
 
   return (
     <Page title="রোল ও পারমিশন" sub="ক্যাশিয়ার কী কী করতে পারবে">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="divide-y rounded-2xl border bg-card shadow-soft">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="divide-y rounded-xl border bg-card shadow-soft">
           {PERMS.map((p) => (
-            <label key={p.k} className="flex items-center justify-between gap-3 p-4">
+            <label key={p.k} className="flex min-h-16 cursor-pointer items-center justify-between gap-3 p-4">
               <div><div className="font-medium">{p.l}</div><div className="text-xs text-muted-foreground">{p.d}</div></div>
               <Switch checked={perms[p.k]} onCheckedChange={(v) => setPerm(p.k, v)} />
             </label>

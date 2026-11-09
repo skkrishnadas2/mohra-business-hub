@@ -30,8 +30,8 @@ function Closing() {
 
   return (
     <Page title="দিন শেষ হিসাব" sub={`এই শিফটে ${bn(shift.length)}টি লেনদেন`}>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border bg-card p-4 shadow-soft">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border bg-card p-4 shadow-soft sm:p-5">
           <Label>নোট গণনা করুন</Label>
           <div className="grid grid-cols-2 gap-2">
             {NOTES.map((n) => (

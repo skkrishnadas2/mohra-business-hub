@@ -40,8 +40,8 @@ function Mfs() {
   return (
     <Page title="MFS হাব" sub="বিকাশ · নগদ · রকেট · উপায়">
       <div className="mb-4"><Chips value={tab} onChange={switchTab} options={[{ value: "agent", label: "এজেন্ট" }, { value: "personal", label: "পার্সোনাল" }, { value: "b2b", label: "B2B (SR)" }]} /></div>
-      <div className="grid gap-4 md:grid-cols-[1fr_300px]">
-        <div className="rounded-2xl border bg-card p-4 shadow-soft">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="rounded-xl border bg-card p-4 shadow-soft sm:p-5">
           {tab === "b2b" ? <B2BForm kind="mfs" /> : (
             <div className="space-y-4">
               {tab === "agent"
