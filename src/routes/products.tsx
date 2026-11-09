@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Plus, Printer, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useStore, type Product } from "@/lib/store";
+import { actionError, useStore, type Product } from "@/lib/store";
 import { Page, Money, BigButton, NumInput, TextInput, Label } from "@/components/kit";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";

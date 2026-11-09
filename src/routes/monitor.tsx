@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useStore, sinceToday, todayProfit } from "@/lib/store";
+import { actionError, useStore, sinceToday, todayProfit } from "@/lib/store";
 import { Page, Money, Tile } from "@/components/kit";
 import { bn } from "@/lib/rules";
 

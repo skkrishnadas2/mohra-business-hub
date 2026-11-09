@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { useStore } from "@/lib/store";
+import { actionError, useStore } from "@/lib/store";
 import { BigButton, Chips, Label, NumInput, TextInput } from "./kit";
 import { taka } from "@/lib/rules";
 

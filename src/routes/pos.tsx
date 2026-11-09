@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, Minus, Plus, Printer, Search, X } from "lucide-react";
 import { toast } from "sonner";
-import { useStore, type CartLine, type Payment, type Sale } from "@/lib/store";
+import { actionError, useStore, type CartLine, type Payment, type Sale } from "@/lib/store";
 import { Page, Money, BigButton, Chips, NumInput, TextInput, Label, useLongPress } from "@/components/kit";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

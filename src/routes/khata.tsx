@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useStore } from "@/lib/store";
+import { actionError, useStore } from "@/lib/store";
 import { Page, Money, NumInput } from "@/components/kit";
 import { taka } from "@/lib/rules";
 
