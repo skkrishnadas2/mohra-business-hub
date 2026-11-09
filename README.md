@@ -20,6 +20,7 @@ Open **Cloud সিঙ্ক** after local setup. The owner signs up/in with ema
 - `src/lib/cloud-outbox.ts` — durable per-shop offline action queue
 - `src/lib/cloud.functions.ts` — authenticated server actions, idempotent receipts and version conflict protection
 - `src/lib/cloud-view.ts` — server-side cashier field permissions
+- `src/lib/cloud-presence.ts` — display-only online device state for the owner monitor
 - `src/lib/print.ts` — thermal receipt and barcode sticker printing
 - `src/components/` — AppShell (nav + PIN lock), Setup wizard, shared UI kit, B2B form
 - `src/routes/` — one file per screen
