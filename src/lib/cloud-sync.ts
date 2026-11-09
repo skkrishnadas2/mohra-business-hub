@@ -109,7 +109,7 @@ export async function initializeCloud() {
 }
 
 export function disconnectCloud() {
-  useCloud.setState({ status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null });
+  useCloud.setState({ status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null, notice: null });
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(SHOP_KEY);
     window.localStorage.removeItem(VERSION_KEY);
