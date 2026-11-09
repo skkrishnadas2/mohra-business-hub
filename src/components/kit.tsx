@@ -55,7 +55,7 @@ export function NumInput({ value, onChange, placeholder, className, autoFocus }:
   );
 }
 
-export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement> & { ref?: React.Ref<HTMLInputElement> }) {
   return <input {...props} className={cn("h-12 w-full rounded-xl border bg-background px-4 outline-none focus:ring-2 focus:ring-ring", props.className)} />;
 }
 

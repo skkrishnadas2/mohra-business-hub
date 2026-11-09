@@ -7,7 +7,7 @@ export interface Account {
   id: string;
   name: string;
   kind: AccountKind;
-  provider?: MfsProvider | Operator | string;
+  provider?: MfsProvider | Operator | string | undefined;
   balance: number;
 }
 export interface Product {
@@ -23,12 +23,12 @@ export interface CartLine { productId: string; name: string; qty: number; price:
 export interface Payment { accountId: string | "due"; amount: number }
 export interface Sale {
   id: string; at: number; items: CartLine[]; total: number; cost: number;
-  payments: Payment[]; customerId?: string; by: Role;
+  payments: Payment[]; customerId?: string | undefined; by: Role;
 }
 export type ProfitCat = "product" | "mfs" | "recharge" | "service" | "none";
 export interface Txn {
   id: string; at: number; type: string; title: string; amount: number;
-  profit: number; cat: ProfitCat; by: Role; ref?: string;
+  profit: number; cat: ProfitCat; by: Role; ref?: string | undefined;
   moves: { accountId: string; delta: number }[];
 }
 export interface Customer { id: string; name: string; phone: string; due: number }
@@ -99,7 +99,7 @@ interface Actions {
   addAccount: (a: Omit<Account, "id">) => void;
   setBalance: (id: string, value: number, pin: string) => boolean;
   transfer: (fromId: string, toId: string, amount: number, title: string, ref?: string) => void;
-  upsertProduct: (p: Omit<Product, "id"> & { id?: string }) => void;
+  upsertProduct: (p: Omit<Product, "id"> & { id?: string | undefined }) => void;
   deleteProduct: (id: string) => void;
   checkout: (lines: CartLine[], payments: Payment[], customer?: { name: string; phone: string }) => Sale;
   deleteSale: (id: string) => void;

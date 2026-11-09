@@ -92,7 +92,7 @@ function StickerSheet({ p, onClose, shop, cipherKey }: { p: Product | null; onCl
   const [withCipher, setWithCipher] = useState(true);
   const [count, setCount] = useState("1");
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (p && ref.current) ref.current.innerHTML = barcodeSvg(p.barcodes[0]); }, [p]);
+  useEffect(() => { if (p && ref.current) ref.current.innerHTML = barcodeSvg(p.barcodes[0] ?? ""); }, [p]);
   return (
     <Sheet open={!!p} onOpenChange={(v) => !v && onClose()}>
       <SheetContent side="bottom" className="rounded-t-3xl">
@@ -106,7 +106,7 @@ function StickerSheet({ p, onClose, shop, cipherKey }: { p: Product | null; onCl
             </div>
             <label className="flex items-center justify-between rounded-xl border p-3 text-sm">সিক্রেট রেট কোড সহ <Switch checked={withCipher} onCheckedChange={setWithCipher} /></label>
             <div><Label>কতটি</Label><NumInput value={count} onChange={setCount} /></div>
-            <BigButton onClick={() => printStickers({ name: p.name, price: p.price, cost: p.cost, code: p.barcodes[0] }, Math.max(1, Number(count) || 1), withCipher, shop, cipherKey)}>প্রিন্ট করুন</BigButton>
+            <BigButton onClick={() => printStickers({ name: p.name, price: p.price, cost: p.cost, code: p.barcodes[0] ?? "" }, Math.max(1, Number(count) || 1), withCipher, shop, cipherKey)}>প্রিন্ট করুন</BigButton>
           </div>
         )}
       </SheetContent>
