@@ -97,12 +97,12 @@ export function disconnectCloud() {
 
 export function queueCloudAction(action: CloudAction) {
   const connected = useCloud.getState();
-  console.debug("[cloud-sync] queue", connected.status, connected.shopId, action?.name);
-  if (connected.status !== "connected" || !connected.shopId) return;
+  if (!connected.shopId || connected.status === "idle" || connected.status === "error") return;
   const shopId = connected.shopId;
   pendingActions += 1;
   actionQueue = actionQueue.then(async () => {
     try {
+      if (useCloud.getState().status !== "connected" || useCloud.getState().version < 1) await openCloudShop(shopId);
       const baseVersion = useCloud.getState().version;
       const result = await applyCloudAction({ data: { shopId, baseVersion, action } });
       if (result.status === "conflict") {
