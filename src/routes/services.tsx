@@ -47,7 +47,7 @@ function Services() {
             <TextInput placeholder="কাস্টমারের নাম" value={r.customer} onChange={(e) => setR({ ...r, customer: e.target.value })} />
             <TextInput placeholder="মোবাইল" inputMode="tel" value={r.phone} onChange={(e) => setR({ ...r, phone: e.target.value })} />
             <TextInput placeholder="ডিভাইস (যেমন: Samsung A12)" value={r.device} onChange={(e) => setR({ ...r, device: e.target.value })} />
-            <textarea placeholder="সমস্যার বিবরণ" value={r.problem} onChange={(e) => setR({ ...r, problem: e.target.value })} className="min-h-20 w-full rounded-xl border bg-background p-3 outline-none focus:ring-2 focus:ring-ring" />
+            <textarea placeholder="সমস্যার বিবরণ" value={r.problem} onChange={(e) => setR({ ...r, problem: e.target.value })} className="min-h-24 w-full rounded-lg border border-input bg-card p-3 outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring" />
             <div className="grid grid-cols-2 gap-2">
               <div><Label>আনুমানিক বিল</Label><NumInput value={r.estimate} onChange={(v) => setR({ ...r, estimate: v })} /></div>
               <div><Label>অগ্রিম</Label><NumInput value={r.advance} onChange={(v) => setR({ ...r, advance: v })} /></div>
@@ -58,7 +58,7 @@ function Services() {
             }}>গ্রহণ করুন</BigButton>
           </div>
           <div className="space-y-2">
-            {repairs.length === 0 && <div className="rounded-2xl border bg-card p-10 text-center text-sm text-muted-foreground">কোনো রিপেয়ার নেই</div>}
+            {repairs.length === 0 && <div className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">কোনো রিপেয়ার নেই</div>}
             {repairs.map((x) => (
               <div key={x.id} className="rounded-2xl border bg-card p-4 shadow-soft">
                 <div className="flex justify-between gap-2"><div><div className="font-medium">{x.device}</div><div className="text-xs text-muted-foreground">{x.customer} · {x.phone}</div></div>

@@ -62,7 +62,7 @@ function Products() {
       </div>
 
       <Sheet open={!!d} onOpenChange={(v) => !v && setD(null)}>
-        <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto rounded-t-3xl">
+        <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]">
           <SheetHeader><SheetTitle>{d?.id ? "পণ্য এডিট" : "নতুন পণ্য"}</SheetTitle></SheetHeader>
           {d && (
             <div className="space-y-3 p-4 pt-0">
@@ -95,11 +95,11 @@ function StickerSheet({ p, onClose, shop, cipherKey }: { p: Product | null; onCl
   useEffect(() => { if (p && ref.current) ref.current.innerHTML = barcodeSvg(p.barcodes[0] ?? ""); }, [p]);
   return (
     <Sheet open={!!p} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="bottom" className="rounded-t-3xl">
+      <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]">
         <SheetHeader><SheetTitle>বারকোড স্টিকার</SheetTitle></SheetHeader>
         {p && (
           <div className="space-y-4 p-4 pt-0">
-            <div className="mx-auto w-64 rounded-xl border bg-background p-3 text-center text-sm">
+            <div className="mx-auto w-full max-w-64 rounded-xl border bg-background p-3 text-center text-sm">
               <div className="text-[10px] font-semibold">{shop}</div><div>{p.name}</div>
               <div ref={ref} className="my-1 flex justify-center [&_svg]:max-w-full" />
               <div className="flex justify-between font-semibold"><Money v={p.price} />{withCipher && <span>{cipherEncode(p.cost, cipherKey)}</span>}</div>

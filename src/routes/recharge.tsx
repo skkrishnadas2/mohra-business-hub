@@ -44,7 +44,7 @@ function Recharge() {
               </div>
               <div><Label>মোবাইল নম্বর</Label><TextInput inputMode="tel" value={num} onChange={(e) => setNum(e.target.value)} placeholder="01XXXXXXXXX" /></div>
               <div className="grid grid-cols-3 gap-2">
-                {QUICK.map((q) => <button key={q} onClick={() => setAmt(String(q))} className={`h-12 rounded-xl border font-semibold ${a === q ? "border-primary bg-accent" : ""}`}>৳{bn(q)}</button>)}
+                {QUICK.map((q) => <button key={q} onClick={() => setAmt(String(q))} className={`h-12 rounded-xl border font-semibold ${a === q ? "border-primary bg-accent text-accent-foreground" : "bg-card hover:bg-secondary"}`}>৳{bn(q)}</button>)}
               </div>
               <div><Label>কাস্টম পরিমাণ</Label><NumInput value={amt} onChange={setAmt} /></div>
               {a > bal && <p className="text-sm text-destructive">সিমে পর্যাপ্ত ব্যালেন্স নেই</p>}
@@ -54,7 +54,7 @@ function Recharge() {
         </div>
         <div className="space-y-2">
           {sims.map((s) => (
-            <div key={s.id} className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3 text-sm"><span>{s.name}</span><Money v={s.balance} className="font-semibold" /></div>
+            <div key={s.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border bg-card px-4 py-3 text-sm"><span>{s.name}</span><Money v={s.balance} className="font-semibold" /></div>
           ))}
         </div>
       </div>

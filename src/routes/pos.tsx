@@ -110,11 +110,11 @@ function Pos() {
             )}
             <div className="mt-3 flex items-center justify-between border-t pt-3"><span className="text-muted-foreground">মোট</span><Money v={total} className="text-2xl font-semibold" /></div>
             <BigButton className="mt-3" disabled={!cart.length} onClick={() => finish([{ accountId: "cash", amount: total }])}>ক্যাশ · {taka(total)}</BigButton>
-            <button disabled={!cart.length} onClick={() => setPayOpen(true)} className="mt-2 h-11 w-full rounded-xl border text-sm font-medium disabled:opacity-40">অন্য পেমেন্ট (MFS / ব্যাংক / স্প্লিট / বাকি)</button>
+            <button disabled={!cart.length} onClick={() => setPayOpen(true)} className="mt-2 min-h-12 w-full rounded-xl border bg-secondary px-3 py-2 text-sm font-medium leading-snug text-secondary-foreground disabled:opacity-40">অন্য পেমেন্ট (MFS / ব্যাংক / স্প্লিট / বাকি)</button>
             {last && (
               <div className="mt-3 flex gap-2">
-                <button onClick={() => printReceipt(last, shopName, 58, accName)} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-secondary text-sm"><Printer className="h-4 w-4" /> 58mm</button>
-                <button onClick={() => printReceipt(last, shopName, 80, accName)} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-secondary text-sm"><Printer className="h-4 w-4" /> 80mm</button>
+                <button onClick={() => printReceipt(last, shopName, 58, accName)} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-secondary text-sm text-secondary-foreground"><Printer className="h-4 w-4" /> 58mm</button>
+                <button onClick={() => printReceipt(last, shopName, 80, accName)} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-secondary text-sm text-secondary-foreground"><Printer className="h-4 w-4" /> 80mm</button>
               </div>
             )}
           </div>
@@ -163,7 +163,7 @@ function PaySheet({ open, onOpenChange, total, onDone }: { open: boolean; onOpen
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-3xl">
+      <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]">
         <SheetHeader><SheetTitle>পেমেন্ট · {taka(total)}</SheetTitle></SheetHeader>
         <div className="space-y-4 p-4 pt-0">
           <Chips value={mode} onChange={(m) => { setMode(m); setAcc(""); }} options={[{ value: "mfs", label: "বিকাশ/নগদ" }, { value: "bank", label: "ব্যাংক/কার্ড" }, { value: "split", label: "স্প্লিট" }, { value: "due", label: "বাকি" }]} />

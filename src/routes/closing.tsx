@@ -47,7 +47,7 @@ function Closing() {
             <Money v={diff} className={`text-2xl font-semibold ${diff === 0 ? "text-primary" : "text-destructive"}`} />
           </Tile>
           {can("viewProfit") && <Tile><div className="text-sm text-muted-foreground">শিফটের নেট লাভ</div><Money v={profit} className="text-2xl font-semibold text-primary" /></Tile>}
-          <BigButton onClick={() => { const c = closeDay(counted); toast.success(`শিফট বন্ধ · পার্থক্য ${taka(c.diff)}`); setCnt({}); }}>শিফট বন্ধ করুন</BigButton>
+          <BigButton className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 h-auto min-h-14 border border-primary px-4 py-3 text-base leading-snug lg:static" onClick={() => { const c = closeDay(counted); toast.success(`শিফট বন্ধ · পার্থক্য ${taka(c.diff)}`); setCnt({}); }}>শিফট বন্ধ করুন</BigButton>
         </div>
       </div>
       {closings.length > 0 && (

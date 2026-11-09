@@ -57,7 +57,7 @@ function Settings() {
             <p className="text-xs text-muted-foreground">১=D ২=H ৩=A ৪=K ৫=A ৬=C ৭=I ৮=T ৯=Y ০=X</p>
             <div className="flex items-center gap-3"><TextInput className="w-28" value={sample} onChange={(e) => setSample(e.target.value.replace(/\D/g, ""))} /><span className="text-xl font-semibold">{cipherEncode(Number(sample) || 0)}</span></div>
           </div>
-          <button onClick={() => { if (confirm("সব ডেটা মুছে নতুন করে শুরু করবেন?")) resetAll(); }} className="h-11 w-full rounded-xl text-sm text-destructive">সব ডেটা রিসেট</button>
+          <button onClick={() => { if (confirm("সব ডেটা মুছে নতুন করে শুরু করবেন?")) resetAll(); }} className="min-h-12 w-full rounded-xl border border-destructive/30 bg-card px-4 py-3 text-sm font-medium text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">সব ডেটা রিসেট</button>
         </div>
       </div>
     </Page>

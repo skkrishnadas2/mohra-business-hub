@@ -64,7 +64,7 @@ function Accounts() {
       </div>
 
       <Sheet open={!!adj} onOpenChange={(v) => !v && setAdj(null)}>
-        <SheetContent side="bottom" className="rounded-t-3xl">
+        <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]">
           <SheetHeader><SheetTitle>ব্যালেন্স সমন্বয় · {adj?.name}</SheetTitle></SheetHeader>
           <div className="space-y-3 p-4 pt-0">
             <div><Label>সঠিক ব্যালেন্স</Label><NumInput value={adjVal} onChange={setAdjVal} /></div>
@@ -75,7 +75,7 @@ function Accounts() {
       </Sheet>
 
       <Sheet open={!!nw} onOpenChange={(v) => !v && setNw(null)}>
-        <SheetContent side="bottom" className="rounded-t-3xl">
+        <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]">
           <SheetHeader><SheetTitle>নতুন হিসাব</SheetTitle></SheetHeader>
           {nw && (
             <div className="space-y-3 p-4 pt-0">
