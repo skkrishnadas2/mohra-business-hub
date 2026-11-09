@@ -24,7 +24,7 @@ describe("durable Cloud outbox", () => {
     const remaining = acknowledgeOutbox(shopA, actionA.id);
     expect(remaining).toEqual([actionB]);
     expect(readOutbox(shopA)).toEqual([actionB]);
-    acknowledgeOutbox(shopA, actionB);
+    acknowledgeOutbox(shopA, actionB.id);
     expect(readOutbox(shopA)).toEqual([]);
   });
 });
