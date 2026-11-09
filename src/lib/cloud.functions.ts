@@ -89,7 +89,7 @@ export const getCloudShop = createServerFn({ method: "GET" })
     }
     return {
       shopId: data.shopId, name: shop.data?.name ?? current.state.shopName, role,
-      version: current.version, state: { ...current.state, role: null }, joinCode,
+      version: current.version, state: stateForRole(current.state, role), joinCode,
     };
   });
 
