@@ -34,13 +34,29 @@ async function membership(context: { supabase: any; userId: string }, shopId: st
   return data.role as Role;
 }
 
-async function currentState(context: { supabase: any }, shopId: string) {
-  const { data, error } = await context.supabase
+async function currentState(supabase: any, shopId: string) {
+  const { data, error } = await supabase
     .from("shop_states").select("version, data").eq("shop_id", shopId).single();
   if (error || !data) throw new Error("দোকানের অনলাইন ডেটা পাওয়া যায়নি");
   const parsed = snapshotSchema.safeParse(data.data);
   if (!parsed.success) throw new Error("অনলাইন দোকানের ডেটার কাঠামো সঠিক নয়");
   return { version: data.version, state: parsed.data as unknown as State };
+}
+
+/** Return only what this role may see; raw shop_states is owner-readable only. */
+function stateForRole(state: State, role: Role): State {
+  if (role === "owner") return { ...state, role: null };
+  return {
+    ...state, role: null, ownerPin: "",
+    accounts: state.accounts.map((a) => a.kind === "bank" && !state.perms.viewBank ? { ...a, balance: 0 } : a),
+    products: state.products.map((p) => state.perms.viewCost ? p : { ...p, cost: 0 }),
+    sales: state.sales.map((sale) => ({
+      ...sale, cost: state.perms.viewCost ? sale.cost : 0,
+      items: sale.items.map((line) => state.perms.viewCost ? line : { ...line, cost: 0 }),
+    })),
+    txns: state.txns.map((txn) => state.perms.viewProfit ? txn : { ...txn, profit: 0 }),
+    closings: state.closings.map((closing) => state.perms.viewProfit ? closing : { ...closing, profit: 0 }),
+  };
 }
 
 export const listCloudShops = createServerFn({ method: "GET" })
