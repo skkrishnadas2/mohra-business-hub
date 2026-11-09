@@ -21,7 +21,7 @@ describe("durable Cloud outbox", () => {
   it("acknowledges only the completed action and retains the next pending action", () => {
     appendOutbox(shopA, actionA);
     appendOutbox(shopA, actionB);
-    const remaining = acknowledgeOutbox(shopA, actionA);
+    const remaining = acknowledgeOutbox(shopA, actionA.id);
     expect(remaining).toEqual([actionB]);
     expect(readOutbox(shopA)).toEqual([actionB]);
     acknowledgeOutbox(shopA, actionB);
