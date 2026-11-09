@@ -69,9 +69,10 @@ The `avatars` storage bucket is private; signed URLs expire and storage policies
 ### Action flow
 1. The browser executes the normal store action immediately and emits `mohra:cloud-action` for an allow-listed business action.
 2. `src/lib/cloud-sync.ts` serializes actions and sends the shop ID, last known version and action arguments to `applyCloudAction`.
-3. `src/lib/cloud.functions.ts` re-validates the bearer user and membership, loads the authoritative snapshot, and executes the same `shopStoreCreator` action with the server-side role. Product price/cost therefore come from the authoritative catalog, not the browser payload.
-4. A conditional `version = baseVersion` write increments the version. A stale write returns the latest filtered snapshot instead of overwriting another device's work; the user is asked to repeat the last action.
-5. Owners receive Realtime version updates; cashiers poll every 15 seconds. The saved shop ID and version let a sale made immediately after a page reload wait for Cloud instead of being dropped.
+3. `src/lib/cloud.functions.ts` re-validates the bearer user and membership, loads the authoritative snapshot, and executes the same `shopStoreCreator` action through `src/lib/cloud-action.ts` with the server-side role. Product price/cost therefore come from the authoritative catalog, not the browser payload.
+4. A conditional `version = baseVersion` write increments the version. A stale write returns the latest version instead of overwriting another device's work; the client automatically retries the same action UUID against that version.
+5. If the replay violates a business rule (for example, another device sold the last item), the server returns a final rejection without committing. The client removes only that action, restores the authoritative snapshot, notifies the user, and continues with later queued actions. Network failures remain queued for retry.
+6. Owners receive Realtime version updates; cashiers poll every 15 seconds. The saved shop ID and version let a sale made immediately after a page reload wait for Cloud instead of being dropped.
 
 `stateForRole` (`src/lib/cloud-view.ts`) removes the owner PIN and applies cost, profit and bank visibility before cashier data leaves the server. Permission changes use the same versioned action path, so owner switches propagate to other devices.
 
