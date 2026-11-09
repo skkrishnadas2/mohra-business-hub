@@ -182,6 +182,7 @@ function CloudPage() {
                 </div>
               )}
               {cloud.error && <p className="mt-3 text-sm text-destructive">{cloud.error}</p>}
+              {cloud.notice && <p role="status" className="mt-3 rounded-lg border p-3 text-sm leading-relaxed text-muted-foreground">{cloud.notice} ভুয়া লেনদেনটি এই ডিভাইস থেকে সরিয়ে সঠিক হিসাব ফিরিয়ে আনা হয়েছে।</p>}
             </Tile>
           </div>
 

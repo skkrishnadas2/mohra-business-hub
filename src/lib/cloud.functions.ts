@@ -1,12 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createStore } from "zustand/vanilla";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
-import {
-  CLOUD_ACTIONS, shopSnapshot, shopStoreCreator,
-  type CloudActionName, type Role, type ShopStore, type State,
-} from "@/lib/store";
+import { CLOUD_ACTIONS, shopSnapshot, type Role, type State } from "@/lib/store";
+import { replayCloudAction } from "@/lib/cloud-action";
 import { stateForRole } from "@/lib/cloud-view";
 
 const shopIdSchema = z.object({ shopId: z.string().uuid() });
@@ -127,12 +124,14 @@ export const applyCloudAction = createServerFn({ method: "POST" })
       return { status: "conflict" as const, version: current.version, state: stateForRole(current.state, role) };
     }
 
-    const fresh = createStore<ShopStore>()(shopStoreCreator);
-    fresh.setState({ ...current.state, role });
-    const actionName = data.action.name as CloudActionName;
-    const action = fresh.getState()[actionName] as unknown as (...args: unknown[]) => unknown;
-    action(...data.action.args);
-    const nextState = shopSnapshot(fresh.getState());
+    const replayed = replayCloudAction(current.state, role, data.action);
+    if (replayed.status === "rejected") {
+      return {
+        status: "rejected" as const, message: replayed.message,
+        version: current.version, state: stateForRole(current.state, role),
+      };
+    }
+    const nextState = replayed.state;
 
     // The receipt and state version commit in one database transaction.
     const { data: committed, error } = await supabaseAdmin.rpc("commit_cloud_action", {

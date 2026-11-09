@@ -1,6 +1,8 @@
-# Offline-safe Cloud actions
+# Safe multi-device selling
 
-- [x] Keep unsynced actions in a durable per-shop outbox
-- [x] Make server actions idempotent so retries cannot duplicate money movements
-- [x] Retry automatically on reconnect and show pending/failed sync state
-- [x] Test offline sale recovery, duplicate retry protection and existing business rules
+- [x] Reproduce simultaneous-sale conflict with two authoritative action replays
+- [x] Reject invalid replayed actions without blocking the remaining outbox
+- [x] Restore the authoritative shop state after a rejected optimistic action
+- [x] Verify stock protection, same-ID retries, network failures and business-rule tests
+
+Live two-account browser verification remains environment-dependent: this sandbox reports an external unmanaged Supabase session.

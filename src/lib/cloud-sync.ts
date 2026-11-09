@@ -21,12 +21,14 @@ interface CloudUiState {
   joinCode: string | null;
   pending: number;
   error: string | null;
+  /** A final business-rule rejection stays visible after the authoritative refresh. */
+  notice: string | null;
 }
 
 const SHOP_KEY = "mohra-cloud-shop-v1";
 const VERSION_KEY = "mohra-cloud-version-v1";
 export const useCloud = create<CloudUiState>(() => ({
-  status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null,
+  status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null, notice: null,
 }));
 
 let activeFlush: Promise<void> | null = null;
@@ -107,7 +109,7 @@ export async function initializeCloud() {
 }
 
 export function disconnectCloud() {
-  useCloud.setState({ status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null });
+  useCloud.setState({ status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null, notice: null });
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(SHOP_KEY);
     window.localStorage.removeItem(VERSION_KEY);
@@ -148,6 +150,19 @@ async function runFlush() {
         // Rebase the same durable action on the latest snapshot; never overwrite the other device.
         useCloud.setState({ version: result.version });
         saveVersion(result.version);
+        continue;
+      }
+      if (result.status === "rejected") {
+        // A business-rule rejection is final: do not retry it forever or block later actions.
+        const pending = acknowledgeOutbox(shopId, action.id).length;
+        const notice = `একটি কাজ Cloud-এ গ্রহণ করা যায়নি: ${result.message}`;
+        useCloud.setState({ status: "connected", version: result.version, pending, error: null, notice });
+        saveVersion(result.version);
+        if (pending === 0) {
+          useStore.setState({ ...result.state, setupDone: true, role: useCloud.getState().role });
+        }
+        toast.error(notice);
+        synced = true;
         continue;
       }
       const pending = acknowledgeOutbox(shopId, action.id).length;
