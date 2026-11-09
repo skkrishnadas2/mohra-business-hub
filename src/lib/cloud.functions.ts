@@ -1,12 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createStore } from "zustand/vanilla";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
-import {
-  CLOUD_ACTIONS, shopSnapshot, shopStoreCreator,
-  type CloudActionName, type Role, type ShopStore, type State,
-} from "@/lib/store";
+import { CLOUD_ACTIONS, shopSnapshot, type Role, type State } from "@/lib/store";
+import { replayCloudAction } from "@/lib/cloud-action";
 import { stateForRole } from "@/lib/cloud-view";
 
 const shopIdSchema = z.object({ shopId: z.string().uuid() });

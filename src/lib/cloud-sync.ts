@@ -21,6 +21,8 @@ interface CloudUiState {
   joinCode: string | null;
   pending: number;
   error: string | null;
+  /** A final business-rule rejection stays visible after the authoritative refresh. */
+  notice: string | null;
 }
 
 const SHOP_KEY = "mohra-cloud-shop-v1";
