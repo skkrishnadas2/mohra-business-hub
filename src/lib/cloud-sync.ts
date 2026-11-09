@@ -106,7 +106,9 @@ export function queueCloudAction(action: CloudAction) {
     try {
       if (useCloud.getState().status !== "connected" || useCloud.getState().version < 1) await openCloudShop(shopId);
       const baseVersion = useCloud.getState().version;
+      console.debug("[cloud-sync] apply", baseVersion, action.name);
       const result = await applyCloudAction({ data: { shopId, baseVersion, action } });
+      console.debug("[cloud-sync] result", result.status);
       if (result.status === "conflict") {
         const role = useCloud.getState().role ?? "cashier";
         useStore.setState({ ...result.state, setupDone: true, role });
