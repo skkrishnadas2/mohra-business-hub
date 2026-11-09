@@ -40,7 +40,10 @@ function Services() {
             {QUICK.map((q) => <button key={q} onClick={() => setSvc(q)} className={`min-h-14 rounded-xl border px-3 py-2 text-sm ${svc === q ? "border-primary bg-accent font-semibold text-accent-foreground" : "bg-card hover:bg-secondary"}`}>{q}</button>)}
           </div>
           <div><Label>বিল</Label><NumInput value={amt} onChange={setAmt} /></div>
-          <BigButton disabled={!Number(amt)} onClick={() => { serviceSlip(svc, Number(amt), "cash"); toast.success(`${svc} · ${taka(Number(amt))}`); setAmt(""); }}>ক্যাশে জমা</BigButton>
+          <BigButton disabled={!Number(amt)} onClick={() => {
+            try { serviceSlip(svc, Number(amt), "cash"); toast.success(`${svc} · ${taka(Number(amt))}`); setAmt(""); }
+            catch (error) { toast.error(actionError(error)); }
+          }}>ক্যাশে জমা</BigButton>
         </div>
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">

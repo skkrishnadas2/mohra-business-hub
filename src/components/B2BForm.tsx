@@ -40,9 +40,11 @@ export function B2BForm({ kind }: { kind: "mfs" | "recharge" }) {
             : <>{tName} <b className="text-destructive">−{taka(amt)}</b> · {sName} <b className="text-primary">+{taka(amt)}</b></>}
         </div>
       )}
-      <BigButton disabled={!amt || !target} onClick={() => {
-        b2b({ kind, dir, targetId: target, sourceId: source, amount: amt, commission: c, ref });
-        toast.success("B2B লেনদেন সম্পন্ন"); setAmount(""); setCom(""); setRef("");
+      <BigButton disabled={!amt || !target || !ref.trim()} onClick={() => {
+        try {
+          b2b({ kind, dir, targetId: target, sourceId: source, amount: amt, commission: c, ref });
+          toast.success("B2B লেনদেন সম্পন্ন"); setAmount(""); setCom(""); setRef("");
+        } catch (error) { toast.error(actionError(error)); }
       }}>নিশ্চিত করুন</BigButton>
     </div>
   );

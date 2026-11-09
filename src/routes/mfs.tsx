@@ -60,10 +60,12 @@ function Mfs() {
                   অটো কমিশন: <b>{taka(com)}</b> <span className="opacity-70">(প্রতি হাজারে ৳{bn(AGENT_RATE_PER_THOUSAND[w.provider as MfsProvider].toFixed(2))})</span>
                 </div>
               )}
-              <BigButton disabled={!a || !wallet} onClick={() => {
-                if (tab === "agent") { const c = mfsAgent(wallet, dir, a, num); toast.success(`সম্পন্ন · কমিশন ${taka(c)}`); }
-                else { mfsPersonal(wallet, pdir, a, Number(fee) || 0, num); toast.success("সম্পন্ন"); }
-                setAmt(""); setNum(""); setFee("");
+              <BigButton disabled={!a || !wallet || num.length !== 11} onClick={() => {
+                try {
+                  if (tab === "agent") { const c = mfsAgent(wallet, dir, a, num); toast.success(`সম্পন্ন · কমিশন ${taka(c)}`); }
+                  else { mfsPersonal(wallet, pdir, a, Number(fee) || 0, num); toast.success("সম্পন্ন"); }
+                  setAmt(""); setNum(""); setFee("");
+                } catch (error) { toast.error(actionError(error)); }
               }}>নিশ্চিত করুন</BigButton>
             </div>
           )}

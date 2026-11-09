@@ -58,9 +58,11 @@ function Accounts() {
           <div><Label>পরিমাণ</Label><NumInput value={amt} onChange={setAmt} /></div>
           <div><Label>রেফারেন্স / স্লিপ নং</Label><TextInput value={ref} onChange={(e) => setRef(e.target.value)} /></div>
           <BigButton disabled={!Number(amt) || !bank} onClick={() => {
-            const a = Number(amt);
-            if (dir === "dep") transfer("cash", bank, a, "ব্যাংকে জমা", ref); else transfer(bank, "cash", a, "ব্যাংক থেকে উত্তোলন", ref);
-            toast.success("সম্পন্ন"); setAmt(""); setRef("");
+            try {
+              const a = Number(amt);
+              if (dir === "dep") transfer("cash", bank, a, "ব্যাংকে জমা", ref); else transfer(bank, "cash", a, "ব্যাংক থেকে উত্তোলন", ref);
+              toast.success("সম্পন্ন"); setAmt(""); setRef("");
+            } catch (error) { toast.error(actionError(error)); }
           }}>নিশ্চিত করুন</BigButton>
         </div>
       </div>

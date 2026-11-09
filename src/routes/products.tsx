@@ -36,9 +36,11 @@ function Products() {
   const edit = (p: Product) => setD({ id: p.id, name: p.name, barcodes: p.barcodes.join(", "), cost: String(p.cost), price: String(p.price), stock: String(p.stock), lowStock: String(p.lowStock) });
   const save = () => {
     if (!d) return;
-    const barcodes = d.barcodes.split(",").map((s) => s.trim()).filter(Boolean);
-    upsertProduct({ id: d.id, name: d.name, barcodes: barcodes.length ? barcodes : [genBarcode()], cost: Number(d.cost) || 0, price: Number(d.price) || 0, stock: Number(d.stock) || 0, lowStock: Number(d.lowStock) || 0 });
-    setD(null); toast.success("সেভ হয়েছে");
+    try {
+      const barcodes = d.barcodes.split(",").map((s) => s.trim()).filter(Boolean);
+      upsertProduct({ id: d.id, name: d.name, barcodes: barcodes.length ? barcodes : [genBarcode()], cost: Number(d.cost) || 0, price: Number(d.price) || 0, stock: Number(d.stock) || 0, lowStock: Number(d.lowStock) || 0 });
+      setD(null); toast.success("সেভ হয়েছে");
+    } catch (error) { toast.error(actionError(error)); }
   };
 
   return (

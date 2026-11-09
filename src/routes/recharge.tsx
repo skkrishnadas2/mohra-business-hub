@@ -50,7 +50,10 @@ function Recharge() {
               </div>
               <div><Label>কাস্টম পরিমাণ</Label><NumInput value={amt} onChange={setAmt} /></div>
               {a > bal && <p className="text-sm text-destructive">সিমে পর্যাপ্ত ব্যালেন্স নেই</p>}
-              <BigButton disabled={!a || num.length < 11 || a > bal} onClick={() => { recharge(sim, a, num); toast.success(`রিচার্জ ${taka(a)} · ক্যাশে জমা`); setNum(""); setAmt(""); }}>রিচার্জ · ক্যাশ {a ? taka(a) : ""}</BigButton>
+              <BigButton disabled={!a || num.length < 11 || a > bal} onClick={() => {
+                try { recharge(sim, a, num); toast.success(`রিচার্জ ${taka(a)} · ক্যাশে জমা`); setNum(""); setAmt(""); }
+                catch (error) { toast.error(actionError(error)); }
+              }}>রিচার্জ · ক্যাশ {a ? taka(a) : ""}</BigButton>
             </div>
           )}
         </div>
