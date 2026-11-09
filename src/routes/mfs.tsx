@@ -13,6 +13,8 @@ export const Route = createFileRoute("/mfs")({
       { name: "description", content: "bKash, Nagad, Rocket, Upay agent cash-in/out with auto commission." },
       { property: "og:title", content: "MFS ওয়ালেট হাব — মোহরা POS" },
       { property: "og:description", content: "Agent cash-in/out with automatic commission." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Mfs,
@@ -40,8 +42,8 @@ function Mfs() {
   return (
     <Page title="MFS হাব" sub="বিকাশ · নগদ · রকেট · উপায়">
       <div className="mb-4"><Chips value={tab} onChange={switchTab} options={[{ value: "agent", label: "এজেন্ট" }, { value: "personal", label: "পার্সোনাল" }, { value: "b2b", label: "B2B (SR)" }]} /></div>
-      <div className="grid gap-4 md:grid-cols-[1fr_300px]">
-        <div className="rounded-2xl border bg-card p-4 shadow-soft">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="rounded-xl border bg-card p-4 shadow-soft sm:p-5">
           {tab === "b2b" ? <B2BForm kind="mfs" /> : (
             <div className="space-y-4">
               {tab === "agent"
@@ -68,7 +70,7 @@ function Mfs() {
         </div>
         <div className="space-y-2">
           {accounts.filter((x) => x.kind.startsWith("mfs")).map((s) => (
-            <div key={s.id} className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3 text-sm"><span>{s.name}</span><Money v={s.balance} className="font-semibold" /></div>
+            <div key={s.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border bg-card px-4 py-3 text-sm"><span>{s.name}</span><Money v={s.balance} className="font-semibold" /></div>
           ))}
         </div>
       </div>

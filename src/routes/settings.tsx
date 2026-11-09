@@ -13,6 +13,8 @@ export const Route = createFileRoute("/settings")({
       { name: "description", content: "Owner permission switchboard, PINs and cipher settings." },
       { property: "og:title", content: "রোল ও পারমিশন — মোহরা POS" },
       { property: "og:description", content: "Owner permission switchboard." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Settings,
@@ -36,18 +38,18 @@ function Settings() {
 
   return (
     <Page title="রোল ও পারমিশন" sub="ক্যাশিয়ার কী কী করতে পারবে">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="divide-y rounded-2xl border bg-card shadow-soft">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="divide-y rounded-xl border bg-card shadow-soft">
           {PERMS.map((p) => (
-            <label key={p.k} className="flex items-center justify-between gap-3 p-4">
+            <label key={p.k} className="flex min-h-16 cursor-pointer items-center justify-between gap-3 p-4">
               <div><div className="font-medium">{p.l}</div><div className="text-xs text-muted-foreground">{p.d}</div></div>
               <Switch checked={perms[p.k]} onCheckedChange={(v) => setPerm(p.k, v)} />
             </label>
           ))}
         </div>
         <div className="space-y-4">
-          <div className="space-y-3 rounded-2xl border bg-card p-4 shadow-soft">
-            <div className="font-medium">PIN পরিবর্তন</div>
+          <div className="space-y-3 rounded-xl border bg-card p-4 shadow-soft sm:p-5">
+            <div className="border-b pb-3 text-base font-semibold">PIN পরিবর্তন</div>
             <div><Label>মালিক PIN</Label><NumInput value={op} onChange={(v) => setOp(v.slice(0, 4))} /></div>
             <div><Label>ক্যাশিয়ার PIN</Label><NumInput value={cp} onChange={(v) => setCp(v.slice(0, 4))} /></div>
             <BigButton disabled={op.length !== 4 || cp.length !== 4 || op === cp} onClick={() => { setPins(op, cp); toast.success("PIN আপডেট হয়েছে"); }}>সেভ</BigButton>
@@ -57,7 +59,7 @@ function Settings() {
             <p className="text-xs text-muted-foreground">১=D ২=H ৩=A ৪=K ৫=A ৬=C ৭=I ৮=T ৯=Y ০=X</p>
             <div className="flex items-center gap-3"><TextInput className="w-28" value={sample} onChange={(e) => setSample(e.target.value.replace(/\D/g, ""))} /><span className="text-xl font-semibold">{cipherEncode(Number(sample) || 0)}</span></div>
           </div>
-          <button onClick={() => { if (confirm("সব ডেটা মুছে নতুন করে শুরু করবেন?")) resetAll(); }} className="h-11 w-full rounded-xl text-sm text-destructive">সব ডেটা রিসেট</button>
+          <button onClick={() => { if (confirm("সব ডেটা মুছে নতুন করে শুরু করবেন?")) resetAll(); }} className="min-h-12 w-full rounded-xl border border-destructive/30 bg-card px-4 py-3 text-sm font-medium text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">সব ডেটা রিসেট</button>
         </div>
       </div>
     </Page>

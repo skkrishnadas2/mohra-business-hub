@@ -5,12 +5,12 @@ import { taka } from "@/lib/rules";
 export function Page({ title, sub, action, children }: { title: string; sub?: string; action?: ReactNode; children: ReactNode }) {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 pb-28 pt-5 md:px-8 md:pb-10 md:pt-8">
-      <div className="mb-5 flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
-          {sub && <p className="mt-0.5 text-sm text-muted-foreground">{sub}</p>}
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3 md:items-center">
+        <div className="min-w-0 flex-1 basis-48">
+          <h1 className="text-2xl font-semibold leading-snug tracking-tight md:text-3xl">{title}</h1>
+          {sub && <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">{sub}</p>}
         </div>
-        {action}
+        {action && <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{action}</div>}
       </div>
       {children}
     </div>
@@ -19,7 +19,23 @@ export function Page({ title, sub, action, children }: { title: string; sub?: st
 
 export function Tile({ className, children, onClick }: { className?: string; children: ReactNode; onClick?: () => void }) {
   return (
-    <div onClick={onClick} className={cn("rounded-2xl border bg-card p-4 shadow-soft", onClick && "cursor-pointer transition active:scale-[0.98]", className)}>
+    <div
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      } : undefined}
+      className={cn(
+        "rounded-xl border bg-card p-4 text-card-foreground shadow-soft",
+        onClick && "min-h-11 cursor-pointer transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:bg-accent",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -29,17 +45,29 @@ export function Money({ v, className, hidden }: { v: number; className?: string;
   return <span className={cn("tnum", className)}>{hidden ? "৳ ••••" : taka(v)}</span>;
 }
 
-export function Label({ children }: { children: ReactNode }) {
-  return <div className="mb-1.5 text-xs font-medium text-muted-foreground">{children}</div>;
+export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
+  const className = "mb-1.5 block text-sm font-medium text-foreground";
+  return htmlFor
+    ? <label htmlFor={htmlFor} className={className}>{children}</label>
+    : <div className={className}>{children}</div>;
 }
 
 export function Chips<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[] }) {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((o) => (
-        <button key={o.value} type="button" onClick={() => onChange(o.value)}
-          className={cn("h-10 rounded-full border px-4 text-sm font-medium transition",
-            value === o.value ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-secondary")}>
+        <button
+          key={o.value}
+          type="button"
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "min-h-11 rounded-full border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            value === o.value
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-card-foreground hover:border-primary/40 hover:bg-secondary active:bg-accent",
+          )}
+        >
           {o.label}
         </button>
       ))}
@@ -47,21 +75,40 @@ export function Chips<T extends string>({ value, onChange, options }: { value: T
   );
 }
 
-export function NumInput({ value, onChange, placeholder, className, autoFocus }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string; autoFocus?: boolean }) {
+export function NumInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+  autoFocus,
+  ...props
+}: Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> & {
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
-    <input inputMode="decimal" autoFocus={autoFocus} value={value} placeholder={placeholder ?? "০"}
+    <input
+      {...props}
+      inputMode={props.inputMode ?? "decimal"}
+      autoFocus={autoFocus}
+      value={value}
+      placeholder={placeholder ?? "০"}
       onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ""))}
-      className={cn("tnum h-12 w-full rounded-xl border bg-background px-4 text-lg font-semibold outline-none focus:ring-2 focus:ring-ring", className)} />
+      className={cn(
+        "tnum h-12 min-h-11 w-full rounded-lg border border-input bg-card px-3 text-lg font-semibold text-foreground transition-colors placeholder:text-muted-foreground hover:enabled:border-primary/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground aria-invalid:border-destructive",
+        className,
+      )}
+    />
   );
 }
 
 export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement> & { ref?: React.Ref<HTMLInputElement> }) {
-  return <input {...props} className={cn("h-12 w-full rounded-xl border bg-background px-4 outline-none focus:ring-2 focus:ring-ring", props.className)} />;
+  return <input {...props} className={cn("h-12 min-h-11 w-full rounded-lg border border-input bg-card px-3 text-base text-foreground transition-colors placeholder:text-muted-foreground hover:enabled:border-primary/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground aria-invalid:border-destructive", props.className)} />;
 }
 
 export function BigButton({ children, className, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button {...p} className={cn("h-14 w-full rounded-2xl bg-primary text-lg font-semibold text-primary-foreground shadow-soft transition active:scale-[0.98] disabled:opacity-40", className)}>
+    <button {...p} className={cn("inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-base font-semibold leading-snug text-primary-foreground shadow-soft transition-colors hover:enabled:bg-primary/90 active:enabled:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none", className)}>
       {children}
     </button>
   );
@@ -87,18 +134,23 @@ export function PinPad({ onSubmit, title, error }: { onSubmit: (pin: string) => 
   };
   return (
     <div className="mx-auto w-full max-w-xs text-center">
-      <div className="text-lg font-medium">{title}</div>
-      <div className="my-6 flex justify-center gap-3">
+      <div className="text-lg font-semibold leading-snug">{title}</div>
+      <div className="my-5 flex justify-center gap-3" role="status" aria-live="polite" aria-label={`${pin.length} / ৪`}>
         {[0, 1, 2, 3].map((i) => (
-          <span key={i} className={cn("h-3.5 w-3.5 rounded-full border-2 border-primary", i < pin.length && "bg-primary")} />
+          <span aria-hidden="true" key={i} className={cn("h-3.5 w-3.5 rounded-full border-2 border-primary", i < pin.length && "bg-primary")} />
         ))}
       </div>
-      {error && <div className="-mt-3 mb-3 text-sm text-destructive">{error}</div>}
-      <div className="grid grid-cols-3 gap-3">
+      {error && <div role="alert" className="mb-3 text-sm text-destructive">{error}</div>}
+      <div className="grid grid-cols-3 gap-2">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"].map((k, i) =>
           k === "" ? <span key={i} /> : (
-            <button key={i} type="button" onClick={() => (k === "⌫" ? setPin(pin.slice(0, -1)) : press(k))}
-              className="h-16 rounded-2xl bg-card text-2xl font-medium shadow-soft transition active:scale-95 border">
+            <button
+              key={i}
+              type="button"
+              aria-label={k === "⌫" ? "শেষ সংখ্যা মুছুন" : "০১২৩৪৫৬৭৮৯"[Number(k)]}
+              onClick={() => (k === "⌫" ? setPin(pin.slice(0, -1)) : press(k))}
+              className="h-14 min-w-11 rounded-xl border bg-card text-2xl font-medium text-card-foreground shadow-soft transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:bg-secondary"
+            >
               {k === "⌫" ? k : "০১২৩৪৫৬৭৮৯"[Number(k)]}
             </button>
           ))}
