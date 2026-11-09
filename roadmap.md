@@ -1,6 +1,6 @@
-# Offline-safe Cloud actions
+# Safe multi-device selling
 
-- [x] Keep unsynced actions in a durable per-shop outbox
-- [x] Make server actions idempotent so retries cannot duplicate money movements
-- [x] Retry automatically on reconnect and show pending/failed sync state
-- [x] Test offline sale recovery, duplicate retry protection and existing business rules
+- [ ] Reproduce simultaneous-sale conflict handling on two Cloud-connected devices
+- [ ] Reject invalid replayed actions without blocking the remaining outbox
+- [ ] Restore the authoritative shop state after a rejected optimistic action
+- [ ] Verify two-device sales, stock protection, retries and all business-rule tests
