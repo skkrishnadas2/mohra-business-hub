@@ -63,7 +63,7 @@ export function Setup() {
               </div>
             </div>
           ))}
-          <BigButton onClick={() => completeSetup({ shopName, ownerPin, cashierPin, balances: Object.fromEntries(Object.entries(bal).map(([k, v]) => [k, Number(v) || 0])) })}>
+          <BigButton disabled={!shopName.trim()} onClick={() => completeSetup({ shopName, ownerPin, cashierPin, balances: Object.fromEntries(Object.entries(bal).map(([k, v]) => [k, Number(v) || 0])) })}>
             সেটআপ সম্পন্ন করুন
           </BigButton>
         </div>

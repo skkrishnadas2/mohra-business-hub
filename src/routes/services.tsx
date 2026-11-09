@@ -58,8 +58,10 @@ function Services() {
               <div><Label>অগ্রিম</Label><NumInput value={r.advance} onChange={(v) => setR({ ...r, advance: v })} /></div>
             </div>
             <BigButton disabled={!r.customer || !r.device} onClick={() => {
-              addRepair({ ...r, estimate: Number(r.estimate) || 0, advance: Number(r.advance) || 0 });
-              setR({ customer: "", phone: "", device: "", problem: "", estimate: "", advance: "" }); toast.success("রিপেয়ার এন্ট্রি হয়েছে");
+              try {
+                addRepair({ ...r, estimate: Number(r.estimate) || 0, advance: Number(r.advance) || 0 });
+                setR({ customer: "", phone: "", device: "", problem: "", estimate: "", advance: "" }); toast.success("রিপেয়ার এন্ট্রি হয়েছে");
+              } catch (error) { toast.error(actionError(error)); }
             }}>গ্রহণ করুন</BigButton>
           </div>
           <div className="space-y-2">

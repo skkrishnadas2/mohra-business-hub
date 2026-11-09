@@ -73,7 +73,10 @@ function Accounts() {
           <div className="space-y-3 p-4 pt-0">
             <div><Label>সঠিক ব্যালেন্স</Label><NumInput value={adjVal} onChange={setAdjVal} /></div>
             <div><Label>মালিকের PIN</Label><TextInput type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value)} /></div>
-            <BigButton onClick={() => { if (adj && setBalance(adj.id, Number(adjVal) || 0, pin)) { toast.success("সমন্বয় হয়েছে"); setAdj(null); } else toast.error("ভুল PIN"); }}>সেভ করুন</BigButton>
+            <BigButton onClick={() => {
+              try { if (adj && setBalance(adj.id, Number(adjVal) || 0, pin)) { toast.success("সমন্বয় হয়েছে"); setAdj(null); } else toast.error("ভুল PIN"); }
+              catch (error) { toast.error(actionError(error)); }
+            }}>সেভ করুন</BigButton>
           </div>
         </SheetContent>
       </Sheet>

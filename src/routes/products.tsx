@@ -81,7 +81,10 @@ function Products() {
                 <div><Label>কম স্টক সতর্কতা</Label><NumInput value={d.lowStock} onChange={(v) => setD({ ...d, lowStock: v })} /></div>
               </div>
               <BigButton disabled={!d.name} onClick={save}>সেভ করুন</BigButton>
-              {d.id && <button onClick={() => { deleteProduct(d.id!); setD(null); }} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm text-destructive"><Trash2 className="h-4 w-4" /> মুছে ফেলুন</button>}
+              {d.id && <button onClick={() => {
+                try { deleteProduct(d.id!); setD(null); toast.success("পণ্য মুছে ফেলা হয়েছে"); }
+                catch (error) { toast.error(actionError(error)); }
+              }} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm text-destructive"><Trash2 className="h-4 w-4" /> মুছে ফেলুন</button>}
             </div>
           )}
         </SheetContent>
