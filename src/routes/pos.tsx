@@ -1,0 +1,237 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Camera, Minus, Plus, Printer, Search, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
+import { useStore, type CartLine, type Payment, type Sale } from "@/lib/store";
+import { Page, Money, BigButton, Chips, NumInput, TextInput, Label, useLongPress } from "@/components/kit";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { bn, cipherEncode, taka } from "@/lib/rules";
+import { printReceipt } from "@/lib/print";
+
+export const Route = createFileRoute("/pos")({
+  head: () => ({
+    meta: [
+      { title: "বিক্রি টার্মিনাল — মোহরা POS" },
+      { name: "description", content: "Barcode POS with one-tap cash checkout." },
+      { property: "og:title", content: "বিক্রি টার্মিনাল — মোহরা POS" },
+      { property: "og:description", content: "Barcode POS with one-tap cash checkout." },
+    ],
+  }),
+  component: Pos,
+});
+
+function beep() {
+  try {
+    const c = new AudioContext(); const o = c.createOscillator(); o.frequency.value = 1200;
+    o.connect(c.destination); o.start(); o.stop(c.currentTime + 0.06);
+    navigator.vibrate?.(30);
+  } catch { /* ignore */ }
+}
+
+function Pos() {
+  const { products, checkout, accounts, shopName } = useStore();
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const [q, setQ] = useState("");
+  const [payOpen, setPayOpen] = useState(false);
+  const [cam, setCam] = useState(false);
+  const [last, setLast] = useState<Sale | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const total = cart.reduce((s, l) => s + l.qty * l.price, 0);
+
+  const add = (pid: string) => {
+    const p = products.find((x) => x.id === pid);
+    if (!p) return;
+    beep();
+    setCart((c) => {
+      const ex = c.find((l) => l.productId === pid);
+      return ex ? c.map((l) => (l.productId === pid ? { ...l, qty: l.qty + 1 } : l)) : [...c, { productId: p.id, name: p.name, qty: 1, price: p.price, cost: p.cost }];
+    });
+  };
+  const scan = (code: string) => {
+    const p = products.find((x) => x.barcodes.includes(code.trim()));
+    if (p) { add(p.id); return true; }
+    return false;
+  };
+
+  // Debounced auto-add: handheld scanners type fast; when typing pauses and text matches a barcode, add.
+  useEffect(() => {
+    if (!q) return;
+    const t = setTimeout(() => { if (scan(q)) setQ(""); }, 180);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
+  const results = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return s ? products.filter((p) => p.name.toLowerCase().includes(s) || p.barcodes.some((b) => b.includes(s))) : products;
+  }, [q, products]);
+
+  const finish = (payments: Payment[], customer?: { name: string; phone: string }) => {
+    const sale = checkout(cart, payments, customer);
+    setCart([]); setPayOpen(false); setLast(sale);
+    toast.success(`বিক্রি সম্পন্ন · ${taka(sale.total)}`);
+    inputRef.current?.focus();
+  };
+  const accName = (id: string) => accounts.find((a) => a.id === id)?.name ?? id;
+
+  return (
+    <Page title="বিক্রি" sub="স্ক্যান করুন বা পণ্য বেছে নিন">
+      <div className="grid gap-4 md:grid-cols-[1fr_380px]">
+        <div>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <TextInput ref={inputRef} autoFocus value={q} onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { if (scan(q)) setQ(""); else if (results[0]) { add(results[0].id); setQ(""); } } }}
+                placeholder="বারকোড স্ক্যান / পণ্যের নাম" className="pl-10" />
+            </div>
+            <button onClick={() => setCam(true)} className="flex h-12 w-12 items-center justify-center rounded-xl border bg-card" aria-label="ক্যামেরা স্ক্যান"><Camera className="h-5 w-5" /></button>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {results.map((p) => <ProductCard key={p.id} p={p} onAdd={() => add(p.id)} />)}
+          </div>
+        </div>
+
+        <div className="md:sticky md:top-6 md:self-start">
+          <div className="rounded-2xl border bg-card p-4 shadow-soft">
+            <div className="mb-2 flex items-center justify-between"><div className="font-medium">কার্ট</div>{cart.length > 0 && <button onClick={() => setCart([])} className="text-xs text-muted-foreground">খালি করুন</button>}</div>
+            {cart.length === 0 ? <div className="py-10 text-center text-sm text-muted-foreground">কার্ট খালি</div> : (
+              <div className="max-h-[40vh] divide-y overflow-y-auto">
+                {cart.map((l) => (
+                  <div key={l.productId} className="flex items-center gap-2 py-2.5">
+                    <div className="min-w-0 flex-1"><div className="truncate text-sm">{l.name}</div><Money v={l.price * l.qty} className="text-sm font-semibold" /></div>
+                    <button className="h-8 w-8 rounded-lg bg-secondary" onClick={() => setCart((c) => c.flatMap((x) => x.productId === l.productId ? (x.qty > 1 ? [{ ...x, qty: x.qty - 1 }] : []) : [x]))}><Minus className="mx-auto h-4 w-4" /></button>
+                    <span className="tnum w-6 text-center text-sm">{bn(l.qty)}</span>
+                    <button className="h-8 w-8 rounded-lg bg-secondary" onClick={() => add(l.productId)}><Plus className="mx-auto h-4 w-4" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-3 flex items-center justify-between border-t pt-3"><span className="text-muted-foreground">মোট</span><Money v={total} className="text-2xl font-semibold" /></div>
+            <BigButton className="mt-3" disabled={!cart.length} onClick={() => finish([{ accountId: "cash", amount: total }])}>ক্যাশ · {taka(total)}</BigButton>
+            <button disabled={!cart.length} onClick={() => setPayOpen(true)} className="mt-2 h-11 w-full rounded-xl border text-sm font-medium disabled:opacity-40">অন্য পেমেন্ট (MFS / ব্যাংক / স্প্লিট / বাকি)</button>
+            {last && (
+              <div className="mt-3 flex gap-2">
+                <button onClick={() => printReceipt(last, shopName, 58, accName)} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-secondary text-sm"><Printer className="h-4 w-4" /> 58mm</button>
+                <button onClick={() => printReceipt(last, shopName, 80, accName)} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-secondary text-sm"><Printer className="h-4 w-4" /> 80mm</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <PaySheet open={payOpen} onOpenChange={setPayOpen} total={total} onDone={finish} />
+      <CameraScan open={cam} onClose={() => setCam(false)} onCode={(c) => { if (!scan(c)) toast.error(`পণ্য পাওয়া যায়নি: ${c}`); }} />
+    </Page>
+  );
+}
+
+function ProductCard({ p, onAdd }: { p: { id: string; name: string; price: number; cost: number; stock: number; lowStock: number }; onAdd: () => void }) {
+  const { can, cipherKey } = useStore();
+  const [peek, setPeek] = useState(false);
+  const lp = useLongPress(() => { setPeek(true); navigator.vibrate?.(15); setTimeout(() => setPeek(false), 2500); });
+  return (
+    <button onClick={onAdd} {...lp} className="select-none rounded-2xl border bg-card p-3 text-left shadow-soft transition active:scale-[0.97]">
+      <div className="line-clamp-2 min-h-10 text-sm font-medium">{p.name}</div>
+      <div className="mt-2 flex items-end justify-between">
+        <Money v={p.price} className="font-semibold text-primary" />
+        <span className={`rounded-full px-2 py-0.5 text-[11px] ${p.stock <= p.lowStock ? "bg-warning/20 text-warning-foreground" : "bg-secondary text-muted-foreground"}`}>{bn(p.stock)}</span>
+      </div>
+      {peek && <div className="mt-2 rounded-lg bg-foreground px-2 py-1 text-center text-xs text-background">{can("viewCost") ? `কেনা ${taka(p.cost)}` : cipherEncode(p.cost, cipherKey)}</div>}
+    </button>
+  );
+}
+
+function PaySheet({ open, onOpenChange, total, onDone }: { open: boolean; onOpenChange: (v: boolean) => void; total: number; onDone: (p: Payment[], c?: { name: string; phone: string }) => void }) {
+  const { accounts } = useStore();
+  const [mode, setMode] = useState<"mfs" | "bank" | "split" | "due">("mfs");
+  const [acc, setAcc] = useState("");
+  const [split, setSplit] = useState<Record<string, string>>({});
+  const [cust, setCust] = useState({ name: "", phone: "" });
+  const [paidNow, setPaidNow] = useState("");
+  const mfs = accounts.filter((a) => a.kind.startsWith("mfs"));
+  const banks = accounts.filter((a) => a.kind === "bank");
+  const splitSum = Object.values(split).reduce((s, v) => s + (Number(v) || 0), 0);
+
+  const submit = () => {
+    if (mode === "mfs" || mode === "bank") return acc && onDone([{ accountId: acc, amount: total }]);
+    if (mode === "split") return onDone(Object.entries(split).filter(([, v]) => Number(v) > 0).map(([k, v]) => ({ accountId: k, amount: Number(v) })));
+    const now = Math.min(Number(paidNow) || 0, total);
+    onDone([...(now ? [{ accountId: "cash", amount: now }] : []), { accountId: "due", amount: total - now }], cust);
+  };
+  const ok = mode === "split" ? Math.abs(splitSum - total) < 0.01 : mode === "due" ? cust.name.length > 0 : !!acc;
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-3xl">
+        <SheetHeader><SheetTitle>পেমেন্ট · {taka(total)}</SheetTitle></SheetHeader>
+        <div className="space-y-4 p-4 pt-0">
+          <Chips value={mode} onChange={(m) => { setMode(m); setAcc(""); }} options={[{ value: "mfs", label: "বিকাশ/নগদ" }, { value: "bank", label: "ব্যাংক/কার্ড" }, { value: "split", label: "স্প্লিট" }, { value: "due", label: "বাকি" }]} />
+          {(mode === "mfs" || mode === "bank") && (
+            <div className="grid grid-cols-2 gap-2">
+              {(mode === "mfs" ? mfs : banks).map((a) => (
+                <button key={a.id} onClick={() => setAcc(a.id)} className={`h-12 rounded-xl border text-sm ${acc === a.id ? "border-primary bg-accent font-medium" : ""}`}>{a.name}</button>
+              ))}
+            </div>
+          )}
+          {mode === "split" && (
+            <div className="space-y-2">
+              {[accounts[0], ...mfs, ...banks].map((a) => (
+                <div key={a.id} className="flex items-center gap-3"><span className="flex-1 text-sm">{a.name}</span><NumInput className="h-10 w-32 text-right text-base" value={split[a.id] ?? ""} onChange={(v) => setSplit({ ...split, [a.id]: v })} /></div>
+              ))}
+              <div className={`text-sm ${Math.abs(splitSum - total) < 0.01 ? "text-primary" : "text-destructive"}`}>মোট দেওয়া: {taka(splitSum)} / {taka(total)}</div>
+            </div>
+          )}
+          {mode === "due" && (
+            <div className="space-y-3">
+              <div><Label>কাস্টমারের নাম</Label><TextInput value={cust.name} onChange={(e) => setCust({ ...cust, name: e.target.value })} /></div>
+              <div><Label>মোবাইল</Label><TextInput inputMode="tel" value={cust.phone} onChange={(e) => setCust({ ...cust, phone: e.target.value })} /></div>
+              <div><Label>এখন নগদ দিলেন (ঐচ্ছিক)</Label><NumInput value={paidNow} onChange={setPaidNow} /></div>
+            </div>
+          )}
+          <BigButton disabled={!ok} onClick={submit}>বিক্রি সম্পন্ন</BigButton>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+type Detector = { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
+function CameraScan({ open, onClose, onCode }: { open: boolean; onClose: () => void; onCode: (c: string) => void }) {
+  const video = useRef<HTMLVideoElement>(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    if (!open) return;
+    let stream: MediaStream | undefined; let stop = false; let lastCode = ""; let lastAt = 0;
+    const W = window as unknown as { BarcodeDetector?: new (o: object) => Detector };
+    (async () => {
+      if (!W.BarcodeDetector) { setErr("এই ব্রাউজারে ক্যামেরা স্ক্যান সাপোর্ট নেই — Chrome (Android) ব্যবহার করুন অথবা হ্যান্ড স্ক্যানার দিন।"); return; }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        if (!video.current) return;
+        video.current.srcObject = stream; await video.current.play();
+        const det = new W.BarcodeDetector({ formats: ["ean_13", "ean_8", "code_128", "upc_a", "qr_code"] });
+        const loop = async () => {
+          if (stop || !video.current) return;
+          const r = await det.detect(video.current).catch(() => []);
+          const c = r[0]?.rawValue;
+          if (c && (c !== lastCode || Date.now() - lastAt > 1200)) { lastCode = c; lastAt = Date.now(); onCode(c); }
+          requestAnimationFrame(loop);
+        };
+        loop();
+      } catch { setErr("ক্যামেরা চালু করা যায়নি।"); }
+    })();
+    return () => { stop = true; stream?.getTracks().forEach((t) => t.stop()); setErr(""); };
+  }, [open, onCode]);
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>ক্যামেরা স্ক্যান</DialogTitle></DialogHeader>
+        {err ? <p className="text-sm text-muted-foreground">{err}</p> : <video ref={video} className="aspect-video w-full rounded-xl bg-muted object-cover" muted playsInline />}
+        <button onClick={onClose} className="flex h-11 items-center justify-center gap-2 rounded-xl border"><X className="h-4 w-4" /> বন্ধ</button>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export { Trash2 };
