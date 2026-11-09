@@ -176,7 +176,7 @@ function PaySheet({ open, onOpenChange, total, onDone }: { open: boolean; onOpen
           )}
           {mode === "split" && (
             <div className="space-y-2">
-              {[accounts[0], ...mfs, ...banks].map((a) => (
+              {[...accounts.filter((x) => x.kind === "cash"), ...mfs, ...banks].map((a) => (
                 <div key={a.id} className="flex items-center gap-3"><span className="flex-1 text-sm">{a.name}</span><NumInput className="h-10 w-32 text-right text-base" value={split[a.id] ?? ""} onChange={(v) => setSplit({ ...split, [a.id]: v })} /></div>
               ))}
               <div className={`text-sm ${Math.abs(splitSum - total) < 0.01 ? "text-primary" : "text-destructive"}`}>মোট দেওয়া: {taka(splitSum)} / {taka(total)}</div>
