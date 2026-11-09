@@ -28,7 +28,7 @@ interface CloudUiState {
 const SHOP_KEY = "mohra-cloud-shop-v1";
 const VERSION_KEY = "mohra-cloud-version-v1";
 export const useCloud = create<CloudUiState>(() => ({
-  status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null,
+  status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null, notice: null,
 }));
 
 let activeFlush: Promise<void> | null = null;

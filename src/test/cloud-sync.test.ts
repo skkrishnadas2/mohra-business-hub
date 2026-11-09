@@ -45,7 +45,7 @@ beforeEach(() => {
   resetShop();
   useCloud.setState({
     status: "connected", shopId, shopName: "Test shop", role: "owner",
-    version: 1, joinCode: null, pending: 0, error: null,
+    version: 1, joinCode: null, pending: 0, error: null, notice: null,
   });
 });
 
