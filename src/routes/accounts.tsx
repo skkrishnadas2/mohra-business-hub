@@ -22,7 +22,7 @@ export const Route = createFileRoute("/accounts")({
 const KIND_LABEL: Record<Account["kind"], string> = { cash: "ক্যাশ", bank: "ব্যাংক", mfs_agent: "MFS এজেন্ট", mfs_personal: "MFS পার্সোনাল", recharge: "রিচার্জ সিম" };
 
 function Accounts() {
-  const { accounts, can, transfer, setBalance, addAccount } = useStore();
+  const { accounts, can, transfer, setBalance, addAccount, role } = useStore();
   const banks = accounts.filter((a) => a.kind === "bank");
   const [dir, setDir] = useState<"dep" | "wd">("dep");
   const [bank, setBank] = useState(banks[0]?.id ?? "");
@@ -35,7 +35,7 @@ function Accounts() {
   const showBank = can("viewBank");
 
   return (
-    <Page title="হিসাব ও ব্যাংক" action={<button onClick={() => setNw({ name: "", kind: "bank", provider: "" })} className="h-11 rounded-xl border px-4 text-sm">+ হিসাব</button>}>
+    <Page title="হিসাব ও ব্যাংক" action={role === "owner" && <button onClick={() => setNw({ name: "", kind: "bank", provider: "" })} className="h-11 rounded-xl border px-4 text-sm">+ হিসাব</button>}>
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           {(Object.keys(KIND_LABEL) as Account["kind"][]).map((k) => (
