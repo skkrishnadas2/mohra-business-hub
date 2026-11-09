@@ -102,7 +102,10 @@ export async function initializeCloud() {
 
 export function disconnectCloud() {
   useCloud.setState({ status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, error: null });
-  if (typeof window !== "undefined") window.localStorage.removeItem(SHOP_KEY);
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(SHOP_KEY);
+    window.localStorage.removeItem(VERSION_KEY);
+  }
 }
 
 export function queueCloudAction(action: CloudAction) {
