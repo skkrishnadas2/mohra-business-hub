@@ -15,6 +15,7 @@ App (TanStack Start + React 19, Tailwind v4, Hind Siliguri)
 ├── /khata      Customer due ledger, one-tap collection
 ├── /closing    Note counting, expected vs counted, shift close
 ├── /monitor    Owner-only live activity log, void invoices
+├── /cloud      Email auth, online shop creation/joining, profile and private avatar
 └── /settings   Owner-only permission switchboard, PINs, cipher preview
 ```
 
