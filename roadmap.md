@@ -1,8 +1,5 @@
-# Safe multi-device selling
+# Cloud security cleanup
 
-- [x] Reproduce simultaneous-sale conflict with two authoritative action replays
-- [x] Reject invalid replayed actions without blocking the remaining outbox
-- [x] Restore the authoritative shop state after a rejected optimistic action
-- [x] Verify stock protection, same-ID retries, network failures and business-rule tests
-
-Live two-account browser verification remains environment-dependent: this sandbox reports an external unmanaged Supabase session.
+- [x] Identify the remaining SECURITY DEFINER linter warnings
+- [ ] Restrict the internal automatic-RLS event helper to system use
+- [ ] Re-run the database linter and verify shop security tests
