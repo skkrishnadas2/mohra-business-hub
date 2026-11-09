@@ -170,6 +170,17 @@ describe("permissions and account safeguards", () => {
   });
 });
 
+describe("server-authoritative pricing", () => {
+  it("uses the catalog price and cost instead of values supplied with the cart line", () => {
+    const p = useStore.getState().products[0]!;
+    useStore.getState().checkout([{ productId: p.id, name: "tampered", qty: 1, price: 1, cost: 0 }], [{ accountId: "cash", amount: p.price }]);
+    const sale = useStore.getState().sales[0]!;
+    expect(sale.total).toBe(450);
+    expect(sale.cost).toBe(280);
+    expect(sale.profit).toBe(170);
+  });
+});
+
 describe("repair and closing", () => {
   it("repair advance plus first delivery equals the ৳1000 estimate", () => {
     useStore.getState().addRepair({ customer: "Rahim", phone: "01710000000", device: "Phone", problem: "Display", estimate: 1000, advance: 200 });
