@@ -7,7 +7,7 @@ export function Page({ title, sub, action, children }: { title: string; sub?: st
     <div className="mx-auto w-full max-w-6xl px-4 pb-28 pt-5 md:px-8 md:pb-10 md:pt-8">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3 md:items-center">
         <div className="min-w-0 flex-1 basis-48">
-          <h1 className="text-2xl font-semibold leading-snug tracking-tight md:text-3xl">{title}</h1>
+          <h1 className="text-xl font-semibold leading-snug tracking-tight md:text-2xl">{title}</h1>
           {sub && <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">{sub}</p>}
         </div>
         {action && <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{action}</div>}
@@ -31,7 +31,7 @@ export function Tile({ className, children, onClick }: { className?: string; chi
         }
       } : undefined}
       className={cn(
-        "rounded-xl border bg-card p-4 text-card-foreground shadow-soft",
+        "rounded-lg border bg-card p-4 text-card-foreground shadow-soft",
         onClick && "min-h-11 cursor-pointer transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:bg-accent",
         className,
       )}
@@ -108,7 +108,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement> & {
 
 export function BigButton({ children, className, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button {...p} className={cn("inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-base font-semibold leading-snug text-primary-foreground shadow-soft transition-colors hover:enabled:bg-primary/90 active:enabled:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none", className)}>
+    <button {...p} className={cn("inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-base font-semibold leading-snug text-primary-foreground shadow-soft transition-colors hover:enabled:bg-primary/90 active:enabled:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none", className)}>
       {children}
     </button>
   );
@@ -149,7 +149,7 @@ export function PinPad({ onSubmit, title, error }: { onSubmit: (pin: string) => 
               type="button"
               aria-label={k === "⌫" ? "শেষ সংখ্যা মুছুন" : "০১২৩৪৫৬৭৮৯"[Number(k)]}
               onClick={() => (k === "⌫" ? setPin(pin.slice(0, -1)) : press(k))}
-              className="h-14 min-w-11 rounded-xl border bg-card text-2xl font-medium text-card-foreground shadow-soft transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:bg-secondary"
+              className="h-14 min-w-11 rounded-lg border bg-card text-2xl font-medium text-card-foreground shadow-soft transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:bg-secondary"
             >
               {k === "⌫" ? k : "০১২৩৪৫৬৭৮৯"[Number(k)]}
             </button>

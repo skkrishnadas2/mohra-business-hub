@@ -75,7 +75,7 @@ function Dashboard() {
               { to: "/mfs", icon: Wallet, label: "ক্যাশ-ইন/আউট" },
               { to: "/services", icon: Wrench, label: `রিপেয়ার (${bn(openRepairs)})` },
             ].map((q) => (
-              <Link key={q.to} to={q.to} className="flex min-h-14 items-center gap-2 rounded-xl border bg-card px-3 py-3 text-sm font-medium shadow-soft transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:gap-3">
+              <Link key={q.to} to={q.to} className="flex min-h-14 items-center gap-2 rounded-lg border bg-card px-3 py-3 text-sm font-medium shadow-soft transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:gap-3">
                 <q.icon aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" /><span>{q.label}</span>
               </Link>
             ))}
@@ -91,7 +91,7 @@ function Dashboard() {
               <div className="border-t py-6">
                 <p className="text-sm font-medium">আজকের প্রথম লেনদেনের অপেক্ষায়</p>
                 <p className="mt-1 text-sm text-muted-foreground">বিক্রি, রিচার্জ বা MFS লেনদেন করলে এখানে দেখা যাবে।</p>
-                <Link to="/pos" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                <Link to="/pos" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                   <ScanBarcode aria-hidden="true" className="h-4 w-4" /> প্রথম বিক্রি শুরু করুন
                 </Link>
               </div>
