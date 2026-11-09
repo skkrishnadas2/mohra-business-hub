@@ -152,6 +152,19 @@ async function runFlush() {
         saveVersion(result.version);
         continue;
       }
+      if (result.status === "rejected") {
+        // A business-rule rejection is final: do not retry it forever or block later actions.
+        const pending = acknowledgeOutbox(shopId, action.id).length;
+        const notice = `একটি কাজ Cloud-এ গ্রহণ করা যায়নি: ${result.message}`;
+        useCloud.setState({ status: "connected", version: result.version, pending, error: null, notice });
+        saveVersion(result.version);
+        if (pending === 0) {
+          useStore.setState({ ...result.state, setupDone: true, role: useCloud.getState().role });
+        }
+        toast.error(notice);
+        synced = true;
+        continue;
+      }
       const pending = acknowledgeOutbox(shopId, action.id).length;
       useCloud.setState({ status: "connected", version: result.version, pending, error: null });
       saveVersion(result.version);
