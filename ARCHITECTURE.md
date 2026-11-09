@@ -14,7 +14,7 @@ App (TanStack Start + React 19, Tailwind v4, Hind Siliguri)
 ├── /accounts   All balances, Cash⇄Bank, add accounts, PIN-protected balance adjust
 ├── /khata      Customer due ledger, one-tap collection
 ├── /closing    Note counting, expected vs counted, shift close
-├── /monitor    Owner-only live activity log, void invoices
+├── /monitor    Owner-only live device presence, activity log and invoice voids
 ├── /cloud      Email auth, online shop creation/joining, profile and private avatar
 └── /settings   Owner-only permission switchboard, PINs, cipher preview
 ```
