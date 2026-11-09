@@ -1,13 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Check, Cloud, Copy, LogOut, Upload, UserRound } from "lucide-react";
+import { Check, Cloud, Copy, LogOut, RefreshCw, Upload, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { listCloudShops } from "@/lib/cloud.functions";
 import {
-  createOnlineShop, disconnectCloud, joinOnlineShop, openCloudShop, useCloud,
+  createOnlineShop, disconnectCloud, joinOnlineShop, openCloudShop, retryCloudSync, useCloud,
 } from "@/lib/cloud-sync";
 import { actionError, useStore } from "@/lib/store";
 import { BigButton, Label, Page, TextInput, Tile } from "@/components/kit";
@@ -165,13 +165,14 @@ function CloudPage() {
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-4">
             <Tile className="p-5">
-              <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold">দোকানের অনলাইন সংযোগ</h2><p className="mt-1 text-xs text-muted-foreground">{user.email}</p></div>{cloud.status === "connected" && <span className="inline-flex items-center gap-1 rounded-md bg-accent px-2 py-1 text-xs text-accent-foreground"><Check className="h-3 w-3" /> সক্রিয়</span>}</div>
-              {cloud.status === "connected" ? (
+              <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold">দোকানের অনলাইন সংযোগ</h2><p className="mt-1 text-xs text-muted-foreground">{user.email}</p></div>{cloud.pending > 0 ? <span className="rounded-md bg-secondary px-2 py-1 text-xs">{bn(cloud.pending)}টি সিঙ্ক বাকি</span> : cloud.status === "connected" ? <span className="inline-flex items-center gap-1 rounded-md bg-accent px-2 py-1 text-xs text-accent-foreground"><Check className="h-3 w-3" /> সক্রিয়</span> : null}</div>
+              {cloud.shopId ? (
                 <div className="mt-4 space-y-3 border-t pt-4">
                   <div><div className="font-medium">{cloud.shopName}</div><div className="text-xs text-muted-foreground">{cloud.role === "owner" ? "মালিক" : "ক্যাশিয়ার"} · সংস্করণ {bn(cloud.version)}</div></div>
                   <CopyRow label="দোকানের ID" value={cloud.shopId!} onCopy={copy} />
                   {cloud.role === "owner" && cloud.joinCode && <CopyRow label="ক্যাশিয়ার joining code" value={cloud.joinCode} onCopy={copy} />}
                   {cloud.role === "owner" && <p className="text-xs leading-relaxed text-muted-foreground">ক্যাশিয়ারকে শুধু তার নিজের অ্যাকাউন্ট থেকে দোকানের ID ও joining code দিয়ে যোগ দিতে বলুন।</p>}
+                  {(cloud.pending > 0 || cloud.status === "error") && <div className="rounded-lg border p-3"><p className="mb-3 text-xs leading-relaxed text-muted-foreground">জমা থাকা কাজ ডিভাইসে নিরাপদ আছে। ইন্টারনেট ফিরলে স্বয়ংক্রিয়ভাবে যাবে; এখনও চেষ্টা করতে পারেন।</p><BigButton disabled={busy} onClick={() => { setBusy(true); void retryCloudSync().then(() => { if (!useCloud.getState().error) toast.success("সব কাজ Cloud-এ সিঙ্ক হয়েছে"); }).catch((e) => toast.error(actionError(e))).finally(() => setBusy(false)); }}><RefreshCw className="mr-2 inline h-4 w-4" /> আবার সিঙ্ক করুন</BigButton></div>}
                 </div>
               ) : (
                 <div className="mt-4 space-y-4 border-t pt-4">

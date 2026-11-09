@@ -41,6 +41,35 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_action_receipts: {
+        Row: {
+          action_id: string
+          created_at: string
+          shop_id: string
+          version: number
+        }
+        Insert: {
+          action_id: string
+          created_at?: string
+          shop_id: string
+          version: number
+        }
+        Update: {
+          action_id?: string
+          created_at?: string
+          shop_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_action_receipts_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_invites: {
         Row: {
           created_at: string
@@ -157,6 +186,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      commit_cloud_action: {
+        Args: {
+          _action_id: string
+          _base_version: number
+          _data: Json
+          _shop_id: string
+          _user_id: string
+        }
+        Returns: {
+          result_status: string
+          result_version: number
+        }[]
+      }
       create_cloud_shop: {
         Args: { _data: Json; _name: string; _user_id: string }
         Returns: string

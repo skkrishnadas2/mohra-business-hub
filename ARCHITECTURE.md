@@ -72,4 +72,9 @@ The `avatars` storage bucket is private; signed URLs expire and storage policies
 4. A conditional `version = baseVersion` write increments the version. A stale write returns the latest filtered snapshot instead of overwriting another device's work; the user is asked to repeat the last action.
 5. Owners receive Realtime version updates; cashiers poll every 15 seconds. The saved shop ID and version let a sale made immediately after a page reload wait for Cloud instead of being dropped.
 
-`stateForRole` (`src/lib/cloud-view.ts`) removes the owner PIN and applies cost, profit and bank visibility before cashier data leaves the server. Permission changes use the same versioned action path, so owner switches propagate to other devices. Offline action persistence/automatic retry is not yet implemented; a failed Cloud write shows an error and must be reconciled before further shared work.
+`stateForRole` (`src/lib/cloud-view.ts`) removes the owner PIN and applies cost, profit and bank visibility before cashier data leaves the server. Permission changes use the same versioned action path, so owner switches propagate to other devices.
+
+### Durable offline outbox and idempotency
+Every browser action receives a UUID and is stored in a per-shop localStorage outbox before network submission. A failed or offline write leaves the action in order; the `online` event, periodic refresh and Cloud page retry button resume it. Remote refreshes never replace local state while that shop has unacknowledged actions.
+
+`shop_action_receipts` records each committed `(shop_id, action_id)` with its resulting version. The private `commit_cloud_action` SQL function updates the shop snapshot and writes the receipt in one transaction. Repeating an action ID therefore returns the original acknowledgement without posting another ledger transaction. Receipts are service-role-only and inaccessible to browser roles. After the outbox drains, the app fetches the authoritative snapshot once to reconcile the complete batch.
