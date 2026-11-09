@@ -41,9 +41,6 @@ function savedVersion() {
 function saveVersion(version: number) {
   if (typeof window !== "undefined") window.localStorage.setItem(VERSION_KEY, String(version));
 }
-function setPending(shopId: string, pending: number) {
-  useCloud.setState((state) => state.shopId === shopId ? { pending } : state);
-}
 function adopt(shop: CloudShop) {
   const pending = readOutbox(shop.shopId).length;
   // A remote refresh must not wipe local work that has not been acknowledged yet.
