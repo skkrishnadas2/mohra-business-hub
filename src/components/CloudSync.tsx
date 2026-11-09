@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CLOUD_ACTION_EVENT } from "@/lib/store";
 import {
-  handleCloudActionEvent, handleRealtimeVersion, initializeCloud, refreshCloudIfIdle, useCloud,
+  flushCloudOutbox, handleCloudActionEvent, handleRealtimeVersion, initializeCloud, refreshCloudIfIdle, useCloud,
 } from "@/lib/cloud-sync";
 
 export function CloudSync() {

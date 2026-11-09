@@ -1,13 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Check, Cloud, Copy, LogOut, Upload, UserRound } from "lucide-react";
+import { Check, Cloud, Copy, LogOut, RefreshCw, Upload, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { listCloudShops } from "@/lib/cloud.functions";
 import {
-  createOnlineShop, disconnectCloud, joinOnlineShop, openCloudShop, useCloud,
+  createOnlineShop, disconnectCloud, joinOnlineShop, openCloudShop, retryCloudSync, useCloud,
 } from "@/lib/cloud-sync";
 import { actionError, useStore } from "@/lib/store";
 import { BigButton, Label, Page, TextInput, Tile } from "@/components/kit";
