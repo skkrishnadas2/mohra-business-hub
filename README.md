@@ -10,6 +10,9 @@ bunx vitest run   # business-rule tests
 ```
 First launch opens the setup wizard: shop name, owner PIN, cashier PIN, and starting balances for cash, banks, MFS wallets and recharge SIMs.
 
+## Cloud shop
+Open **Cloud সিঙ্ক** after local setup. The owner signs up/in with email and creates the online shop from the current balances. A cashier creates a separate account, then joins with the shop ID and owner-only joining code. Connected sales and other allow-listed actions are validated again on the server and synchronized across devices. Email confirmation may be required by Supabase Auth.
+
 ## Where things live
 - `src/lib/rules.ts` — pure rules (commission rates, cipher, Bengali number/Taka formatting, barcode generation)
 - `src/lib/store.ts` — all state and money-moving actions (ledger)
