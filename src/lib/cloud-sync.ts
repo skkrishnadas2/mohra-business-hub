@@ -130,3 +130,8 @@ export function handleRealtimeVersion(version: number) {
   if (!cloud.shopId || version <= cloud.version || pendingActions > 0) return;
   void openCloudShop(cloud.shopId).catch(() => undefined);
 }
+
+export function refreshCloudIfIdle() {
+  const shopId = useCloud.getState().shopId;
+  if (shopId && pendingActions === 0) void openCloudShop(shopId).catch(() => undefined);
+}

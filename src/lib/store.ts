@@ -285,8 +285,9 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const cleanLines = lines.map((line) => {
             const product = get().products.find((p) => p.id === line.productId) ?? fail("কার্টের একটি পণ্য আর পাওয়া যায়নি");
             if (!Number.isInteger(line.qty) || line.qty <= 0) fail(`${product.name} এর পরিমাণ সঠিক নয়`);
-            const price = nonNegative(line.price, "বিক্রি দাম");
-            const cost = nonNegative(line.cost, "কেনা দাম");
+            // Product prices and costs are authoritative; a client cannot alter profit by editing cart data.
+            const price = product.price;
+            const cost = product.cost;
             quantities.set(line.productId, (quantities.get(line.productId) ?? 0) + line.qty);
             return { productId: product.id, name: product.name, qty: line.qty, price, cost };
           });
