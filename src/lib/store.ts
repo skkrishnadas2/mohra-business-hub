@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StateCreator } from "zustand";
 import { persist } from "zustand/middleware";
 import { agentCommission, round2, type MfsProvider, type Operator, DEFAULT_CIPHER_KEY } from "./rules";
 
@@ -172,9 +172,10 @@ const initial: State = {
   lastClosedAt: 0,
 };
 
-export const useStore = create<State & Actions>()(
-  persist(
-    (set, get) => {
+export type ShopStore = State & Actions;
+
+/** Framework-free store creator: the browser persists it and the server uses a fresh instance per action. */
+export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
       const acc = (id: string) => get().accounts.find((a) => a.id === id);
       const requireAccount = (id: string) => acc(id) ?? fail("হিসাবটি পাওয়া যায়নি");
       const validateMoves = (accounts: Account[], moves: Txn["moves"]) => {
