@@ -148,8 +148,8 @@ export const applyCloudAction = createServerFn({ method: "POST" })
       .eq("shop_id", data.shopId).eq("version", data.baseVersion).select("version").maybeSingle();
     if (error) throw new Error("অনলাইন লেনদেন সংরক্ষণ করা যায়নি");
     if (!updated) {
-      const latest = await currentState(context, data.shopId);
-      return { status: "conflict" as const, version: latest.version, state: { ...latest.state, role: null } };
+      const latest = await currentState(supabaseAdmin, data.shopId);
+      return { status: "conflict" as const, version: latest.version, state: stateForRole(latest.state, role) };
     }
     return { status: "ok" as const, version: updated.version };
   });
