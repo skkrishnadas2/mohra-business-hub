@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, Minus, Plus, Printer, Search, Trash2, X } from "lucide-react";
+import { Camera, Minus, Plus, Printer, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useStore, type CartLine, type Payment, type Sale } from "@/lib/store";
 import { Page, Money, BigButton, Chips, NumInput, TextInput, Label, useLongPress } from "@/components/kit";
@@ -234,4 +234,3 @@ function CameraScan({ open, onClose, onCode }: { open: boolean; onClose: () => v
   );
 }
 
-export { Trash2 };
