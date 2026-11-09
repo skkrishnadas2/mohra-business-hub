@@ -33,6 +33,13 @@ let pendingActions = 0;
 function savedShopId() {
   return typeof window === "undefined" ? null : window.localStorage.getItem(SHOP_KEY);
 }
+function savedVersion() {
+  if (typeof window === "undefined") return 0;
+  return Number(window.localStorage.getItem(VERSION_KEY)) || 0;
+}
+function saveVersion(version: number) {
+  if (typeof window !== "undefined") window.localStorage.setItem(VERSION_KEY, String(version));
+}
 function adopt(shop: CloudShop) {
   // A refresh started before a local sale must not wipe that sale while its action is queued.
   if (pendingActions === 0) useStore.setState({ ...shop.state, setupDone: true, role: shop.role });
