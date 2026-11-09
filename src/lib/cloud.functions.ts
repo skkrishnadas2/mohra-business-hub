@@ -105,7 +105,7 @@ export const joinCloudShop = createServerFn({ method: "POST" })
 
 const actionSchema = z.object({
   shopId: z.string().uuid(), baseVersion: z.number().int().positive(),
-  action: z.object({ name: z.enum(CLOUD_ACTIONS), args: z.array(z.unknown()) }),
+  action: z.object({ id: z.string().uuid(), name: z.enum(CLOUD_ACTIONS), args: z.array(z.unknown()) }),
 });
 
 export const applyCloudAction = createServerFn({ method: "POST" })
