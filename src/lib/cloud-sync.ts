@@ -48,6 +48,7 @@ function adopt(shop: CloudShop) {
     version: shop.version, joinCode: shop.joinCode, error: null,
   });
   if (typeof window !== "undefined") window.localStorage.setItem(SHOP_KEY, shop.shopId);
+  saveVersion(shop.version);
 }
 
 export async function openCloudShop(shopId: string) {
