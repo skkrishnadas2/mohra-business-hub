@@ -172,6 +172,7 @@ function CloudPage() {
                   <CopyRow label="দোকানের ID" value={cloud.shopId!} onCopy={copy} />
                   {cloud.role === "owner" && cloud.joinCode && <CopyRow label="ক্যাশিয়ার joining code" value={cloud.joinCode} onCopy={copy} />}
                   {cloud.role === "owner" && <p className="text-xs leading-relaxed text-muted-foreground">ক্যাশিয়ারকে শুধু তার নিজের অ্যাকাউন্ট থেকে দোকানের ID ও joining code দিয়ে যোগ দিতে বলুন।</p>}
+                  {(cloud.pending > 0 || cloud.status === "error") && <div className="rounded-lg border p-3"><p className="mb-3 text-xs leading-relaxed text-muted-foreground">জমা থাকা কাজ ডিভাইসে নিরাপদ আছে। ইন্টারনেট ফিরলে স্বয়ংক্রিয়ভাবে যাবে; এখনও চেষ্টা করতে পারেন।</p><BigButton disabled={busy} onClick={() => { setBusy(true); void retryCloudSync().then(() => { if (!useCloud.getState().error) toast.success("সব কাজ Cloud-এ সিঙ্ক হয়েছে"); }).catch((e) => toast.error(actionError(e))).finally(() => setBusy(false)); }}><RefreshCw className="mr-2 inline h-4 w-4" /> আবার সিঙ্ক করুন</BigButton></div>}
                 </div>
               ) : (
                 <div className="mt-4 space-y-4 border-t pt-4">
