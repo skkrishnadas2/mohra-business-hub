@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Plus, Printer, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useStore, type Product } from "@/lib/store";
+import { actionError, useStore, type Product } from "@/lib/store";
 import { Page, Money, BigButton, NumInput, TextInput, Label } from "@/components/kit";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
@@ -36,9 +36,11 @@ function Products() {
   const edit = (p: Product) => setD({ id: p.id, name: p.name, barcodes: p.barcodes.join(", "), cost: String(p.cost), price: String(p.price), stock: String(p.stock), lowStock: String(p.lowStock) });
   const save = () => {
     if (!d) return;
-    const barcodes = d.barcodes.split(",").map((s) => s.trim()).filter(Boolean);
-    upsertProduct({ id: d.id, name: d.name, barcodes: barcodes.length ? barcodes : [genBarcode()], cost: Number(d.cost) || 0, price: Number(d.price) || 0, stock: Number(d.stock) || 0, lowStock: Number(d.lowStock) || 0 });
-    setD(null); toast.success("সেভ হয়েছে");
+    try {
+      const barcodes = d.barcodes.split(",").map((s) => s.trim()).filter(Boolean);
+      upsertProduct({ id: d.id, name: d.name, barcodes: barcodes.length ? barcodes : [genBarcode()], cost: Number(d.cost) || 0, price: Number(d.price) || 0, stock: Number(d.stock) || 0, lowStock: Number(d.lowStock) || 0 });
+      setD(null); toast.success("সেভ হয়েছে");
+    } catch (error) { toast.error(actionError(error)); }
   };
 
   return (
@@ -79,7 +81,10 @@ function Products() {
                 <div><Label>কম স্টক সতর্কতা</Label><NumInput value={d.lowStock} onChange={(v) => setD({ ...d, lowStock: v })} /></div>
               </div>
               <BigButton disabled={!d.name} onClick={save}>সেভ করুন</BigButton>
-              {d.id && <button onClick={() => { deleteProduct(d.id!); setD(null); }} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm text-destructive"><Trash2 className="h-4 w-4" /> মুছে ফেলুন</button>}
+              {d.id && <button onClick={() => {
+                try { deleteProduct(d.id!); setD(null); toast.success("পণ্য মুছে ফেলা হয়েছে"); }
+                catch (error) { toast.error(actionError(error)); }
+              }} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm text-destructive"><Trash2 className="h-4 w-4" /> মুছে ফেলুন</button>}
             </div>
           )}
         </SheetContent>

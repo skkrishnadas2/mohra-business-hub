@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useStore } from "@/lib/store";
+import { actionError, useStore } from "@/lib/store";
 import { Page, Money, BigButton, NumInput, Label, Tile } from "@/components/kit";
 import { bn, taka } from "@/lib/rules";
 
@@ -49,7 +49,10 @@ function Closing() {
             <Money v={diff} className={`text-2xl font-semibold ${diff === 0 ? "text-primary" : "text-destructive"}`} />
           </Tile>
           {can("viewProfit") && <Tile><div className="text-sm text-muted-foreground">শিফটের নেট লাভ</div><Money v={profit} className="text-2xl font-semibold text-primary" /></Tile>}
-          <BigButton className="min-h-14" onClick={() => { const c = closeDay(counted); toast.success(`শিফট বন্ধ · পার্থক্য ${taka(c.diff)}`); setCnt({}); }}>শিফট বন্ধ করুন</BigButton>
+          <BigButton className="min-h-14" onClick={() => {
+            try { const c = closeDay(counted); toast.success(`শিফট বন্ধ · পার্থক্য ${taka(c.diff)}`); setCnt({}); }
+            catch (error) { toast.error(actionError(error)); }
+          }}>শিফট বন্ধ করুন</BigButton>
         </div>
       </div>
       {closings.length > 0 && (

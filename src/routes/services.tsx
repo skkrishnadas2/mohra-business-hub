@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useStore, type RepairStatus } from "@/lib/store";
+import { actionError, useStore, type RepairStatus } from "@/lib/store";
 import { Page, Money, BigButton, Chips, NumInput, TextInput, Label } from "@/components/kit";
 import { taka } from "@/lib/rules";
 
@@ -40,7 +40,10 @@ function Services() {
             {QUICK.map((q) => <button key={q} onClick={() => setSvc(q)} className={`min-h-14 rounded-xl border px-3 py-2 text-sm ${svc === q ? "border-primary bg-accent font-semibold text-accent-foreground" : "bg-card hover:bg-secondary"}`}>{q}</button>)}
           </div>
           <div><Label>বিল</Label><NumInput value={amt} onChange={setAmt} /></div>
-          <BigButton disabled={!Number(amt)} onClick={() => { serviceSlip(svc, Number(amt), "cash"); toast.success(`${svc} · ${taka(Number(amt))}`); setAmt(""); }}>ক্যাশে জমা</BigButton>
+          <BigButton disabled={!Number(amt)} onClick={() => {
+            try { serviceSlip(svc, Number(amt), "cash"); toast.success(`${svc} · ${taka(Number(amt))}`); setAmt(""); }
+            catch (error) { toast.error(actionError(error)); }
+          }}>ক্যাশে জমা</BigButton>
         </div>
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
@@ -55,8 +58,10 @@ function Services() {
               <div><Label>অগ্রিম</Label><NumInput value={r.advance} onChange={(v) => setR({ ...r, advance: v })} /></div>
             </div>
             <BigButton disabled={!r.customer || !r.device} onClick={() => {
-              addRepair({ ...r, estimate: Number(r.estimate) || 0, advance: Number(r.advance) || 0 });
-              setR({ customer: "", phone: "", device: "", problem: "", estimate: "", advance: "" }); toast.success("রিপেয়ার এন্ট্রি হয়েছে");
+              try {
+                addRepair({ ...r, estimate: Number(r.estimate) || 0, advance: Number(r.advance) || 0 });
+                setR({ customer: "", phone: "", device: "", problem: "", estimate: "", advance: "" }); toast.success("রিপেয়ার এন্ট্রি হয়েছে");
+              } catch (error) { toast.error(actionError(error)); }
             }}>গ্রহণ করুন</BigButton>
           </div>
           <div className="space-y-2">
@@ -66,7 +71,9 @@ function Services() {
                 <div className="flex justify-between gap-2"><div><div className="font-medium">{x.device}</div><div className="text-xs text-muted-foreground">{x.customer} · {x.phone}</div></div>
                   <div className="text-right text-sm"><Money v={x.estimate} className="font-semibold" /><div className="text-xs text-muted-foreground">অগ্রিম {taka(x.advance)}</div></div></div>
                 {x.problem && <p className="mt-2 text-sm text-muted-foreground">{x.problem}</p>}
-                <div className="mt-3"><Chips value={x.status} onChange={(s) => setRepairStatus(x.id, s)} options={STATUS} /></div>
+                <div className="mt-3"><Chips value={x.status} onChange={(s) => {
+                  try { setRepairStatus(x.id, s); } catch (error) { toast.error(actionError(error)); }
+                }} options={STATUS} /></div>
               </div>
             ))}
           </div>

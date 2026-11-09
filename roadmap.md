@@ -1,5 +1,6 @@
-# Friendly premium SaaS redesign
+# Business logic hardening
 
-- [x] Replace the dashboard's oversized cards with useful KPI, activity and fund views
-- [x] Keep navigation and daily workflows calm, friendly and uncluttered
-- [x] Verify real data, mobile/desktop layouts and all business-rule tests
+- [x] Enforce stock, payment, balance, due and repair rules before saving
+- [x] Enforce owner/cashier permissions inside store actions, not only in the UI
+- [x] Show rule failures without clearing valid form input
+- [x] Add business-rule regression tests and verify the main sale flow

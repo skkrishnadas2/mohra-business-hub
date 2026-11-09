@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useStore } from "@/lib/store";
+import { actionError, useStore } from "@/lib/store";
 import { Page, Money, NumInput } from "@/components/kit";
 import { taka } from "@/lib/rules";
 
@@ -31,7 +31,10 @@ function Khata() {
           <div key={c.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border bg-card p-4 shadow-soft">
             <div className="col-span-2 min-w-0 break-words"><div className="font-medium">{c.name}</div><div className="text-xs text-muted-foreground">{c.phone}</div><Money v={c.due} className="font-semibold text-destructive" /></div>
             <NumInput aria-label={`${c.name} থেকে আদায়ের পরিমাণ`} className="h-12 min-w-0 text-base" value={amt[c.id] ?? ""} onChange={(v) => setAmt({ ...amt, [c.id]: v })} placeholder={String(c.due)} />
-            <button onClick={() => { const a = Number(amt[c.id]) || c.due; collectDue(c.id, Math.min(a, c.due)); setAmt({ ...amt, [c.id]: "" }); toast.success("আদায় হয়েছে"); }}
+            <button onClick={() => {
+              try { const a = Number(amt[c.id]) || c.due; collectDue(c.id, Math.min(a, c.due)); setAmt({ ...amt, [c.id]: "" }); toast.success("আদায় হয়েছে"); }
+              catch (error) { toast.error(actionError(error)); }
+            }}
               className="h-12 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground">আদায়</button>
           </div>
         ))}

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, Minus, Plus, Printer, Search, X } from "lucide-react";
 import { toast } from "sonner";
-import { useStore, type CartLine, type Payment, type Sale } from "@/lib/store";
+import { actionError, useStore, type CartLine, type Payment, type Sale } from "@/lib/store";
 import { Page, Money, BigButton, Chips, NumInput, TextInput, Label, useLongPress } from "@/components/kit";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -44,6 +44,11 @@ function Pos() {
   const add = (pid: string) => {
     const p = products.find((x) => x.id === pid);
     if (!p) return;
+    const inCart = cart.find((line) => line.productId === pid)?.qty ?? 0;
+    if (inCart >= p.stock) {
+      toast.error(`${p.name} এর স্টকে ${bn(p.stock)}টি আছে`);
+      return;
+    }
     beep();
     setCart((c) => {
       const ex = c.find((l) => l.productId === pid);
@@ -70,10 +75,14 @@ function Pos() {
   }, [q, products]);
 
   const finish = (payments: Payment[], customer?: { name: string; phone: string }) => {
-    const sale = checkout(cart, payments, customer);
-    setCart([]); setPayOpen(false); setLast(sale);
-    toast.success(`বিক্রি সম্পন্ন · ${taka(sale.total)}`);
-    inputRef.current?.focus();
+    try {
+      const sale = checkout(cart, payments, customer);
+      setCart([]); setPayOpen(false); setLast(sale);
+      toast.success(`বিক্রি সম্পন্ন · ${taka(sale.total)}`);
+      inputRef.current?.focus();
+    } catch (error) {
+      toast.error(actionError(error));
+    }
   };
   const accName = (id: string) => accounts.find((a) => a.id === id)?.name ?? id;
 

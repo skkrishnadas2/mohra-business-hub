@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useStore, type Account } from "@/lib/store";
+import { actionError, useStore, type Account } from "@/lib/store";
 import { Page, Money, BigButton, Chips, NumInput, TextInput, Label } from "@/components/kit";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/accounts")({
 const KIND_LABEL: Record<Account["kind"], string> = { cash: "ক্যাশ", bank: "ব্যাংক", mfs_agent: "MFS এজেন্ট", mfs_personal: "MFS পার্সোনাল", recharge: "রিচার্জ সিম" };
 
 function Accounts() {
-  const { accounts, can, transfer, setBalance, addAccount } = useStore();
+  const { accounts, can, transfer, setBalance, addAccount, role } = useStore();
   const banks = accounts.filter((a) => a.kind === "bank");
   const [dir, setDir] = useState<"dep" | "wd">("dep");
   const [bank, setBank] = useState(banks[0]?.id ?? "");
@@ -35,7 +35,7 @@ function Accounts() {
   const showBank = can("viewBank");
 
   return (
-    <Page title="হিসাব ও ব্যাংক" action={<button onClick={() => setNw({ name: "", kind: "bank", provider: "" })} className="h-11 rounded-xl border px-4 text-sm">+ হিসাব</button>}>
+    <Page title="হিসাব ও ব্যাংক" action={role === "owner" && <button onClick={() => setNw({ name: "", kind: "bank", provider: "" })} className="h-11 rounded-xl border px-4 text-sm">+ হিসাব</button>}>
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           {(Object.keys(KIND_LABEL) as Account["kind"][]).map((k) => (
@@ -58,9 +58,11 @@ function Accounts() {
           <div><Label>পরিমাণ</Label><NumInput value={amt} onChange={setAmt} /></div>
           <div><Label>রেফারেন্স / স্লিপ নং</Label><TextInput value={ref} onChange={(e) => setRef(e.target.value)} /></div>
           <BigButton disabled={!Number(amt) || !bank} onClick={() => {
-            const a = Number(amt);
-            if (dir === "dep") transfer("cash", bank, a, "ব্যাংকে জমা", ref); else transfer(bank, "cash", a, "ব্যাংক থেকে উত্তোলন", ref);
-            toast.success("সম্পন্ন"); setAmt(""); setRef("");
+            try {
+              const a = Number(amt);
+              if (dir === "dep") transfer("cash", bank, a, "ব্যাংকে জমা", ref); else transfer(bank, "cash", a, "ব্যাংক থেকে উত্তোলন", ref);
+              toast.success("সম্পন্ন"); setAmt(""); setRef("");
+            } catch (error) { toast.error(actionError(error)); }
           }}>নিশ্চিত করুন</BigButton>
         </div>
       </div>
@@ -71,7 +73,10 @@ function Accounts() {
           <div className="space-y-3 p-4 pt-0">
             <div><Label>সঠিক ব্যালেন্স</Label><NumInput value={adjVal} onChange={setAdjVal} /></div>
             <div><Label>মালিকের PIN</Label><TextInput type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value)} /></div>
-            <BigButton onClick={() => { if (adj && setBalance(adj.id, Number(adjVal) || 0, pin)) { toast.success("সমন্বয় হয়েছে"); setAdj(null); } else toast.error("ভুল PIN"); }}>সেভ করুন</BigButton>
+            <BigButton onClick={() => {
+              try { if (adj && setBalance(adj.id, Number(adjVal) || 0, pin)) { toast.success("সমন্বয় হয়েছে"); setAdj(null); } else toast.error("ভুল PIN"); }
+              catch (error) { toast.error(actionError(error)); }
+            }}>সেভ করুন</BigButton>
           </div>
         </SheetContent>
       </Sheet>
@@ -84,7 +89,10 @@ function Accounts() {
               <Chips value={nw.kind} onChange={(kind) => setNw({ ...nw, kind })} options={(Object.keys(KIND_LABEL) as Account["kind"][]).filter((k) => k !== "cash").map((k) => ({ value: k, label: KIND_LABEL[k] }))} />
               <TextInput placeholder="নাম (যেমন: বিকাশ এজেন্ট ৩)" value={nw.name} onChange={(e) => setNw({ ...nw, name: e.target.value })} />
               {nw.kind.startsWith("mfs") && <Chips value={nw.provider} onChange={(provider) => setNw({ ...nw, provider })} options={[{ value: "bkash", label: "বিকাশ" }, { value: "nagad", label: "নগদ" }, { value: "rocket", label: "রকেট" }, { value: "upay", label: "উপায়" }]} />}
-              <BigButton disabled={!nw.name || (nw.kind.startsWith("mfs") && !nw.provider)} onClick={() => { addAccount({ name: nw.name, kind: nw.kind, provider: nw.provider || undefined, balance: 0 }); setNw(null); }}>যোগ করুন</BigButton>
+              <BigButton disabled={!nw.name || (nw.kind.startsWith("mfs") && !nw.provider)} onClick={() => {
+                try { addAccount({ name: nw.name, kind: nw.kind, provider: nw.provider || undefined, balance: 0 }); setNw(null); }
+                catch (error) { toast.error(actionError(error)); }
+              }}>যোগ করুন</BigButton>
             </div>
           )}
         </SheetContent>
