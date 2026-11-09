@@ -41,9 +41,9 @@ function Services() {
           <BigButton disabled={!Number(amt)} onClick={() => { serviceSlip(svc, Number(amt), "cash"); toast.success(`${svc} · ${taka(Number(amt))}`); setAmt(""); }}>ক্যাশে জমা</BigButton>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-[360px_1fr]">
-          <div className="space-y-3 rounded-2xl border bg-card p-4 shadow-soft md:self-start">
-            <div className="font-medium">নতুন ডিভাইস গ্রহণ</div>
+        <div className="grid items-start gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+          <div className="space-y-3 rounded-xl border bg-card p-4 shadow-soft sm:p-5 lg:self-start">
+            <div className="border-b pb-3 text-base font-semibold">নতুন ডিভাইস গ্রহণ</div>
             <TextInput placeholder="কাস্টমারের নাম" value={r.customer} onChange={(e) => setR({ ...r, customer: e.target.value })} />
             <TextInput placeholder="মোবাইল" inputMode="tel" value={r.phone} onChange={(e) => setR({ ...r, phone: e.target.value })} />
             <TextInput placeholder="ডিভাইস (যেমন: Samsung A12)" value={r.device} onChange={(e) => setR({ ...r, device: e.target.value })} />

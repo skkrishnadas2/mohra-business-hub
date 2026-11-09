@@ -34,14 +34,14 @@ function Accounts() {
 
   return (
     <Page title="হিসাব ও ব্যাংক" action={<button onClick={() => setNw({ name: "", kind: "bank", provider: "" })} className="h-11 rounded-xl border px-4 text-sm">+ হিসাব</button>}>
-      <div className="grid gap-4 md:grid-cols-[1fr_360px]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           {(Object.keys(KIND_LABEL) as Account["kind"][]).map((k) => (
             <div key={k}>
               <div className="mb-2 text-sm font-semibold text-muted-foreground">{KIND_LABEL[k]}</div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {accounts.filter((a) => a.kind === k).map((a) => (
-                  <button key={a.id} onClick={() => { setAdj(a); setAdjVal(String(a.balance)); setPin(""); }} className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3 text-left text-sm shadow-soft">
+                  <button key={a.id} onClick={() => { setAdj(a); setAdjVal(String(a.balance)); setPin(""); }} className="flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border bg-card px-4 py-3 text-left text-sm shadow-soft transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     <span>{a.name}</span><Money v={a.balance} hidden={k === "bank" && !showBank} className="font-semibold" />
                   </button>
                 ))}
@@ -49,8 +49,8 @@ function Accounts() {
             </div>
           ))}
         </div>
-        <div className="space-y-4 rounded-2xl border bg-card p-4 shadow-soft md:self-start">
-          <div className="font-medium">ব্যাংক লেনদেন</div>
+        <div className="space-y-4 rounded-xl border bg-card p-4 shadow-soft sm:p-5 lg:self-start">
+          <div className="border-b pb-3 text-base font-semibold">ব্যাংক লেনদেন</div>
           <Chips value={dir} onChange={setDir} options={[{ value: "dep", label: "ক্যাশ → ব্যাংক জমা" }, { value: "wd", label: "ব্যাংক → ক্যাশ উত্তোলন" }]} />
           <Chips value={bank} onChange={setBank} options={banks.map((b) => ({ value: b.id, label: b.name }))} />
           <div><Label>পরিমাণ</Label><NumInput value={amt} onChange={setAmt} /></div>

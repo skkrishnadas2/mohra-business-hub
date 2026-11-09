@@ -77,33 +77,33 @@ function Pos() {
 
   return (
     <Page title="বিক্রি" sub="স্ক্যান করুন বা পণ্য বেছে নিন">
-      <div className="grid gap-4 md:grid-cols-[1fr_380px]">
-        <div>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <TextInput ref={inputRef} autoFocus value={q} onChange={(e) => setQ(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { if (scan(q)) setQ(""); else if (results[0]) { add(results[0].id); setQ(""); } } }}
-                placeholder="বারকোড স্ক্যান / পণ্যের নাম" className="pl-10" />
-            </div>
-            <button onClick={() => setCam(true)} className="flex h-12 w-12 items-center justify-center rounded-xl border bg-card" aria-label="ক্যামেরা স্ক্যান"><Camera className="h-5 w-5" /></button>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="mb-4 flex gap-2 lg:max-w-[calc(100%-396px)]">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <TextInput ref={inputRef} autoFocus value={q} onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { if (scan(q)) setQ(""); else if (results[0]) { add(results[0].id); setQ(""); } } }}
+            placeholder="বারকোড স্ক্যান / পণ্যের নাম" className="pl-10" />
+        </div>
+        <button onClick={() => setCam(true)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-input bg-card transition-colors hover:bg-secondary" aria-label="ক্যামেরা স্ক্যান"><Camera className="h-5 w-5" /></button>
+      </div>
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="order-2 lg:order-1">
+          <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-3">
             {results.map((p) => <ProductCard key={p.id} p={p} onAdd={() => add(p.id)} />)}
           </div>
         </div>
 
-        <div className="md:sticky md:top-6 md:self-start">
-          <div className="rounded-2xl border bg-card p-4 shadow-soft">
-            <div className="mb-2 flex items-center justify-between"><div className="font-medium">কার্ট</div>{cart.length > 0 && <button onClick={() => setCart([])} className="text-xs text-muted-foreground">খালি করুন</button>}</div>
-            {cart.length === 0 ? <div className="py-10 text-center text-sm text-muted-foreground">কার্ট খালি</div> : (
-              <div className="max-h-[40vh] divide-y overflow-y-auto">
+        <div className="order-1 min-w-0 lg:order-2 lg:sticky lg:top-6 lg:self-start">
+          <div className="rounded-xl border bg-card p-4 shadow-soft sm:p-5">
+            <div className="mb-2 flex items-center justify-between"><div className="font-semibold">কার্ট</div>{cart.length > 0 && <button onClick={() => setCart([])} className="min-h-11 rounded-lg px-3 text-sm font-medium text-muted-foreground hover:bg-secondary">খালি করুন</button>}</div>
+            {cart.length === 0 ? <div className="py-4 text-center text-sm text-muted-foreground">কার্ট খালি · পণ্য স্ক্যান বা বেছে নিন</div> : (
+              <div className="max-h-[24dvh] divide-y overflow-y-auto overscroll-contain lg:max-h-[40dvh]">
                 {cart.map((l) => (
                   <div key={l.productId} className="flex items-center gap-2 py-2.5">
                     <div className="min-w-0 flex-1"><div className="truncate text-sm">{l.name}</div><Money v={l.price * l.qty} className="text-sm font-semibold" /></div>
-                    <button className="h-8 w-8 rounded-lg bg-secondary" onClick={() => setCart((c) => c.flatMap((x) => x.productId === l.productId ? (x.qty > 1 ? [{ ...x, qty: x.qty - 1 }] : []) : [x]))}><Minus className="mx-auto h-4 w-4" /></button>
+                    <button aria-label="পরিমাণ কমান" className="h-11 w-11 shrink-0 rounded-lg bg-secondary text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setCart((c) => c.flatMap((x) => x.productId === l.productId ? (x.qty > 1 ? [{ ...x, qty: x.qty - 1 }] : []) : [x]))}><Minus className="mx-auto h-4 w-4" /></button>
                     <span className="tnum w-6 text-center text-sm">{bn(l.qty)}</span>
-                    <button className="h-8 w-8 rounded-lg bg-secondary" onClick={() => add(l.productId)}><Plus className="mx-auto h-4 w-4" /></button>
+                    <button aria-label="পরিমাণ বাড়ান" className="h-11 w-11 shrink-0 rounded-lg bg-secondary text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => add(l.productId)}><Plus className="mx-auto h-4 w-4" /></button>
                   </div>
                 ))}
               </div>

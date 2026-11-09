@@ -37,9 +37,9 @@ function Recharge() {
         <div className="rounded-xl border bg-card p-4 shadow-soft sm:p-5">
           {tab === "b2b" ? <B2BForm kind="recharge" /> : (
             <div className="space-y-4">
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
                 {sims.map((s) => (
-                  <button key={s.id} onClick={() => setSim(s.id)} className={`rounded-xl border p-2 text-center text-xs ${sim === s.id ? "border-primary bg-accent font-semibold" : ""}`}>{s.name}</button>
+                  <button key={s.id} onClick={() => setSim(s.id)} className={`min-h-12 rounded-xl border px-3 py-2 text-center text-sm leading-snug ${sim === s.id ? "border-primary bg-accent font-semibold text-accent-foreground" : "bg-card hover:bg-secondary"}`}>{s.name}</button>
                 ))}
               </div>
               <div><Label>মোবাইল নম্বর</Label><TextInput inputMode="tel" value={num} onChange={(e) => setNum(e.target.value)} placeholder="01XXXXXXXXX" /></div>

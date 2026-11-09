@@ -46,8 +46,8 @@ function Settings() {
           ))}
         </div>
         <div className="space-y-4">
-          <div className="space-y-3 rounded-2xl border bg-card p-4 shadow-soft">
-            <div className="font-medium">PIN পরিবর্তন</div>
+          <div className="space-y-3 rounded-xl border bg-card p-4 shadow-soft sm:p-5">
+            <div className="border-b pb-3 text-base font-semibold">PIN পরিবর্তন</div>
             <div><Label>মালিক PIN</Label><NumInput value={op} onChange={(v) => setOp(v.slice(0, 4))} /></div>
             <div><Label>ক্যাশিয়ার PIN</Label><NumInput value={cp} onChange={(v) => setCp(v.slice(0, 4))} /></div>
             <BigButton disabled={op.length !== 4 || cp.length !== 4 || op === cp} onClick={() => { setPins(op, cp); toast.success("PIN আপডেট হয়েছে"); }}>সেভ</BigButton>

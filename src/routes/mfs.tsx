@@ -68,7 +68,7 @@ function Mfs() {
         </div>
         <div className="space-y-2">
           {accounts.filter((x) => x.kind.startsWith("mfs")).map((s) => (
-            <div key={s.id} className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3 text-sm"><span>{s.name}</span><Money v={s.balance} className="font-semibold" /></div>
+            <div key={s.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border bg-card px-4 py-3 text-sm"><span>{s.name}</span><Money v={s.balance} className="font-semibold" /></div>
           ))}
         </div>
       </div>

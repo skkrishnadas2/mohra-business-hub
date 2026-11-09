@@ -33,7 +33,7 @@ function Monitor() {
         <Tile><div className="text-xs text-muted-foreground">আজ বিক্রি</div><Money v={todaySales.reduce((s, x) => s + x.total, 0)} className="text-2xl font-semibold" /></Tile>
         <Tile><div className="text-xs text-muted-foreground">নেট লাভ</div><Money v={p.total} className="text-2xl font-semibold text-primary" /></Tile>
       </div>
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
         <Tile>
           <div className="mb-2 font-medium">কার্যক্রম লগ</div>
           <div className="max-h-[60vh] divide-y overflow-y-auto text-sm">

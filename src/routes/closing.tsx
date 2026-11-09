@@ -35,7 +35,7 @@ function Closing() {
           <Label>নোট গণনা করুন</Label>
           <div className="grid grid-cols-2 gap-2">
             {NOTES.map((n) => (
-              <div key={n} className="flex items-center gap-2"><span className="tnum w-16 text-sm text-muted-foreground">৳{bn(n)} ×</span><NumInput className="h-10 text-base" value={cnt[n] ?? ""} onChange={(v) => setCnt({ ...cnt, [n]: v })} /></div>
+              <div key={n} className="flex items-center gap-2"><span className="tnum w-14 shrink-0 text-sm text-muted-foreground">৳{bn(n)} ×</span><NumInput aria-label={`৳${bn(n)} নোটের সংখ্যা`} className="h-12 min-w-0 px-2 text-base" value={cnt[n] ?? ""} onChange={(v) => setCnt({ ...cnt, [n]: v })} /></div>
             ))}
           </div>
         </div>
