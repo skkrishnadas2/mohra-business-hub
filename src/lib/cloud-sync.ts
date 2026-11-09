@@ -119,6 +119,7 @@ export function queueCloudAction(action: CloudAction) {
       }
     } catch (error) {
       const message = actionError(error);
+      console.debug("[cloud-sync] error", message);
       useCloud.setState({ status: "error", error: message });
       toast.error(`Cloud সিঙ্ক হয়নি: ${message}`);
     } finally {
