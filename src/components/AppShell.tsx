@@ -2,10 +2,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   LayoutGrid, ScanBarcode, Smartphone, Wallet, Package, Wrench, Landmark, BookUser,
-  MoonStar, Settings, Activity, Menu, LogOut,
+  MoonStar, Settings, Activity, Menu, LogOut, Cloud,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Setup } from "./Setup";
+import { CloudSync } from "./CloudSync";
 import { PinPad } from "./kit";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
