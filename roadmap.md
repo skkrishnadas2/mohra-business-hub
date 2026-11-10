@@ -1,9 +1,10 @@
 # Live device monitor
 
 ## Money-flow hardening and environment cleanup
-- [ ] Audit monetary actions and add regression tests for validation, commission, ledger integrity and repair limits
-- [ ] Remove repository .env, ignore environment files and verify environment-only fallbacks and local-only startup
-- [ ] Run the full test suite and verify local money flows without design changes or publishing
+- [x] Audit monetary actions and add regression tests for validation, commission, ledger integrity and repair limits
+- [x] Remove repository .env and verify existing environment-only fallbacks and local-only startup
+- [ ] Ignore .env — blocked: platform refuses edits to managed .gitignore; user must add the exclusion in the repository
+- [x] Run the full test suite and verify local money flows without design changes or publishing — local demo flows and 12 pages pass with no runtime errors or Cloud requests; final test count reported in chat
 
 ## B2B SR correction
 - [x] Apply the corrected four SR legs, including cash-to-SIM, to both forms and ledger validation without changing other features

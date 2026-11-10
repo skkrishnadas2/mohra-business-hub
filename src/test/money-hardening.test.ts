@@ -72,4 +72,20 @@ describe("money-flow validation", () => {
     expect(store.getState().customers[0]?.due).toBe(120);
     expect(store.getState().txns).toHaveLength(1);
   });
+  it("leaves a 1000 repair undelivered when its 800 delivery balance cannot post", () => {
+    store.getState().addRepair({ customer: "Rahim", phone: "", device: "Phone", problem: "Display", estimate: 1000, advance: 200 });
+    const repair = store.getState().repairs[0];
+    if (!repair) throw new Error("Missing repair");
+    store.setState({ accounts: store.getState().accounts.filter(a => a.id !== "cash") });
+    expect(() => store.getState().setRepairStatus(repair.id, "delivered")).toThrow();
+    expect(store.getState().repairs[0]?.status).toBe("received");
+    expect(store.getState().repairs[0]?.deliveryCollected).toBe(false);
+    expect(store.getState().txns).toHaveLength(1);
+  });
+  it("rejects infinite money without ledger or balance changes", () => {
+    expect(() => store.getState().transfer("dbbl", "cash", Infinity, "Transfer")).toThrow();
+    expect(balance("cash")).toBe(10000);
+    expect(balance("dbbl")).toBe(5000);
+    expect(store.getState().txns).toHaveLength(0);
+  });
 });
