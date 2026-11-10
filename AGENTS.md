@@ -38,3 +38,4 @@ use the editor.
 - B2B forms and authoritative replay use the shared pure leg validator with source/target account IDs; reject incompatible legacy directional outbox payloads rather than reversing their intended money movement.
 
 - Persisted shop upgrades discard retired synthetic snapshots and preserve real shop data; never upload synthetic records as real financial history.
+- Setup account chips create only explicitly selected UUID-backed rows; pure naming, money-input and available-leg rules stay in rules.ts, and opening balances enter through one ledger post so later adjustments remain independently auditable.
