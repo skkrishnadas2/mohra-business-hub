@@ -4,11 +4,12 @@ export type MfsProvider = "bkash" | "nagad" | "rocket" | "upay";
 export type Operator = "gp" | "robi" | "airtel" | "banglalink" | "teletalk";
 
 /** SR settlement is separate from customer cash-in/out. */
-export function b2bLeg(kind: "mfs" | "recharge", sourceKind: string, targetKind: string): "sim_cash" | "bank_sim" | "bank_cash" | null {
+export function b2bLeg(kind: "mfs" | "recharge", sourceKind: string, targetKind: string): "sim_cash" | "bank_sim" | "bank_cash" | "cash_sim" | null {
   const simKind = kind === "mfs" ? "mfs_agent" : "recharge";
   if (sourceKind === simKind && targetKind === "cash") return "sim_cash";
   if (sourceKind === "bank" && targetKind === simKind) return "bank_sim";
   if (sourceKind === "bank" && targetKind === "cash") return "bank_cash";
+  if (sourceKind === "cash" && targetKind === simKind) return "cash_sim";
   return null;
 }
 

@@ -43,9 +43,9 @@ Every money movement goes through `post()` which writes one `Txn` and applies it
 - **Agent commission** = amount / 1000 × rate (bKash 3.70, Nagad/Rocket/Upay 4.00). Credited to the agent wallet and to profit (`cat: mfs`).
 - **Cash-in**: cash +amount, wallet −amount. **Cash-out**: reverse.
 - **Personal send**: cash +(amount+fee), wallet −amount. **Receive**: wallet +amount, cash −amount+fee. Fee = profit.
-- **SR B2B (separate from customers)**: exactly three legs in both forms: SIM −amount / cash +amount; bank −amount / SIM +amount; bank −amount / cash +amount. SIM means MFS agent for MFS, recharge SIM for recharge. Cash-funded loads, SIM-to-bank, personal wallets and cross-kind SIMs are rejected before posting.
-- **B2B commission**: MFS always 0. Recharge bank-to-SIM adds manual commission/extra balance to the SIM and profit; cash-receipt legs have no extra balance or profit. Reference and `b2b` permission remain required. One `post()` records each SR settlement without creating customer records.
-- **Legacy queued B2B**: only the old bank-to-SIM `load` payload remains compatible; legacy `return` and cash-funded payloads are rejected, never silently reinterpreted in the durable outbox.
+- **SR B2B (separate from customers)**: exactly four legs in both forms: SIM −amount / cash +amount; bank −amount / SIM +amount; bank −amount / cash +amount; cash −amount / SIM +amount. SIM means MFS agent for MFS, recharge SIM for recharge. SIM-to-bank, cash-to-cash, personal wallets and cross-kind SIMs are rejected before posting.
+- **B2B commission**: MFS always 0. Recharge bank-to-SIM and cash-to-SIM add manual commission/extra balance to the SIM and profit; cash-receipt legs have no extra balance or profit. Reference and `b2b` permission remain required. One `post()` records each SR settlement without creating customer records.
+- **Legacy queued B2B**: old bank-to-SIM and cash-to-SIM `load` payloads remain compatible; legacy `return` payloads are rejected, never silently reinterpreted in the durable outbox.
 - **Recharge sale**: SIM −amount, cash +amount.
 - **Sale**: stock −qty, paid accounts +amount, due → customer ledger; profit = total − cost. Void reverses all.
 - **Repairs**: advance and first delivery balance are service income. `deliveryCollected` prevents charging the balance again if a delivered repair is moved back to ready and delivered again. Advance cannot exceed the estimate.

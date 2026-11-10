@@ -11,7 +11,7 @@ export function B2BForm({ kind }: { kind: "mfs" | "recharge" }) {
   const sims = accounts.filter((a) => a.kind === simKind);
   const banks = accounts.filter((a) => a.kind === "bank");
   const cash = accounts.find((a) => a.kind === "cash");
-  const [payFrom, setPayFrom] = useState<"sim" | "bank">("bank");
+  const [payFrom, setPayFrom] = useState<"sim" | "bank" | "cash">("bank");
   const [receive, setReceive] = useState<"sim" | "cash">("sim");
   const [sim, setSim] = useState(sims[0]?.id ?? "");
   const [bank, setBank] = useState(banks[0]?.id ?? "");
@@ -20,17 +20,17 @@ export function B2BForm({ kind }: { kind: "mfs" | "recharge" }) {
   const [ref, setRef] = useState("");
   if (!can("b2b")) return <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">B2B লোডের অনুমতি নেই। মালিকের সাথে যোগাযোগ করুন।</div>;
   const amt = Number(amount) || 0;
-  const source = payFrom === "sim" ? sim : bank;
+  const source = payFrom === "sim" ? sim : payFrom === "bank" ? bank : cash?.id ?? "";
   const target = receive === "sim" ? sim : cash?.id ?? "";
-  const hasExtra = kind === "recharge" && payFrom === "bank" && receive === "sim";
+  const hasExtra = kind === "recharge" && payFrom !== "sim" && receive === "sim";
   const c = hasExtra ? Number(com) || 0 : 0;
   const tName = accounts.find((a) => a.id === target)?.name;
   const sName = accounts.find((a) => a.id === source)?.name;
 
   return (
     <div className="space-y-4">
-      <div><Label>কোথা থেকে দিচ্ছি</Label><Chips value={payFrom} onChange={(v) => { setPayFrom(v); if (v === "sim") setReceive("cash"); }} options={[{ value: "sim", label: kind === "mfs" ? "এজেন্ট সিম" : "রিচার্জ সিম" }, { value: "bank", label: "ব্যাংক" }]} /></div>
-      <div><Label>কী পাচ্ছি</Label><Chips value={receive} onChange={setReceive} options={payFrom === "sim" ? [{ value: "cash", label: "ক্যাশ" }] : [{ value: "sim", label: kind === "mfs" ? "এজেন্ট সিমে ব্যালেন্স" : "রিচার্জ সিমে ব্যালেন্স" }, { value: "cash", label: "ক্যাশ" }]} /></div>
+      <div><Label>কোথা থেকে দিচ্ছি</Label><Chips value={payFrom} onChange={(v) => { setPayFrom(v); if (v === "sim") setReceive("cash"); if (v === "cash") setReceive("sim"); }} options={[{ value: "sim", label: kind === "mfs" ? "এজেন্ট সিম" : "রিচার্জ সিম" }, { value: "bank", label: "ব্যাংক" }, { value: "cash", label: "ক্যাশ" }]} /></div>
+      <div><Label>কী পাচ্ছি</Label><Chips value={receive} onChange={setReceive} options={payFrom === "sim" ? [{ value: "cash", label: "ক্যাশ" }] : [{ value: "sim", label: kind === "mfs" ? "এজেন্ট সিমে ব্যালেন্স" : "রিচার্জ সিমে ব্যালেন্স" }, ...(payFrom === "bank" ? [{ value: "cash" as const, label: "ক্যাশ" }] : [])]} /></div>
       {(payFrom === "sim" || receive === "sim") && <div><Label>{kind === "mfs" ? "এজেন্ট সিম" : "রিচার্জ সিম"}</Label>
         <Chips value={sim} onChange={setSim} options={sims.map((t) => ({ value: t.id, label: t.name }))} /></div>}
       {payFrom === "bank" && <div><Label>ব্যাংক হিসাব</Label>
