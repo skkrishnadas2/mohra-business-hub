@@ -4,7 +4,7 @@
 
 - [x] Make browser Supabase configuration environment-based with environment-only Cloud fallbacks
 - [x] Add Wrangler configuration matching Nitro Worker output
-- [ ] Run the complete test suite and check automatic build results without publishing
+- [x] Run the complete test suite and check automatic build results without publishing — 46 tests pass; automatic build reports build OK
 
 - [x] Track Cloud-connected owner and cashier devices with Realtime Presence
 - [x] Show online device type, role and current-device status in the owner monitor
