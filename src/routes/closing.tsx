@@ -29,9 +29,13 @@ function Closing() {
   const shift = txns.filter((t) => t.at > lastClosedAt);
   const profit = shift.reduce((s, t) => s + t.profit, 0);
   const diff = counted - expected;
+  const saveClosing = () => {
+    try { const c = closeDay(counted); toast.success(`শিফট বন্ধ · পার্থক্য ${taka(c.diff)}`); setCnt({}); }
+    catch (error) { toast.error(actionError(error)); }
+  };
 
   return (
-    <Page title="দিন শেষ হিসাব" sub={`এই শিফটে ${bn(shift.length)}টি লেনদেন`}>
+    <Page title="দিন শেষ হিসাব" sub={`এই শিফটে ${bn(shift.length)}টি লেনদেন`} action={<BigButton onClick={saveClosing}>সেভ ও শিফট বন্ধ করুন</BigButton>}>
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <div className="rounded-xl border bg-card p-4 shadow-soft sm:p-5">
           <Label>নোট গণনা করুন</Label>
@@ -49,10 +53,6 @@ function Closing() {
             <Money v={diff} className={`text-2xl font-semibold ${diff === 0 ? "text-primary" : "text-destructive"}`} />
           </Tile>
           {can("viewProfit") && <Tile><div className="text-sm text-muted-foreground">শিফটের নেট লাভ</div><Money v={profit} className="text-2xl font-semibold text-primary" /></Tile>}
-          <BigButton className="min-h-14" onClick={() => {
-            try { const c = closeDay(counted); toast.success(`শিফট বন্ধ · পার্থক্য ${taka(c.diff)}`); setCnt({}); }
-            catch (error) { toast.error(actionError(error)); }
-          }}>শিফট বন্ধ করুন</BigButton>
         </div>
       </div>
       {closings.length > 0 && (

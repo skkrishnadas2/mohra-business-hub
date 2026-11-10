@@ -37,7 +37,7 @@ function Services() {
       {tab === "slip" ? (
         <div className="max-w-xl space-y-4 rounded-xl border bg-card p-4 shadow-soft sm:p-5">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {QUICK.map((q) => <button key={q} onClick={() => setSvc(q)} className={`min-h-14 rounded-xl border px-3 py-2 text-sm ${svc === q ? "border-primary bg-accent font-semibold text-accent-foreground" : "bg-card hover:bg-secondary"}`}>{q}</button>)}
+            {QUICK.map((q) => <BigButton key={q} aria-pressed={svc === q} onClick={() => setSvc(q)} className={`min-h-14 rounded-lg border px-3 py-2 text-sm ${svc === q ? "border-primary bg-primary font-semibold text-primary-foreground" : "bg-card text-foreground hover:enabled:bg-secondary"}`}>{q}</BigButton>)}
           </div>
           <div><Label>বিল</Label><NumInput value={amt} onChange={setAmt} /></div>
           <BigButton disabled={!Number(amt)} onClick={() => {

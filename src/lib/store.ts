@@ -112,6 +112,7 @@ const SAMPLE_PRODUCTS: Product[] = [
 
 export interface State {
   setupDone: boolean;
+  demoMode: boolean;
   shopName: string;
   ownerPin: string;
   cashierPin: string;
@@ -156,6 +157,7 @@ interface Actions {
 
 const initial: State = {
   setupDone: false,
+  demoMode: false,
   shopName: "মোহরা আইটি কেয়ার এন্ড টেলিকম সেন্টার",
   ownerPin: "1234",
   cashierPin: "0000",
@@ -480,8 +482,9 @@ function withCloudActions(store: ShopStore): ShopStore {
   for (const name of CLOUD_ACTIONS) {
     const original = source[name] as (...args: unknown[]) => unknown;
     target[name] = (...args: unknown[]) => {
+      const localOnly = useStore.getState().demoMode;
       const result = original(...args);
-      if (result !== false && typeof window !== "undefined") {
+      if (!localOnly && !useStore.getState().demoMode && result !== false && typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent<CloudAction>(CLOUD_ACTION_EVENT, { detail: { name, args } }));
       }
       return result;
@@ -492,8 +495,9 @@ function withCloudActions(store: ShopStore): ShopStore {
 
 /** Only serializable shop data crosses the Cloud boundary; device login state stays local. */
 export function shopSnapshot(state: State): State {
+  if (state.demoMode) throw new Error("ডেমো ডেটা শুধু এই ডিভাইসে থাকবে");
   return {
-    setupDone: state.setupDone, shopName: state.shopName, ownerPin: state.ownerPin,
+    setupDone: state.setupDone, demoMode: false, shopName: state.shopName, ownerPin: state.ownerPin,
     cashierPin: state.cashierPin, cipherKey: state.cipherKey, perms: state.perms,
     role: null, accounts: state.accounts, products: state.products, sales: state.sales,
     txns: state.txns, customers: state.customers, repairs: state.repairs,

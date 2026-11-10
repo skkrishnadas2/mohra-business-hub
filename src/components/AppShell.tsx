@@ -7,7 +7,7 @@ import {
 import { useStore } from "@/lib/store";
 import { Setup } from "./Setup";
 import { CloudSync } from "./CloudSync";
-import { PinPad } from "./kit";
+import { BigButton, PinPad } from "./kit";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 
@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     void Promise.resolve(useStore.persist.rehydrate()).then(() => setHydrated(true));
   }, []);
-  const { setupDone, role, login, logout, shopName } = useStore();
+  const { setupDone, demoMode, role, login, logout, shopName } = useStore();
   const [err, setErr] = useState("");
   const [more, setMore] = useState(false);
   const loc = useLocation();
@@ -58,18 +58,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   const items = NAV.filter((n) => !n.owner || role === "owner");
   const active = (to: string) => loc.pathname === to || (to !== "/" && loc.pathname.startsWith(`${to}/`));
   const moreActive = items.slice(4).some((n) => active(n.to));
+  const moreItem = items.slice(4).find((n) => active(n.to));
+  const MoreIcon = moreItem?.icon ?? Menu;
   const roleLabel = role === "owner" ? "মালিক" : "ক্যাশিয়ার";
   const focusClass = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
   return (
     <div className="min-h-dvh bg-background md:flex">
-      <CloudSync />
+      {!demoMode && <CloudSync />}
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar p-3 md:flex lg:w-64">
         <div className="mb-4 flex items-center gap-3 border-b px-2 pb-5 pt-3">
           <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground">ম</div>
           <div className="min-w-0">
             <div className="break-words text-sm font-semibold leading-snug">{shopName}</div>
             <div className="mt-1 text-xs text-muted-foreground">{roleLabel} হিসেবে কাজ করছেন</div>
+            {demoMode && <span className="mt-1 inline-block rounded-md bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">ডেমো</span>}
           </div>
         </div>
         <div className="mb-2 px-3 text-xs font-medium text-muted-foreground">কাজের মেনু</div>
@@ -96,6 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="break-words text-sm font-semibold">{shopName}</div>
             <div className="text-xs text-muted-foreground">{roleLabel} হিসেবে কাজ করছেন</div>
           </div>
+          {demoMode && <span className="shrink-0 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">ডেমো</span>}
         </header>
         {children}
       </main>
@@ -105,15 +109,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           {items.slice(0, 4).map((n) => (
             <Link key={n.to} to={n.to} aria-current={active(n.to) ? "page" : undefined}
               className={cn("flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] transition-colors", focusClass,
-                active(n.to) ? "bg-accent font-semibold text-accent-foreground" : "text-muted-foreground hover:bg-secondary")}>
+                active(n.to) ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground hover:bg-secondary")}>
               <n.icon aria-hidden="true" className="h-5 w-5 shrink-0" /> {n.label}
             </Link>
           ))}
-          <button type="button" onClick={() => setMore(true)} aria-expanded={more} aria-controls="more-navigation" aria-label={moreActive ? "আরো মেনু — বর্তমান পৃষ্ঠা এখানে" : "আরো মেনু"}
+          <BigButton type="button" onClick={() => setMore(true)} aria-current={moreActive ? "page" : undefined} aria-expanded={more} aria-controls="more-navigation" aria-label={moreActive ? `${moreItem?.label} — আরো মেনু` : "আরো মেনু"}
             className={cn("flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] transition-colors", focusClass,
-              moreActive ? "bg-accent font-semibold text-accent-foreground" : "text-muted-foreground hover:bg-secondary")}>
-            <Menu aria-hidden="true" className="h-5 w-5" /> আরো
-          </button>
+              moreActive ? "bg-primary font-semibold text-primary-foreground" : "bg-card text-muted-foreground hover:bg-secondary")}>
+            <MoreIcon aria-hidden="true" className="h-5 w-5" /> <span className="max-w-full truncate">{moreItem?.label ?? "আরো"}</span>
+          </BigButton>
         </div>
       </nav>
       <Sheet open={more} onOpenChange={setMore}>

@@ -31,6 +31,11 @@ type ShopListItem = { shopId: string; name: string; role: "owner" | "cashier" };
 type Profile = { display_name: string; avatar_path: string | null; preferences: Record<string, unknown> };
 
 function CloudPage() {
+  const demoMode = useStore((s) => s.demoMode);
+  return demoMode ? <Page title="Cloud সিঙ্ক"><div role="status" className="border-y py-5 text-sm text-muted-foreground">ডেমো · শুধু এই ডিভাইসে · Cloud সংযোগ বন্ধ</div></Page> : <CloudAccountPage />;
+}
+
+function CloudAccountPage() {
   const localRole = useStore((s) => s.role);
   const cloud = useCloud();
   const queryClient = useQueryClient();

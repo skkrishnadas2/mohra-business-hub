@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { taka } from "@/lib/rules";
+import { Button } from "./ui/button";
 
 export function Page({ title, sub, action, children }: { title: string; sub?: string; action?: ReactNode; children: ReactNode }) {
   return (
@@ -56,7 +57,7 @@ export function Chips<T extends string>({ value, onChange, options }: { value: T
   return (
     <div className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border bg-muted p-1">
       {options.map((o) => (
-        <button
+        <Button
           key={o.value}
           type="button"
           aria-pressed={value === o.value}
@@ -64,12 +65,12 @@ export function Chips<T extends string>({ value, onChange, options }: { value: T
           className={cn(
             "min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             value === o.value
-              ? "border-border bg-card font-semibold text-foreground shadow-soft"
-              : "border-transparent bg-transparent text-muted-foreground hover:text-foreground",
+              ? "border-primary bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+              : "border-transparent bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground",
           )}
         >
           {o.label}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -108,9 +109,9 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement> & {
 
 export function BigButton({ children, className, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button {...p} className={cn("inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold leading-snug text-primary-foreground transition-colors hover:enabled:bg-primary/90 active:enabled:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none", className)}>
+    <Button {...p} className={cn("inline-flex h-auto min-h-11 w-full items-center justify-center gap-2 whitespace-normal rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold leading-snug text-primary-foreground transition-colors hover:enabled:bg-primary/90 active:enabled:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none", className)}>
       {children}
-    </button>
+    </Button>
   );
 }
 

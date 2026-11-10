@@ -20,6 +20,8 @@ App (TanStack Start + React 19, Tailwind v4, Hind Siliguri)
 ```
 
 ## Data model (`src/lib/store.ts`)
+`State.demoMode` is a device-local flag. `src/lib/demo.ts` seeds a fresh non-persisted store through normal ledger actions and then installs its serializable data locally. Demo snapshots cannot cross `shopSnapshot`; Cloud upload/join/open, sync queues, retries and realtime refresh are blocked. The Cloud page does not mount account/auth requests in demo mode. A connection epoch also discards remote responses arriving after disconnect/reset. Demo reset clears only app-owned storage, not unrelated origin data or remote shops.
+
 | Entity | Key fields |
 |---|---|
 | Account | id, name, kind (`cash`/`bank`/`mfs_agent`/`mfs_personal`/`recharge`), provider, balance |
