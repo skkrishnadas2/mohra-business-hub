@@ -1,7 +1,7 @@
 ## Setup account customization
-- [ ] Add, rename and delete setup accounts with kind-specific operators and opening balances
-- [ ] Persist the chosen account list atomically and verify it in B2B, MFS and Accounts
-- [ ] Add regression tests, run the full suite and verify setup interactions without publishing
+- [x] Add, rename and delete setup accounts with kind-specific operators and opening balances
+- [x] Persist the chosen account list atomically and verify it in B2B, MFS and Accounts
+- [x] Add regression tests, run the full suite and verify setup interactions without publishing — 99/99 tests pass; automatic build OK; browser add/delete/rename and downstream account selection verified with no page errors
 
 ## Remove synthetic mode
 - [x] Remove alternate setup, seed data, badges, reset controls and Cloud restrictions
