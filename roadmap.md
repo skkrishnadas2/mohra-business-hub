@@ -1,8 +1,8 @@
 # Live device monitor
 
 ## B2B SR correction
-- [ ] Apply the corrected four SR legs, including cash-to-SIM, to both forms and ledger validation without changing other features
-- [ ] Test all four legs for both account kinds, verify the forms and run the full suite without publishing
+- [x] Apply the corrected four SR legs, including cash-to-SIM, to both forms and ledger validation without changing other features
+- [x] Test all four legs for both account kinds, verify the forms and run the full suite without publishing — 83 tests pass, automatic build OK; eight demo settlements verified and 700×374 overflow checks pass
 
 ## Local demo verification
 
