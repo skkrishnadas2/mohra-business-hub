@@ -47,6 +47,11 @@ describe.each(["mfs", "recharge"] as const)("%s SR settlement", kind => {
     store.setState({ role: "owner" }); store.getState().setPerm("b2b", true); store.getState().login("2222");
     settle("dbbl", "cash"); expect(balance("cash")).toBe(10500);
   });
+  it("rejects legacy return without silently reversing its intended movement", () => {
+    expect(() => store.getState().b2b({ kind, dir: "return", sourceId: "dbbl", targetId: sim, amount: 500, commission: 0, ref: "OLD" })).toThrow("পুরোনো");
+    expect(balance("dbbl")).toBe(5000); expect(balance(sim)).toBe(opening);
+    expect(store.getState().txns).toEqual([]);
+  });
   it("replays bank-to-cash using the same authoritative ledger rule", () => {
     const result = replayCloudAction(shopSnapshot(store.getState()), "owner", { name: "b2b", args: [{ kind, sourceId: "dbbl", targetId: "cash", amount: 500, commission: 0, ref: "SR-2" }] });
     expect(result.status).toBe("ok");
