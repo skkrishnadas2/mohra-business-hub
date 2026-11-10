@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_ACCOUNTS, useStore, type Account } from "@/lib/store";
+import { availableB2BLegs, formatOpeningBalance, nextSetupName, parseOpeningBalance } from "@/lib/rules";
 
 const credentials = { shopName: "আমার দোকান", ownerPin: "1111", cashierPin: "2222" };
 const balance = (id: string) => useStore.getState().accounts.find((account) => account.id === id)?.balance;
@@ -10,6 +11,53 @@ beforeEach(() => {
 });
 
 describe("setup account customization", () => {
+  it("opens only selected accounts in one ledger entry and records later adjustment separately", () => {
+    const accounts: Account[] = [
+      { id: "cash", name: "ক্যাশ ড্রয়ার", kind: "cash", balance: 0 },
+      { id: "selected", name: "বিকাশ এজেন্ট ১", kind: "mfs_agent", provider: "bkash", balance: 0 },
+    ];
+    useStore.getState().completeSetup({ ...credentials, accounts, balances: { cash: 1000, selected: 2500 } });
+    expect(useStore.getState().accounts.map(account => account.id)).toEqual(["cash", "selected"]);
+    expect(useStore.getState().txns).toHaveLength(1);
+    expect(useStore.getState().txns[0]).toMatchObject({ type: "opening", amount: 3500, profit: 0, moves: [{ accountId: "cash", delta: 1000 }, { accountId: "selected", delta: 2500 }] });
+    useStore.getState().setBalance("selected", 2600, credentials.ownerPin);
+    expect(useStore.getState().txns).toHaveLength(2);
+    expect(useStore.getState().txns[0]).toMatchObject({ type: "adjust", amount: 100, moves: [{ accountId: "selected", delta: 100 }] });
+    expect(balance("selected")).toBe(2600);
+    expect(useStore.getState().txns.filter(txn => txn.type === "opening")).toHaveLength(1);
+  });
+
+  it("numbers repeated chips without duplicate names after deleting or renaming rows", () => {
+    expect(nextSetupName("বিকাশ এজেন্ট", [])).toBe("বিকাশ এজেন্ট ১");
+    expect(nextSetupName("বিকাশ এজেন্ট", ["বিকাশ এজেন্ট ১", "বিকাশ এজেন্ট ২"])).toBe("বিকাশ এজেন্ট ৩");
+    expect(nextSetupName("বিকাশ এজেন্ট", ["বিকাশ এজেন্ট ২"])).toBe("বিকাশ এজেন্ট ১");
+  });
+
+  it("accepts blank zero and Bengali grouped money but rejects negative or invalid balances", () => {
+    expect(parseOpeningBalance("")).toBe(0);
+    expect(parseOpeningBalance("১,২৩,৪৫৬.৭৮")).toBe(123456.78);
+    expect(formatOpeningBalance("123456.78")).toBe("১,২৩,৪৫৬.৭৮");
+    for (const value of ["-100", "-১০০", "1.234", "Infinity", "1..2"]) expect(parseOpeningBalance(value)).toBeNull();
+    expect(() => useStore.getState().completeSetup({ ...credentials, accounts: [DEFAULT_ACCOUNTS[0] as Account], balances: { cash: -1 } })).toThrow("ঋণাত্মক");
+    expect(useStore.getState().setupDone).toBe(false);
+    expect(useStore.getState().txns).toEqual([]);
+  });
+
+  it("records one opening entry even when every balance is blank zero", () => {
+    useStore.getState().completeSetup({ ...credentials, accounts: [{ id: "cash", name: "ক্যাশ", kind: "cash", balance: 0 }], balances: {} });
+    expect(useStore.getState().txns).toHaveLength(1);
+    expect(useStore.getState().txns[0]?.amount).toBe(0);
+    expect(balance("cash")).toBe(0);
+  });
+
+  it.each(["mfs", "recharge"] as const)("hides unavailable %s settlement legs", kind => {
+    const simKind = kind === "mfs" ? "mfs_agent" : "recharge";
+    expect(availableB2BLegs(kind, [{ kind: "cash" }])).toEqual([]);
+    expect(availableB2BLegs(kind, [{ kind: "cash" }, { kind: "bank" }]).map(leg => [leg.from, leg.receive])).toEqual([["bank", "cash"]]);
+    expect(availableB2BLegs(kind, [{ kind: "cash" }, { kind: simKind }]).map(leg => [leg.from, leg.receive])).toEqual([["sim", "cash"], ["cash", "sim"]]);
+    expect(availableB2BLegs(kind, [{ kind: "cash" }, { kind: "bank" }, { kind: simKind }])).toHaveLength(4);
+  });
+
   it("saves renamed and newly added accounts and omits deleted defaults", () => {
     const accounts = DEFAULT_ACCOUNTS
       .filter((account) => account.id !== "brac")
