@@ -1,8 +1,8 @@
 # Live device monitor
 
 ## B2B SR correction
-- [x] Apply the same three allowed SR legs to both B2B forms and ledger validation, preserving commission, reference, permissions and demo isolation
-- [x] Test both account kinds, forbidden combinations and Cloud replay; verify both forms and run the full suite without publishing — 77 tests pass, automatic build OK; all six demo settlements read back correctly with no page errors
+- [x] Apply the corrected four SR legs, including cash-to-SIM, to both forms and ledger validation without changing other features
+- [x] Test all four legs for both account kinds, verify the forms and run the full suite without publishing — 83 tests pass, automatic build OK; eight demo settlements verified and 700×374 overflow checks pass
 
 ## Local demo verification
 

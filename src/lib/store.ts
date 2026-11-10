@@ -401,13 +401,14 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const source = requireAccount(sourceId);
           if (kind !== "mfs" && kind !== "recharge") fail("সঠিক B2B ধরন বেছে নিন");
           const leg = b2bLeg(kind, source.kind, target.kind);
-          if (!leg) fail("SR লেনদেনে সিম থেকে শুধু ক্যাশ; ব্যাংক থেকে সিম ব্যালেন্স বা ক্যাশ নেওয়া যাবে");
+          if (!leg) fail("SR লেনদেনে সিম থেকে শুধু ক্যাশ; ব্যাংক থেকে সিম ব্যালেন্স বা ক্যাশ; ক্যাশ থেকে শুধু সিম ব্যালেন্স নেওয়া যাবে");
           // Never reinterpret a durable legacy return action as a forward payment.
-          if (dir !== undefined && (dir !== "load" || leg !== "bank_sim")) fail("পুরোনো B2B নির্বাচনটি নতুন নিয়মে আবার দিন");
+          if (dir !== undefined && (dir !== "load" || (leg !== "bank_sim" && leg !== "cash_sim"))) fail("পুরোনো B2B নির্বাচনটি নতুন নিয়মে আবার দিন");
           const value = positive(amount);
-          const extra = kind === "recharge" && leg === "bank_sim" ? nonNegative(commission, "কমিশন") : 0;
+          const receivesSim = leg === "bank_sim" || leg === "cash_sim";
+          const extra = kind === "recharge" && receivesSim ? nonNegative(commission, "কমিশন") : 0;
           const reference = required(ref, "রেফারেন্স");
-          post({ type: `b2b_${kind}`, title: `B2B SR · ${source.name} → ${target.name}`, amount: value, profit: extra, cat: kind === "recharge" && leg === "bank_sim" ? "recharge" : "none", ref: reference,
+          post({ type: `b2b_${kind}`, title: `B2B SR · ${source.name} → ${target.name}`, amount: value, profit: extra, cat: kind === "recharge" && receivesSim ? "recharge" : "none", ref: reference,
             moves: [{ accountId: sourceId, delta: -value }, { accountId: targetId, delta: value + extra }] });
         },
         serviceSlip: (title, amount, accountId) => {
