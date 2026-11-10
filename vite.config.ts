@@ -9,6 +9,7 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import type { NitroConfig } from "nitro/types";
+import { loadEnv } from "vite";
 
 // Keep server dependency helpers in the same bundle: split CommonJS chunks
 // can initialize before their helper exports in the hosted Worker runtime.
@@ -17,11 +18,20 @@ const nitroOptions: NitroConfig = {
   inlineDynamicImports: true,
 };
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Existing unprefixed Cloud settings provide public-only build-time defaults.
+  // External hosting can override the browser target through VITE_SUPABASE_*.
+  const cloudEnv = loadEnv(mode, process.cwd(), "SUPABASE_");
+  return {
+  define: {
+    "import.meta.env.VITE_LOVABLE_SUPABASE_URL": JSON.stringify(cloudEnv['SUPABASE_URL'] ?? ""),
+    "import.meta.env.VITE_LOVABLE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(cloudEnv['SUPABASE_PUBLISHABLE_KEY'] ?? ""),
+  },
   nitro: nitroOptions,
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  };
 });
