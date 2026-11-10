@@ -168,6 +168,7 @@ async function runFlush() {
     }
     try {
       if (useCloud.getState().version < 1 && savedVersion() < 1) await openCloudShop(shopId);
+      if (demoActive() || epoch !== connectionEpoch) return;
       const baseVersion = useCloud.getState().version || savedVersion();
       if (baseVersion < 1) throw new Error("Cloud সংযোগের সংস্করণ পাওয়া যায়নি");
       const result = await applyCloudAction({ data: { shopId, baseVersion, action } });
