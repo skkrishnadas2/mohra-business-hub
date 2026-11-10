@@ -77,7 +77,7 @@ describe("sale safeguards", () => {
   it("rejects payments that do not equal the ৳900 bill", () => {
     expect(() => useStore.getState().checkout([productLine(0, 2)], [{ accountId: "cash", amount: 899 }])).toThrow("অমিল");
     expect(useStore.getState().sales).toHaveLength(0);
-    expect(useStore.getState().txns).toHaveLength(0);
+    expect(useStore.getState().txns.filter(txn => txn.type !== "opening")).toHaveLength(0);
     expect(bal("cash")).toBe(10000);
   });
 
@@ -159,7 +159,7 @@ describe("permissions and account safeguards", () => {
 
   it("requires a B2B reference before posting", () => {
     expect(() => useStore.getState().b2b({ kind: "recharge", targetId: "rc_gp", sourceId: "dbbl", amount: 100, commission: 0, ref: "" })).toThrow("রেফারেন্স");
-    expect(useStore.getState().txns).toHaveLength(0);
+    expect(useStore.getState().txns.filter(txn => txn.type !== "opening")).toHaveLength(0);
   });
 
   it("does not delete a product referenced by a sale", () => {
