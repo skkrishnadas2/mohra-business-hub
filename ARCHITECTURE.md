@@ -36,11 +36,12 @@ App (TanStack Start + React 19, Tailwind v4, Hind Siliguri)
 Every money movement goes through `post()` which writes one `Txn` and applies its `moves` to balances — the ledger is the single source of truth for profit and audit. `post()` validates every target account and rejects any movement that would make an account negative. Store actions validate before changing related entities, so a rejected sale cannot partially reduce stock or create a customer due.
 
 ## Business rules
-- **Sale safeguards**: cart quantities must be positive integers and cannot exceed stock. Payments must equal the bill to within ৳0.01, payment accounts must exist, and recharge SIMs cannot receive retail payments.
+- **Sale safeguards**: cart quantities must be positive integers and cannot exceed stock. Payments must equal the bill exactly in integer paisa after two-decimal rounding, payment accounts must exist, and recharge SIMs cannot receive retail payments.
 - **Due safeguards**: a due sale requires a customer name. Collection cannot exceed outstanding due. A due invoice cannot be voided after its due has been collected.
 - **Permissions**: every privileged store action re-checks the current role; hiding a button is not the permission boundary. Product changes/deletions require `manageProducts`, invoice voids require `editSales`, and B2B requires `b2b`. Account creation, permission changes and PIN changes are owner-only.
 - **Product history**: a product referenced by an invoice cannot be deleted; set its stock to zero instead. Barcodes must be unique across products.
 - **Agent commission** = amount / 1000 × rate (bKash 3.70, Nagad/Rocket/Upay 4.00). Credited to the agent wallet and to profit (`cat: mfs`).
+- **Money validation**: MFS directions are validated at runtime. Principal debits must be affordable before commission or fee credits; these earnings cannot cover a short principal balance. Ledger amounts, profit and resulting balances must be finite. Due collection and repair delivery validate cash movements before changing customer due or repair status.
 - **Cash-in**: cash +amount, wallet −amount. **Cash-out**: reverse.
 - **Personal send**: cash +(amount+fee), wallet −amount. **Receive**: wallet +amount, cash −amount+fee. Fee = profit.
 - **SR B2B (separate from customers)**: exactly four legs in both forms: SIM −amount / cash +amount; bank −amount / SIM +amount; bank −amount / cash +amount; cash −amount / SIM +amount. SIM means MFS agent for MFS, recharge SIM for recharge. SIM-to-bank, cash-to-cash, personal wallets and cross-kind SIMs are rejected before posting.

@@ -188,12 +188,14 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
         }
         for (const [accountId, delta] of deltas) {
           const account = accounts.find((a) => a.id === accountId) ?? fail("লেনদেনের হিসাবটি পাওয়া যায়নি");
+          if (!Number.isFinite(delta) || !Number.isFinite(account.balance) || !Number.isFinite(account.balance + delta)) fail("লেনদেনের পরিমাণ সঠিক নয়");
           if (round2(account.balance + delta) < -EPSILON) fail(`${account.name}ে পর্যাপ্ত ব্যালেন্স নেই`);
         }
         return deltas;
       };
       const post = (t: Omit<Txn, "id" | "at" | "by">) => {
         const by = requireRole(get().role);
+        if (!Number.isFinite(t.amount) || !Number.isFinite(t.profit)) fail("লেনদেনের পরিমাণ সঠিক নয়");
         const deltas = validateMoves(get().accounts, t.moves);
         const txn: Txn = { ...t, id: uid(), at: Date.now(), by };
         set((s) => ({
@@ -313,7 +315,8 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           }
           if (!cleanPayments.length) fail("পেমেন্টের পরিমাণ দিন");
           const paid = round2(cleanPayments.reduce((sum, payment) => sum + payment.amount, 0));
-          if (Math.abs(paid - total) >= 0.01) fail(`পেমেন্ট ও বিলের অমিল: বিল ${total}, পেমেন্ট ${paid}`);
+          if (!Number.isFinite(total) || !Number.isFinite(cost) || !Number.isFinite(paid)) fail("লেনদেনের পরিমাণ সঠিক নয়");
+          if (Math.round(paid * 100) !== Math.round(total * 100)) fail(`পেমেন্ট ও বিলের অমিল: বিল ${total}, পেমেন্ট ${paid}`);
           const due = round2(cleanPayments.filter((p) => p.accountId === "due").reduce((sum, p) => sum + p.amount, 0));
           if (due > 0 && !customer?.name.trim()) fail("বাকি বিক্রির জন্য কাস্টমারের নাম দিন");
           const moves = cleanPayments.filter((p) => p.accountId !== "due").map((p) => ({ accountId: p.accountId as string, delta: p.amount }));
@@ -374,24 +377,28 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
         },
         mfsAgent: (walletId, dir, amount, number) => {
           requireRole(get().role);
+          if (dir !== "in" && dir !== "out") fail("সঠিক MFS লেনদেন বেছে নিন");
           const wallet = requireAccount(walletId);
           if (wallet.kind !== "mfs_agent") fail("এজেন্ট ওয়ালেট বেছে নিন");
           const value = positive(amount);
           const phone = phoneNumber(number);
           const commission = agentCommission(wallet.provider as MfsProvider, value);
           const sign = dir === "in" ? 1 : -1;
+          validateMoves(get().accounts, [{ accountId: dir === "in" ? walletId : "cash", delta: -value }]);
           post({ type: `mfs_${dir}`, title: `${dir === "in" ? "ক্যাশ-ইন" : "ক্যাশ-আউট"} · ${wallet.name} · ${phone}`, amount: value, profit: commission, cat: "mfs",
             moves: [{ accountId: "cash", delta: sign * value }, { accountId: walletId, delta: -sign * value + commission }] });
           return commission;
         },
         mfsPersonal: (walletId, dir, amount, fee, number) => {
           requireRole(get().role);
+          if (dir !== "send" && dir !== "receive") fail("সঠিক পার্সোনাল লেনদেন বেছে নিন");
           const wallet = requireAccount(walletId);
           if (wallet.kind !== "mfs_personal") fail("পার্সোনাল ওয়ালেট বেছে নিন");
           const value = positive(amount);
           const charge = nonNegative(fee, "সার্ভিস চার্জ");
           const phone = phoneNumber(number);
           const sign = dir === "send" ? 1 : -1;
+          validateMoves(get().accounts, [{ accountId: dir === "send" ? walletId : "cash", delta: -value }]);
           post({ type: `personal_${dir}`, title: `${dir === "send" ? "সেন্ড মানি" : "রিসিভ মানি"} · ${wallet.name} · ${phone}`, amount: value, profit: charge, cat: "mfs",
             moves: [{ accountId: "cash", delta: sign * value + charge }, { accountId: walletId, delta: -sign * value }] });
         },
@@ -430,10 +437,12 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
         },
         setRepairStatus: (id, status) => {
           requireRole(get().role);
+          if (!["received", "repairing", "ready", "delivered"].includes(status)) fail("সঠিক রিপেয়ার অবস্থা বেছে নিন");
           const repair = get().repairs.find((x) => x.id === id) ?? fail("রিপেয়ার এন্ট্রি পাওয়া যায়নি");
           if (repair.status === status) return;
           const rest = round2(Math.max(0, repair.estimate - repair.advance));
           const collect = status === "delivered" && !repair.deliveryCollected;
+          if (collect && rest > 0) validateMoves(get().accounts, [{ accountId: "cash", delta: rest }]);
           set((s) => ({ repairs: s.repairs.map((x) => x.id === id ? { ...x, status, deliveryCollected: x.deliveryCollected || collect } : x) }));
           if (collect && rest > 0) post({ type: "repair_bill", title: `রিপেয়ার ডেলিভারি · ${repair.device}`, amount: rest, profit: rest, cat: "service", moves: [{ accountId: "cash", delta: rest }] });
         },
@@ -442,6 +451,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const customer = get().customers.find((x) => x.id === customerId) ?? fail("কাস্টমার পাওয়া যায়নি");
           const value = positive(amount);
           if (value > customer.due + EPSILON) fail("বাকির চেয়ে বেশি টাকা আদায় করা যাবে না");
+          validateMoves(get().accounts, [{ accountId: "cash", delta: value }]);
           set((s) => ({ customers: s.customers.map((x) => x.id === customerId ? { ...x, due: round2(x.due - value) } : x) }));
           post({ type: "due_collect", title: `বাকি আদায় · ${customer.name}`, amount: value, profit: 0, cat: "none", moves: [{ accountId: "cash", delta: value }] });
         },
