@@ -30,6 +30,7 @@ use the editor.
 <!-- LOVABLE:END -->
 
 - All money movements must go through the store's ledger `post()` (src/lib/store.ts) so balances and profit stay auditable; pure rules live in src/lib/rules.ts.
+- Validate principal debits before fees/commission credits, compare retail payments in integer paisa, and validate ledger movements before related entity updates so rejected actions cannot partially mutate shop data.
 - Device-local zustand is the offline cache; authenticated Cloud shop snapshots are authoritative for shared actions, with server-side role checks and optimistic versions preventing stale overwrites. Per-shop durable outboxes retry UUID-identified actions, and server-side receipts must make every retry idempotent.
 - Keep the Nitro server bundle as one file (inlineDynamicImports set both top-level and in rollupConfig.output, because the cloudflare-module preset overrides the top-level flag) so split dependency chunks cannot cycle on the CommonJS runtime helper and crash Worker startup.
 - The browser Supabase client is environment-configurable despite its original generated provenance; preserve preview auth storage, derive public Cloud fallbacks from build-time environment settings (never literal values), and never throw at import when they are missing — fall back to an inert local-only client, because the root route imports it and a throw would 500 every page.
