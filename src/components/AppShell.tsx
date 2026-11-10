@@ -7,7 +7,7 @@ import {
 import { useStore } from "@/lib/store";
 import { Setup } from "./Setup";
 import { CloudSync } from "./CloudSync";
-import { PinPad } from "./kit";
+import { BigButton, PinPad } from "./kit";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 

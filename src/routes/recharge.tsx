@@ -41,12 +41,12 @@ function Recharge() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
                 {sims.map((s) => (
-                  <button key={s.id} onClick={() => setSim(s.id)} className={`min-h-12 rounded-xl border px-3 py-2 text-center text-sm leading-snug ${sim === s.id ? "border-primary bg-accent font-semibold text-accent-foreground" : "bg-card hover:bg-secondary"}`}>{s.name}</button>
+                  <BigButton key={s.id} aria-pressed={sim === s.id} onClick={() => setSim(s.id)} className={`min-h-12 rounded-lg border px-3 py-2 text-center text-sm leading-snug ${sim === s.id ? "border-primary bg-primary font-semibold text-primary-foreground" : "bg-card text-foreground hover:enabled:bg-secondary"}`}>{s.name}</BigButton>
                 ))}
               </div>
               <div><Label>মোবাইল নম্বর</Label><TextInput inputMode="tel" value={num} onChange={(e) => setNum(e.target.value)} placeholder="01XXXXXXXXX" /></div>
               <div className="grid grid-cols-3 gap-2">
-                {QUICK.map((q) => <button key={q} onClick={() => setAmt(String(q))} className={`h-12 rounded-xl border font-semibold ${a === q ? "border-primary bg-accent text-accent-foreground" : "bg-card hover:bg-secondary"}`}>৳{bn(q)}</button>)}
+                {QUICK.map((q) => <BigButton key={q} aria-pressed={a === q} onClick={() => setAmt(String(q))} className={`h-12 rounded-lg border font-semibold ${a === q ? "border-primary bg-primary text-primary-foreground" : "bg-card text-foreground hover:enabled:bg-secondary"}`}>৳{bn(q)}</BigButton>)}
               </div>
               <div><Label>কাস্টম পরিমাণ</Label><NumInput value={amt} onChange={setAmt} /></div>
               {a > bal && <p className="text-sm text-destructive">সিমে পর্যাপ্ত ব্যালেন্স নেই</p>}
@@ -59,7 +59,7 @@ function Recharge() {
         </div>
         <div className="space-y-2">
           {sims.map((s) => (
-            <div key={s.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border bg-card px-4 py-3 text-sm"><span>{s.name}</span><Money v={s.balance} className="font-semibold" /></div>
+            <div key={s.id} data-testid={`balance-${s.id}`} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border bg-card px-4 py-3 text-sm"><span className="break-words leading-relaxed">{s.name}</span><Money v={s.balance} className="whitespace-nowrap font-semibold" /></div>
           ))}
         </div>
       </div>

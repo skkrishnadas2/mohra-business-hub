@@ -5,6 +5,8 @@ import { useStore, type Perms } from "@/lib/store";
 import { Page, BigButton, NumInput, Label, TextInput } from "@/components/kit";
 import { Switch } from "@/components/ui/switch";
 import { cipherEncode } from "@/lib/rules";
+import { resetDemo } from "@/lib/demo";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -30,7 +32,8 @@ const PERMS: { k: keyof Perms; l: string; d: string }[] = [
 ];
 
 function Settings() {
-  const { role, perms, setPerm, setPins, ownerPin, cashierPin, resetAll } = useStore();
+  const { role, perms, setPerm, setPins, ownerPin, cashierPin, resetAll, demoMode } = useStore();
+  const [confirmReset, setConfirmReset] = useState(false);
   const [op, setOp] = useState(ownerPin);
   const [cp, setCp] = useState(cashierPin);
   const [sample, setSample] = useState("150");
@@ -59,9 +62,15 @@ function Settings() {
             <p className="text-xs text-muted-foreground">১=D ২=H ৩=A ৪=K ৫=A ৬=C ৭=I ৮=T ৯=Y ০=X</p>
             <div className="flex items-center gap-3"><TextInput className="w-28" value={sample} onChange={(e) => setSample(e.target.value.replace(/\D/g, ""))} /><span className="text-xl font-semibold">{cipherEncode(Number(sample) || 0)}</span></div>
           </div>
-          <button onClick={() => { if (confirm("সব ডেটা মুছে নতুন করে শুরু করবেন?")) resetAll(); }} className="min-h-12 w-full rounded-xl border border-destructive/30 bg-card px-4 py-3 text-sm font-medium text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">সব ডেটা রিসেট</button>
+          {demoMode ? <BigButton className="bg-destructive text-destructive-foreground hover:enabled:bg-destructive/90" onClick={() => setConfirmReset(true)}>ডেমো ডেটা মুছুন ও রিসেট করুন</BigButton> : <BigButton onClick={() => { if (confirm("সব ডেটা মুছে নতুন করে শুরু করবেন?")) resetAll(); }} className="border border-destructive/30 bg-card text-destructive hover:enabled:bg-destructive/10">সব ডেটা রিসেট</BigButton>}
         </div>
       </div>
+      <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>ডেমো ডেটা মুছে ফেলবেন?</AlertDialogTitle><AlertDialogDescription>এই ডিভাইসের সব ডেমো লেনদেন, পণ্য ও ব্যালেন্স মুছে প্রথম সেটআপে ফিরে যাবেন। Cloud-এর দোকানের ডেটা বদলাবে না।</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>বাতিল</AlertDialogCancel><AlertDialogAction onClick={resetDemo}>মুছুন ও রিসেট করুন</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Page>
   );
 }
