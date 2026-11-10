@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     void Promise.resolve(useStore.persist.rehydrate()).then(() => setHydrated(true));
   }, []);
-  const { setupDone, demoMode, role, login, logout, shopName } = useStore();
+  const { setupDone, role, login, logout, shopName } = useStore();
   const [err, setErr] = useState("");
   const [more, setMore] = useState(false);
   const loc = useLocation();
@@ -65,14 +65,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-background md:flex">
-      {!demoMode && <CloudSync />}
+      <CloudSync />
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar p-3 md:flex lg:w-64">
         <div className="mb-4 flex items-center gap-3 border-b px-2 pb-5 pt-3">
           <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground">ম</div>
           <div className="min-w-0">
             <div className="break-words text-sm font-semibold leading-snug">{shopName}</div>
             <div className="mt-1 text-xs text-muted-foreground">{roleLabel} হিসেবে কাজ করছেন</div>
-            {demoMode && <span className="mt-1 inline-block rounded-md bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">ডেমো</span>}
           </div>
         </div>
         <div className="mb-2 px-3 text-xs font-medium text-muted-foreground">কাজের মেনু</div>
@@ -99,7 +98,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="break-words text-sm font-semibold">{shopName}</div>
             <div className="text-xs text-muted-foreground">{roleLabel} হিসেবে কাজ করছেন</div>
           </div>
-          {demoMode && <span className="shrink-0 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">ডেমো</span>}
         </header>
         {children}
       </main>

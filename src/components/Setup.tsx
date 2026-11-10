@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { BigButton, Label, NumInput, TextInput } from "./kit";
-import { startDemo } from "@/lib/demo";
 
 const GROUPS = [
   { kind: "cash", title: "ক্যাশ ড্রয়ার" },
@@ -69,9 +68,6 @@ export function Setup() {
           </BigButton>
         </div>
       )}
-      <div className="mt-5 border-t pt-4">
-        <BigButton onClick={startDemo}>ডেমো দিয়ে দেখুন</BigButton>
-      </div>
     </div>
   );
 }
