@@ -1,7 +1,7 @@
 ## Remove synthetic mode
 - [x] Remove alternate setup, seed data, badges, reset controls and Cloud restrictions
 - [x] Preserve real financial rules and safely upgrade saved shop data
-- [ ] Run all remaining tests and verify first-run setup in the browser
+- [x] Run all remaining tests and verify first-run setup in the browser — 94/94 tests pass; automatic build OK; shop name, PINs, opening balances, completion, reload and normal Settings reset verified without page errors
 
 # Live device monitor
 
