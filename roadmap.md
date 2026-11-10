@@ -1,5 +1,9 @@
 # Live device monitor
 
+## B2B SR correction
+- [x] Apply the same three allowed SR legs to both B2B forms and ledger validation, preserving commission, reference, permissions and demo isolation
+- [x] Test both account kinds, forbidden combinations and Cloud replay; verify both forms and run the full suite without publishing — 77 tests pass, automatic build OK; all six demo settlements read back correctly with no page errors
+
 ## Local demo verification
 
 - [x] Add ledger-seeded local demo with owner/cashier PINs and visible badge

@@ -35,9 +35,11 @@ describe("local demo", () => {
     appendOutbox("shop", { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "recharge", args: ["rc_gp", 50, "01710000000"] });
     const event = vi.fn(); window.addEventListener(CLOUD_ACTION_EVENT, event);
     useStore.getState().recharge("rc_gp", 50, "01710000000");
+    useStore.getState().b2b({ kind: "mfs", sourceId: "bk_a1", targetId: "cash", amount: 500, commission: 0, ref: "DEMO-SR" });
     window.removeEventListener(CLOUD_ACTION_EVENT, event);
     expect(event).not.toHaveBeenCalled(); expect(() => shopSnapshot(useStore.getState())).toThrow("ডেমো");
     queueCloudAction({ name: "recharge", args: [] });
+    queueCloudAction({ name: "b2b", args: [] });
     await flushCloudOutbox(); await initializeCloud();
     await expect(createOnlineShop()).rejects.toThrow("ডেমো");
     await expect(openCloudShop("shop")).rejects.toThrow("ডেমো");

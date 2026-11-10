@@ -3,6 +3,15 @@
 export type MfsProvider = "bkash" | "nagad" | "rocket" | "upay";
 export type Operator = "gp" | "robi" | "airtel" | "banglalink" | "teletalk";
 
+/** SR settlement is separate from customer cash-in/out. */
+export function b2bLeg(kind: "mfs" | "recharge", sourceKind: string, targetKind: string): "sim_cash" | "bank_sim" | "bank_cash" | null {
+  const simKind = kind === "mfs" ? "mfs_agent" : "recharge";
+  if (sourceKind === simKind && targetKind === "cash") return "sim_cash";
+  if (sourceKind === "bank" && targetKind === simKind) return "bank_sim";
+  if (sourceKind === "bank" && targetKind === "cash") return "bank_cash";
+  return null;
+}
+
 /** Agent commission in ৳ per ৳1000 transacted (cash-in & cash-out). */
 export const AGENT_RATE_PER_THOUSAND: Record<MfsProvider, number> = {
   bkash: 3.7,

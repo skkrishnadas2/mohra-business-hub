@@ -1,6 +1,6 @@
 import { create, type StateCreator } from "zustand";
 import { persist } from "zustand/middleware";
-import { agentCommission, round2, type MfsProvider, type Operator, DEFAULT_CIPHER_KEY } from "./rules";
+import { agentCommission, b2bLeg, round2, type MfsProvider, type Operator, DEFAULT_CIPHER_KEY } from "./rules";
 
 export type AccountKind = "cash" | "bank" | "mfs_agent" | "mfs_personal" | "recharge";
 export interface Account {
@@ -146,7 +146,7 @@ interface Actions {
   recharge: (simId: string, amount: number, number: string) => void;
   mfsAgent: (walletId: string, dir: "in" | "out", amount: number, number: string) => number;
   mfsPersonal: (walletId: string, dir: "send" | "receive", amount: number, fee: number, number: string) => void;
-  b2b: (p: { kind: "mfs" | "recharge"; dir: "load" | "return"; targetId: string; sourceId: string; amount: number; commission: number; ref: string }) => void;
+  b2b: (p: { kind: "mfs" | "recharge"; dir?: "load" | "return"; targetId: string; sourceId: string; amount: number; commission: number; ref: string }) => void;
   serviceSlip: (title: string, amount: number, accountId: string) => void;
   addRepair: (r: Omit<Repair, "id" | "at" | "status" | "deliveryCollected">) => void;
   setRepairStatus: (id: string, s: RepairStatus) => void;
@@ -399,20 +399,16 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           permitted("b2b");
           const target = requireAccount(targetId);
           const source = requireAccount(sourceId);
-          const expectedKind = kind === "mfs" ? "mfs_agent" : "recharge";
-          if (target.kind !== expectedKind) fail("সঠিক টার্গেট সিম বেছে নিন");
-          if (source.kind !== "cash" && source.kind !== "bank") fail("পেমেন্ট সোর্স ক্যাশ বা ব্যাংক হতে হবে");
-          if (targetId === sourceId) fail("উৎস ও টার্গেট একই হিসাব হতে পারবে না");
+          if (kind !== "mfs" && kind !== "recharge") fail("সঠিক B2B ধরন বেছে নিন");
+          const leg = b2bLeg(kind, source.kind, target.kind);
+          if (!leg) fail("SR লেনদেনে সিম থেকে শুধু ক্যাশ; ব্যাংক থেকে সিম ব্যালেন্স বা ক্যাশ নেওয়া যাবে");
+          // Never reinterpret a durable legacy return action as a forward payment.
+          if (dir !== undefined && (dir !== "load" || leg !== "bank_sim")) fail("পুরোনো B2B নির্বাচনটি নতুন নিয়মে আবার দিন");
           const value = positive(amount);
-          const extra = kind === "mfs" ? 0 : nonNegative(commission, "কমিশন");
+          const extra = kind === "recharge" && leg === "bank_sim" ? nonNegative(commission, "কমিশন") : 0;
           const reference = required(ref, "রেফারেন্স");
-          if (dir === "load") {
-            post({ type: `b2b_${kind}`, title: `B2B লোড · ${target.name}`, amount: value, profit: extra, cat: kind === "mfs" ? "none" : "recharge", ref: reference,
-              moves: [{ accountId: sourceId, delta: -value }, { accountId: targetId, delta: value + extra }] });
-          } else {
-            post({ type: `b2b_${kind}_return`, title: `B2B ফেরত · ${target.name}`, amount: value, profit: 0, cat: "none", ref: reference,
-              moves: [{ accountId: targetId, delta: -value }, { accountId: sourceId, delta: value }] });
-          }
+          post({ type: `b2b_${kind}`, title: `B2B SR · ${source.name} → ${target.name}`, amount: value, profit: extra, cat: kind === "recharge" && leg === "bank_sim" ? "recharge" : "none", ref: reference,
+            moves: [{ accountId: sourceId, delta: -value }, { accountId: targetId, delta: value + extra }] });
         },
         serviceSlip: (title, amount, accountId) => {
           requireRole(get().role);
