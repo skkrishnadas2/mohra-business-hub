@@ -1,3 +1,8 @@
+## Setup account customization
+- [ ] Add, rename and delete setup accounts with kind-specific operators and opening balances
+- [ ] Persist the chosen account list atomically and verify it in B2B, MFS and Accounts
+- [ ] Add regression tests, run the full suite and verify setup interactions without publishing
+
 ## Remove synthetic mode
 - [x] Remove alternate setup, seed data, badges, reset controls and Cloud restrictions
 - [x] Preserve real financial rules and safely upgrade saved shop data

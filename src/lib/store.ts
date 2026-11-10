@@ -129,7 +129,7 @@ export interface State {
 }
 
 interface Actions {
-  completeSetup: (p: { shopName: string; ownerPin: string; cashierPin: string; balances: Record<string, number> }) => void;
+  completeSetup: (p: { shopName: string; ownerPin: string; cashierPin: string; balances: Record<string, number>; accounts?: Account[] }) => void;
   login: (pin: string) => Role | null;
   logout: () => void;
   can: (k: keyof Perms) => boolean;
@@ -207,16 +207,36 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
 
       return {
         ...initial,
-        completeSetup: ({ shopName, ownerPin, cashierPin, balances }) => {
+        completeSetup: ({ shopName, ownerPin, cashierPin, balances, accounts: chosenAccounts }) => {
           if (get().setupDone) fail("দোকানের সেটআপ ইতিমধ্যে সম্পন্ন");
           assertPin(ownerPin, "মালিকের PIN");
           assertPin(cashierPin, "ক্যাশিয়ারের PIN");
           if (ownerPin === cashierPin) fail("মালিক ও ক্যাশিয়ারের PIN আলাদা হতে হবে");
+          const cleanShopName = required(shopName, "দোকানের নাম");
           const cleanBalances = Object.fromEntries(Object.entries(balances).map(([id, value]) => [id, nonNegative(value, "শুরুর ব্যালেন্স")]));
-          set((s) => ({
-            setupDone: true, shopName: required(shopName, "দোকানের নাম"), ownerPin, cashierPin, role: "owner",
-            accounts: s.accounts.map((a) => ({ ...a, balance: cleanBalances[a.id] ?? a.balance })),
-          }));
+          const ids = new Set<string>();
+          const names = new Set<string>();
+          let cashCount = 0;
+          const cleanAccounts = (chosenAccounts ?? get().accounts).map((account) => {
+            const id = required(account.id, "হিসাবের আইডি");
+            if (ids.has(id)) fail("একই হিসাব আইডি দুবার ব্যবহার করা যাবে না");
+            ids.add(id);
+            if (!["cash", "bank", "mfs_agent", "mfs_personal", "recharge"].includes(account.kind)) fail("হিসাবের ধরন সঠিক নয়");
+            if (id === "cash" && account.kind !== "cash") fail("ক্যাশ ড্রয়ারের আইডি অন্য হিসাবে ব্যবহার করা যাবে না");
+            const name = required(account.name, "হিসাবের নাম");
+            const normalizedName = name.toLowerCase();
+            if (names.has(normalizedName)) fail("এই নামে হিসাব আগেই আছে");
+            names.add(normalizedName);
+            const needsProvider = account.kind.startsWith("mfs") || account.kind === "recharge";
+            const provider = needsProvider ? required(account.provider ?? "", account.kind === "recharge" ? "অপারেটর" : "MFS প্রোভাইডার") : undefined;
+            if (account.kind === "cash") cashCount += 1;
+            return { id, name, kind: account.kind, provider, balance: cleanBalances[id] ?? nonNegative(account.balance, "শুরুর ব্যালেন্স") };
+          });
+          if (cashCount !== 1) fail("একটি ক্যাশ ড্রয়ার রাখুন");
+          set({
+            setupDone: true, shopName: cleanShopName, ownerPin, cashierPin, role: "owner",
+            accounts: cleanAccounts.map((account) => account.kind === "cash" ? { ...account, id: "cash" } : account),
+          });
         },
         login: (pin) => {
           const s = get();
