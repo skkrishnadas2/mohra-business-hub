@@ -58,15 +58,15 @@ export function SetupAccounts({ onFinish, error }: { onFinish: (accounts: Accoun
         <section><h2 className="mb-2 text-sm font-semibold">ক্যাশ ড্রয়ার</h2>{rows.filter(row => row.kind === "cash").map(renderRow)}</section>
         {GROUPS.map(group => <section key={group.kind} aria-label={group.title}>
           <h2 className="mb-1.5 text-xs font-semibold text-muted-foreground">{group.title}</h2>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {group.options.map(option => {
               const chip = `${group.kind}:${option.base}`;
               const count = rows.filter(row => row.chip === chip).length;
-              return <Button key={chip} aria-pressed={count > 0} aria-label={`${group.title} · ${option.label} যোগ করুন`} variant={count ? "default" : "outline"} className="h-10 px-2.5 shadow-none" onClick={() => add(group.kind, option.base, option.provider, chip)}>
+              return <Button key={chip} aria-pressed={count > 0} aria-label={`${group.title} · ${option.label} যোগ করুন`} variant={count ? "default" : "outline"} className={`h-10 gap-1 px-2 shadow-none ${count ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground" : ""}`} onClick={() => add(group.kind, option.base, option.provider, chip)}>
                 {option.label}{count > 0 && <span className="text-xs">×{bn(count)}</span>}
               </Button>;
             })}
-            {group.kind === "bank" && <Button variant="outline" className="h-10 px-2.5 shadow-none" onClick={() => add("bank", "")}><Plus />নিজের ব্যাংক</Button>}
+            {group.kind === "bank" && <Button variant="outline" className="h-10 gap-1 px-2 shadow-none" onClick={() => add("bank", "")}><Plus />নিজের ব্যাংক</Button>}
           </div>
         </section>)}
       </div>
