@@ -13,9 +13,14 @@ import { loadEnv } from "vite";
 
 // Keep server dependency helpers in the same bundle: split CommonJS chunks
 // can initialize before their helper exports in the hosted Worker runtime.
+// The cloudflare-module preset sets rollupConfig.output.inlineDynamicImports=false, which
+// outranks the top-level flag when Nitro merges bundler options, so override it there too.
+// Without this, rolldown splits node_modules into _libs/* chunks that import the CommonJS
+// runtime helper from an _ssr chunk in a cycle: "__commonJSMin is not a function" at startup.
 const nitroOptions: NitroConfig = {
   preset: "cloudflare-module",
   inlineDynamicImports: true,
+  rollupConfig: { output: { inlineDynamicImports: true } },
 };
 
 export default defineConfig(({ mode }) => {
