@@ -24,7 +24,7 @@ const GROUPS: { kind: AccountKind; title: string; options: { label: string; base
   ] },
 ];
 
-type Draft = Account & { chip?: string; value: string };
+type Draft = Account & { chip?: string | undefined; value: string };
 
 export function SetupAccounts({ onFinish, error }: { onFinish: (accounts: Account[], balances: Record<string, number>) => void; error: string }) {
   const [rows, setRows] = useState<Draft[]>([{ id: "cash", name: "ক্যাশ ড্রয়ার", kind: "cash", balance: 0, value: "" }]);
