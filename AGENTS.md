@@ -35,5 +35,6 @@ use the editor.
 - Keep the Nitro server bundle as one file (inlineDynamicImports set both top-level and in rollupConfig.output, because the cloudflare-module preset overrides the top-level flag) so split dependency chunks cannot cycle on the CommonJS runtime helper and crash Worker startup.
 - The browser Supabase client is environment-configurable despite its original generated provenance; preserve preview auth storage, derive public Cloud fallbacks from build-time environment settings (never literal values), and never throw at import when they are missing — fall back to an inert local-only client, because the root route imports it and a throw would 500 every page.
 - Keep Wrangler's Worker entry and asset directory aligned with Nitro's cloudflare-module output so self-hosted requests serve both SSR and static files.
-- Seed demos through a fresh store's ledger actions, persist the demo flag locally, and block Cloud entry points, outbox dispatch and late remote responses while it is active; reset only app-owned storage so demo verification cannot affect a real shop.
 - B2B forms and authoritative replay use the shared pure leg validator with source/target account IDs; reject incompatible legacy directional outbox payloads rather than reversing their intended money movement.
+
+- Persisted shop upgrades discard retired synthetic snapshots and preserve real shop data; never upload synthetic records as real financial history.

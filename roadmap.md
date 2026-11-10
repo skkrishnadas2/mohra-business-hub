@@ -1,21 +1,19 @@
+## Remove synthetic mode
+- [x] Remove alternate setup, seed data, badges, reset controls and Cloud restrictions
+- [x] Preserve real financial rules and safely upgrade saved shop data
+- [x] Run all remaining tests and verify first-run setup in the browser — 94/94 tests pass; automatic build OK; shop name, PINs, opening balances, completion, reload and normal Settings reset verified without page errors
+
 # Live device monitor
 
 ## Money-flow hardening and environment cleanup
 - [x] Audit monetary actions and add regression tests for validation, commission, ledger integrity and repair limits
 - [x] Remove repository .env and verify existing environment-only fallbacks and local-only startup
 - [ ] Ignore .env — blocked: platform refuses edits to managed .gitignore; user must add the exclusion in the repository
-- [x] Run the full test suite and verify local money flows without design changes or publishing — local demo flows and 12 pages pass with no runtime errors or Cloud requests; final test count reported in chat
+- [x] Run the full test suite and verify local money flows without design changes or publishing — local money flows and 12 pages pass with no runtime errors or Cloud requests; final test count reported in chat
 
 ## B2B SR correction
 - [x] Apply the corrected four SR legs, including cash-to-SIM, to both forms and ledger validation without changing other features
-- [x] Test all four legs for both account kinds, verify the forms and run the full suite without publishing — 83 tests pass, automatic build OK; eight demo settlements verified and 700×374 overflow checks pass
-
-## Local demo verification
-
-- [x] Add ledger-seeded local demo with owner/cashier PINs and visible badge
-- [x] Block all demo Cloud sync and provide confirmed local reset
-- [x] Improve selected-button contrast, mobile active tabs, recharge balances and accessible closing action
-- [x] Verify all 12 pages and demo sale/recharge/MFS/service/closing/reset flows; run full tests — 53 tests pass; desktop, 700×374 and 390×844 checks pass with no page errors or Cloud calls. Confirmed cancel/reset and first-run state after reload. This local verification does not establish hosted preview access or live Cloud authentication.
+- [x] Test all four legs for both account kinds, verify the forms and run the full suite without publishing — 83 tests pass, automatic build OK; eight settlements verified and 700×374 overflow checks pass
 
 ## External hosting preparation
 

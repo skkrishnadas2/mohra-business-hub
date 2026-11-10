@@ -33,11 +33,6 @@ export const useCloud = create<CloudUiState>(() => ({
 
 let activeFlush: Promise<void> | null = null;
 let connectionEpoch = 0;
-const demoActive = () => useStore.getState().demoMode;
-function requireRealShop() {
-  if (demoActive()) throw new Error("ডেমো ডেটা শুধু এই ডিভাইসে থাকবে");
-}
-
 function savedShopId() {
   return typeof window === "undefined" ? null : window.localStorage.getItem(SHOP_KEY);
 }
@@ -49,10 +44,9 @@ function saveVersion(version: number) {
   if (typeof window !== "undefined") window.localStorage.setItem(VERSION_KEY, String(version));
 }
 function adopt(shop: CloudShop) {
-  if (demoActive()) return;
   const pending = readOutbox(shop.shopId).length;
   // A remote refresh must not wipe local work that has not been acknowledged yet.
-  if (pending === 0) useStore.setState({ ...shop.state, demoMode: false, setupDone: true, role: shop.role });
+  if (pending === 0) useStore.setState({ ...shop.state, setupDone: true, role: shop.role });
   useCloud.setState({
     status: "connected", shopId: shop.shopId, shopName: shop.name, role: shop.role,
     version: shop.version, joinCode: shop.joinCode, pending, error: null,
@@ -62,7 +56,6 @@ function adopt(shop: CloudShop) {
 }
 
 export async function openCloudShop(shopId: string) {
-  requireRealShop();
   const epoch = connectionEpoch;
   const current = useCloud.getState();
   useCloud.setState({
@@ -71,11 +64,11 @@ export async function openCloudShop(shopId: string) {
   });
   try {
     const shop = await getCloudShop({ data: { shopId } });
-    if (demoActive() || epoch !== connectionEpoch) return;
+    if (epoch !== connectionEpoch) return;
     adopt(shop);
     return shop;
   } catch (error) {
-    if (demoActive() || epoch !== connectionEpoch) return;
+    if (epoch !== connectionEpoch) return;
     const message = actionError(error);
     useCloud.setState({ status: "error", error: message });
     throw error;
@@ -83,7 +76,6 @@ export async function openCloudShop(shopId: string) {
 }
 
 export async function createOnlineShop() {
-  requireRealShop();
   useCloud.setState({ status: "connecting", error: null });
   try {
     const local = useStore.getState();
@@ -96,7 +88,6 @@ export async function createOnlineShop() {
 }
 
 export async function joinOnlineShop(shopId: string, joinCode: string) {
-  requireRealShop();
   useCloud.setState({ status: "connecting", error: null });
   try {
     await joinCloudShop({ data: { shopId, joinCode } });
@@ -108,14 +99,13 @@ export async function joinOnlineShop(shopId: string, joinCode: string) {
 }
 
 export async function initializeCloud() {
-  if (demoActive()) return;
   const epoch = connectionEpoch;
   if (!isCloudConfigured) {
     useCloud.setState({ status: "idle", shopId: null, role: null, pending: 0, error: null });
     return;
   }
   const { data } = await supabase.auth.getSession();
-  if (demoActive() || epoch !== connectionEpoch) return;
+  if (epoch !== connectionEpoch) return;
   if (!data.session) {
     useCloud.setState({ status: "idle", shopId: null, role: null, pending: 0, error: null });
     return;
@@ -137,7 +127,6 @@ export function disconnectCloud() {
 }
 
 export function queueCloudAction(action: CloudAction) {
-  if (demoActive()) return;
   const connected = useCloud.getState();
   const shopId = connected.shopId ?? savedShopId();
   if (!shopId) return;
@@ -152,14 +141,13 @@ export function queueCloudAction(action: CloudAction) {
 }
 
 async function runFlush() {
-  if (demoActive()) return;
   const epoch = connectionEpoch;
   const shopId = useCloud.getState().shopId ?? savedShopId();
   if (!shopId) return;
   let synced = false;
 
   while (readOutbox(shopId).length) {
-    if (demoActive() || epoch !== connectionEpoch) return;
+    if (epoch !== connectionEpoch) return;
     const action = readOutbox(shopId)[0];
     if (!action) break;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -168,11 +156,11 @@ async function runFlush() {
     }
     try {
       if (useCloud.getState().version < 1 && savedVersion() < 1) await openCloudShop(shopId);
-      if (demoActive() || epoch !== connectionEpoch) return;
+      if (epoch !== connectionEpoch) return;
       const baseVersion = useCloud.getState().version || savedVersion();
       if (baseVersion < 1) throw new Error("Cloud সংযোগের সংস্করণ পাওয়া যায়নি");
       const result = await applyCloudAction({ data: { shopId, baseVersion, action } });
-      if (demoActive() || epoch !== connectionEpoch) return;
+      if (epoch !== connectionEpoch) return;
       if (result.status === "conflict") {
         // Rebase the same durable action on the latest snapshot; never overwrite the other device.
         useCloud.setState({ version: result.version });
@@ -197,7 +185,7 @@ async function runFlush() {
       saveVersion(result.version);
       synced = true;
     } catch (error) {
-      if (demoActive() || epoch !== connectionEpoch) return;
+      if (epoch !== connectionEpoch) return;
       const message = actionError(error);
       const shouldNotify = useCloud.getState().status !== "error";
       useCloud.setState({ status: "error", error: `${message} · ${readOutbox(shopId).length}টি কাজ জমা আছে` });
@@ -218,7 +206,6 @@ export function flushCloudOutbox(): Promise<void> {
 }
 
 export async function retryCloudSync() {
-  if (demoActive()) return;
   await flushCloudOutbox();
   const shopId = useCloud.getState().shopId ?? savedShopId();
   if (shopId && readOutbox(shopId).length === 0) await openCloudShop(shopId);
@@ -229,14 +216,12 @@ export function handleCloudActionEvent(event: Event) {
 }
 
 export function handleRealtimeVersion(version: number) {
-  if (demoActive()) return;
   const cloud = useCloud.getState();
   if (!cloud.shopId || version <= cloud.version || readOutbox(cloud.shopId).length > 0) return;
   void openCloudShop(cloud.shopId).catch(() => undefined);
 }
 
 export function refreshCloudIfIdle() {
-  if (demoActive()) return;
   const shopId = useCloud.getState().shopId ?? savedShopId();
   if (!shopId) return;
   if (readOutbox(shopId).length) void flushCloudOutbox();

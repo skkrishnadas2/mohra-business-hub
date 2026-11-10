@@ -10,9 +10,6 @@ bunx vitest run   # business-rule tests
 ```
 First launch opens the setup wizard: shop name, owner PIN, cashier PIN, and starting balances for cash, banks, MFS wallets and recharge SIMs.
 
-## Local demo
-Choose **ডেমো দিয়ে দেখুন** on setup for a populated local shop (owner PIN **1234**, cashier PIN **4321**). The shell shows **ডেমো**. Demo sales, recharge, MFS, services, repair and closing records use the normal ledger. Cloud connection and upload are blocked in demo mode. In owner Settings, **ডেমো ডেটা মুছুন ও রিসেট করুন** asks for confirmation, clears app-owned local data, and returns to first-run setup without touching any Cloud shop.
-
 ## Cloud shop
 Open **Cloud সিঙ্ক** after local setup. The owner signs up/in with email and creates the online shop from the current balances. A cashier creates a separate account, then joins with the shop ID and owner-only joining code. Connected sales and other allow-listed actions are validated again on the server and synchronized across devices. The owner monitor shows live owner/cashier device presence, device type and activity; presence is informational and never grants permissions. If two devices sell against the same stock, the first committed sale wins; an overselling replay is rejected, its optimistic local change is rolled back, and later queued actions continue. Email confirmation may be required by Supabase Auth. Offline actions stay in a durable on-device outbox, retry automatically after reconnection, and use unique action IDs so a retry cannot duplicate a sale or money movement.
 
