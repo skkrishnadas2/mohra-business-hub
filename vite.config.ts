@@ -24,8 +24,8 @@ export default defineConfig(({ mode }) => {
   const cloudEnv = loadEnv(mode, process.cwd(), "SUPABASE_");
   return {
   define: {
-    "import.meta.env.VITE_LOVABLE_SUPABASE_URL": JSON.stringify(cloudEnv.SUPABASE_URL ?? ""),
-    "import.meta.env.VITE_LOVABLE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(cloudEnv.SUPABASE_PUBLISHABLE_KEY ?? ""),
+    "import.meta.env.VITE_LOVABLE_SUPABASE_URL": JSON.stringify(cloudEnv['SUPABASE_URL'] ?? ""),
+    "import.meta.env.VITE_LOVABLE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(cloudEnv['SUPABASE_PUBLISHABLE_KEY'] ?? ""),
   },
   nitro: nitroOptions,
   tanstackStart: {
