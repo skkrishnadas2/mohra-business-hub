@@ -1,5 +1,12 @@
 # Live device monitor
 
+## Local demo verification
+
+- [ ] Add ledger-seeded local demo with owner/cashier PINs and visible badge
+- [ ] Block all demo Cloud sync and provide confirmed local reset
+- [ ] Improve selected-button contrast, mobile active tabs, recharge balances and accessible closing action
+- [ ] Verify all 12 pages and demo sale/recharge/MFS/service/closing/reset flows; run full tests
+
 ## External hosting preparation
 
 - [x] Make browser Supabase configuration environment-based with environment-only Cloud fallbacks
