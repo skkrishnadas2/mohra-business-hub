@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { isCloudConfigured, supabase } from "@/integrations/supabase/client";
 import {
   applyCloudAction, createCloudShop, getCloudShop, joinCloudShop,
   type CloudShop,

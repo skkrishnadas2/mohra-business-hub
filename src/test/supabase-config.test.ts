@@ -28,4 +28,15 @@ describe("Browser Supabase environment configuration", () => {
     await import("@/integrations/supabase/client");
     expect(mocks.createClient).toHaveBeenCalledWith("https://cloud.example.test", "test-cloud-public-key", expect.any(Object));
   });
+
+  it("does not crash the app when no public Cloud settings exist at build time", async () => {
+    vi.stubEnv("VITE_SUPABASE_URL", "");
+    vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "");
+    vi.stubEnv("VITE_LOVABLE_SUPABASE_URL", "");
+    vi.stubEnv("VITE_LOVABLE_SUPABASE_PUBLISHABLE_KEY", "");
+    const client = await import("@/integrations/supabase/client");
+    expect(client.isCloudConfigured).toBe(false);
+    const options = (mocks.createClient.mock.calls[0] as unknown[] | undefined)?.[2] as { global: { fetch: typeof fetch } };
+    await expect(options.global.fetch("https://cloud-not-configured.invalid")).rejects.toThrow("Cloud is not configured for this build");
+  });
 });

@@ -17,6 +17,7 @@ vi.mock("@/lib/cloud.functions", () => ({
 vi.mock("sonner", () => ({ toast: { error: mocks.toastError } }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { auth: { getSession: vi.fn() } },
+  isCloudConfigured: true,
 }));
 
 import { appendOutbox, readOutbox } from "@/lib/cloud-outbox";
