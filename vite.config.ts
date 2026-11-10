@@ -28,14 +28,6 @@ export default defineConfig(({ mode }) => {
   // External hosting can override the browser target through VITE_SUPABASE_*.
   const cloudEnv = loadEnv(mode, process.cwd(), "SUPABASE_");
   return {
-  vite: {
-    optimizeDeps: {
-      // Reject requests from an obsolete optimizer generation instead of combining
-      // its React hooks with the current renderer (two separate hook dispatchers).
-      ignoreOutdatedRequests: false,
-      include: ["zustand", "zustand/vanilla", "@radix-ui/react-slot", "@radix-ui/react-alert-dialog"],
-    },
-  },
   define: {
     "import.meta.env.VITE_LOVABLE_SUPABASE_URL": JSON.stringify(cloudEnv['SUPABASE_URL'] ?? ""),
     "import.meta.env.VITE_LOVABLE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(cloudEnv['SUPABASE_PUBLISHABLE_KEY'] ?? ""),
