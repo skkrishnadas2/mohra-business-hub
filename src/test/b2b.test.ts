@@ -32,7 +32,29 @@ describe.each(["mfs", "recharge"] as const)("%s SR settlement", kind => {
     expect(balance("dbbl")).toBe(4500); expect(balance("cash")).toBe(10500);
     expect(balance(sim)).toBe(opening); expect(store.getState().txns[0]?.profit).toBe(0);
   });
-  it.each([["cash", sim], [sim, "dbbl"], ["dbbl", "bk_p1"], [sim, sim], ["dbbl", kind === "mfs" ? "rc_gp" : "bk_a1"]])("rejects forbidden %s → %s without a ledger entry", (source, target) => {
+  it("leg 4: cash -500, SIM +500 with recharge-only extra balance", () => {
+    settle("cash", sim);
+    const extra = kind === "recharge" ? 28 : 0;
+    expect(balance("cash")).toBe(9500); expect(balance(sim)).toBe(opening + 500 + extra);
+    expect(balance("dbbl")).toBe(5000);
+    expect(store.getState().txns[0]?.moves).toEqual([{ accountId: "cash", delta: -500 }, { accountId: sim, delta: 500 + extra }]);
+    expect(store.getState().txns[0]?.profit).toBe(extra);
+    expect(store.getState().customers).toEqual([]); expect(store.getState().sales).toEqual([]);
+  });
+  it("cash-to-SIM requires reference and enough cash", () => {
+    expect(() => settle("cash", sim, 0, 500, " ")).toThrow("রেফারেন্স");
+    expect(() => settle("cash", sim, 0, 10001)).toThrow("পর্যাপ্ত");
+    expect(balance("cash")).toBe(10000); expect(store.getState().txns).toEqual([]);
+  });
+  it("replays cash-to-SIM with the same commission rule", () => {
+    const result = replayCloudAction(shopSnapshot(store.getState()), "owner", { name: "b2b", args: [{ kind, sourceId: "cash", targetId: sim, amount: 500, commission: 28, ref: "SR-4" }] });
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.state.accounts.find(a => a.id === "cash")?.balance).toBe(9500);
+    expect(result.state.accounts.find(a => a.id === sim)?.balance).toBe(opening + 500 + (kind === "recharge" ? 28 : 0));
+    expect(result.state.txns).toHaveLength(1);
+  });
+  it.each([["cash", "cash"], [sim, "dbbl"], ["dbbl", "bk_p1"], [sim, sim], ["dbbl", kind === "mfs" ? "rc_gp" : "bk_a1"]])("rejects forbidden %s → %s without a ledger entry", (source, target) => {
     const before = store.getState().accounts;
     expect(() => settle(source, target)).toThrow();
     expect(store.getState().accounts).toEqual(before); expect(store.getState().txns).toEqual([]);
