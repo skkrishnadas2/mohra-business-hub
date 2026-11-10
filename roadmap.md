@@ -6,3 +6,10 @@
 - [x] Document that presence is informational, never an authorization boundary
 
 Verified in-browser: local monitor empty state. Live two-account Realtime verification remains blocked by the sandbox's external unmanaged auth status.
+
+## Hosted preview recovery
+
+- [x] Diagnose hosted runtime failure without changing shop features or design
+- [ ] Remove server dependency chunk initialization failure
+- [ ] Verify hosted preview at / and /recharge without publishing
+- [ ] Check deployment and publishing status
