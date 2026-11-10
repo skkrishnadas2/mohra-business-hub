@@ -53,8 +53,8 @@ describe("money flows", () => {
   });
 
   it("recharge B2B adds manual commission to SIM", () => {
-    useStore.getState().b2b({ kind: "recharge", dir: "load", targetId: "rc_gp", sourceId: "cash", amount: 1000, commission: 28, ref: "SR-1" });
-    expect(bal("cash")).toBe(9000);
+    useStore.getState().b2b({ kind: "recharge", targetId: "rc_gp", sourceId: "dbbl", amount: 1000, commission: 28, ref: "SR-1" });
+    expect(bal("dbbl")).toBe(4000);
     expect(bal("rc_gp")).toBe(2028);
   });
 
@@ -126,7 +126,7 @@ describe("permissions and account safeguards", () => {
 
   it("cashier cannot perform B2B without b2b permission", () => {
     useStore.getState().login("2222");
-    expect(() => useStore.getState().b2b({ kind: "mfs", dir: "load", targetId: "bk_a1", sourceId: "cash", amount: 100, commission: 0, ref: "SR-1" })).toThrow("অনুমতি");
+    expect(() => useStore.getState().b2b({ kind: "mfs", targetId: "bk_a1", sourceId: "dbbl", amount: 100, commission: 0, ref: "SR-1" })).toThrow("অনুমতি");
     expect(bal("cash")).toBe(10000);
   });
 
@@ -158,7 +158,7 @@ describe("permissions and account safeguards", () => {
   });
 
   it("requires a B2B reference before posting", () => {
-    expect(() => useStore.getState().b2b({ kind: "recharge", dir: "load", targetId: "rc_gp", sourceId: "cash", amount: 100, commission: 0, ref: "" })).toThrow("রেফারেন্স");
+    expect(() => useStore.getState().b2b({ kind: "recharge", targetId: "rc_gp", sourceId: "dbbl", amount: 100, commission: 0, ref: "" })).toThrow("রেফারেন্স");
     expect(useStore.getState().txns).toHaveLength(0);
   });
 
