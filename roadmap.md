@@ -1,3 +1,8 @@
+## Chip-based setup
+- [x] Replace the long account form with grouped add chips, fixed cash drawer and compact editable rows
+- [x] Record one opening ledger transaction; hide unavailable B2B legs without changing settlement rules
+- [x] Run all tests and verify desktop/mobile setup, duplicate names, balances and downstream account IDs without publishing — 105/105 tests pass, automatic build OK; 985×599 and 390×844 fit without scrolling with selected rows, opening/B2B/adjustment read back through real setup; extra rows remain scrollable with the completion button visible
+
 ## Setup account customization
 - [x] Add, rename and delete setup accounts with kind-specific operators and opening balances
 - [x] Persist the chosen account list atomically and verify it in B2B, MFS and Accounts

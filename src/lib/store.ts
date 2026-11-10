@@ -233,10 +233,16 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
             return { id, name, kind: account.kind, provider, balance: cleanBalances[id] ?? nonNegative(account.balance, "শুরুর ব্যালেন্স") };
           });
           if (cashCount !== 1) fail("একটি ক্যাশ ড্রয়ার রাখুন");
+          const openingAccounts = cleanAccounts.map((account) => account.kind === "cash" ? { ...account, id: "cash" } : account);
+          const moves = openingAccounts.map(account => ({ accountId: account.id, delta: account.balance }));
+          const amount = round2(moves.reduce((total, movement) => total + movement.delta, 0));
+          if (!Number.isFinite(amount)) fail("শুরুর ব্যালেন্স সঠিক নয়");
+          validateMoves(openingAccounts.map(account => ({ ...account, balance: 0 })), moves);
           set({
             setupDone: true, shopName: cleanShopName, ownerPin, cashierPin, role: "owner",
-            accounts: cleanAccounts.map((account) => account.kind === "cash" ? { ...account, id: "cash" } : account),
+            accounts: openingAccounts.map(account => ({ ...account, balance: 0 })),
           });
+          post({ type: "opening", title: "শুরুর ব্যালেন্স", amount, profit: 0, cat: "none", moves });
         },
         login: (pin) => {
           const s = get();

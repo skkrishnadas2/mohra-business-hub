@@ -13,6 +13,42 @@ export function b2bLeg(kind: "mfs" | "recharge", sourceKind: string, targetKind:
   return null;
 }
 
+export function availableB2BLegs(kind: "mfs" | "recharge", accounts: { kind: string }[]) {
+  const sim = kind === "mfs" ? "mfs_agent" : "recharge";
+  const has = (accountKind: string) => accounts.some(account => account.kind === accountKind);
+  return ([
+    { from: "sim", receive: "cash", sourceKind: sim, targetKind: "cash" },
+    { from: "bank", receive: "sim", sourceKind: "bank", targetKind: sim },
+    { from: "bank", receive: "cash", sourceKind: "bank", targetKind: "cash" },
+    { from: "cash", receive: "sim", sourceKind: "cash", targetKind: sim },
+  ] as const).filter(leg => has(leg.sourceKind) && has(leg.targetKind));
+}
+
+/** Allocate the first unused numbered name, including after row deletion or renaming. */
+export function nextSetupName(base: string, names: string[]) {
+  const taken = new Set(names.map(name => name.trim().toLowerCase()));
+  let index = 1;
+  while (taken.has(`${base} ${bn(index)}`.toLowerCase())) index += 1;
+  return `${base} ${bn(index)}`;
+}
+
+export function parseOpeningBalance(value: string): number | null {
+  const clean = value.replace(/[০-৯]/g, digit => String("০১২৩৪৫৬৭৮৯".indexOf(digit))).replace(/,/g, "").trim();
+  if (!clean) return 0;
+  if (!/^\d+(\.\d{0,2})?$/.test(clean)) return null;
+  const amount = Number(clean);
+  return Number.isFinite(amount) && amount >= 0 ? amount : null;
+}
+
+export function formatOpeningBalance(value: string) {
+  if (!value) return "";
+  const amount = parseOpeningBalance(value);
+  if (amount === null) return value;
+  const clean = value.replace(/[০-৯]/g, digit => String("০১২৩৪৫৬৭৮৯".indexOf(digit))).replace(/,/g, "");
+  const [whole, fraction] = clean.split(".");
+  return bn(Number(whole).toLocaleString("en-IN")) + (fraction === undefined ? "" : `.${bn(fraction)}`);
+}
+
 /** Agent commission in ৳ per ৳1000 transacted (cash-in & cash-out). */
 export const AGENT_RATE_PER_THOUSAND: Record<MfsProvider, number> = {
   bkash: 3.7,

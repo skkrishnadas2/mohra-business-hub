@@ -14,19 +14,19 @@ describe("money-flow validation", () => {
   it("requires the full cash-in principal before crediting bKash commission", () => {
     expect(() => store.getState().mfsAgent("bk_a1", "in", 1001, "01710000000")).toThrow();
     expect(balance("bk_a1")).toBe(1000);
-    expect(store.getState().txns).toHaveLength(0);
+    expect(store.getState().txns.filter(txn => txn.type !== "opening")).toHaveLength(0);
   });
   it("does not subsidize personal cash payout with its service fee", () => {
     expect(() => store.getState().mfsPersonal("bk_p1", "receive", 10001, 20, "01710000000")).toThrow();
     expect(balance("cash")).toBe(10000);
-    expect(store.getState().txns).toHaveLength(0);
+    expect(store.getState().txns.filter(txn => txn.type !== "opening")).toHaveLength(0);
   });
   it.each(["mfsAgent", "mfsPersonal"] as const)("rejects an invalid %s direction without money movement", name => {
     const operation = store.getState()[name] as unknown as (...args: unknown[]) => void;
     const args = name === "mfsAgent" ? ["bk_a1", "invalid", 500, "01710000000"] : ["bk_p1", "invalid", 500, 10, "01710000000"];
     expect(() => operation(...args)).toThrow();
     expect(balance("cash")).toBe(10000);
-    expect(store.getState().txns).toHaveLength(0);
+    expect(store.getState().txns.filter(txn => txn.type !== "opening")).toHaveLength(0);
   });
   it("rejects a one-paisa underpayment of a 1.13 bill", () => {
     const product = store.getState().products[0];
@@ -39,7 +39,7 @@ describe("money-flow validation", () => {
   it("rejects repair advance above the 1000 estimate without creating records", () => {
     expect(() => store.getState().addRepair({ customer: "Rahim", phone: "", device: "Phone", problem: "Display", estimate: 1000, advance: 1000.01 })).toThrow();
     expect(store.getState().repairs).toHaveLength(0);
-    expect(store.getState().txns).toHaveLength(0);
+    expect(store.getState().txns.filter(txn => txn.type !== "opening")).toHaveLength(0);
     expect(balance("cash")).toBe(10000);
   });
   it("collects a fully prepaid 1000 repair exactly once", () => {
@@ -48,7 +48,7 @@ describe("money-flow validation", () => {
     if (!repair) throw new Error("Missing repair");
     store.getState().setRepairStatus(repair.id, "delivered");
     expect(balance("cash")).toBe(11000);
-    expect(store.getState().txns).toHaveLength(1);
+    expect(store.getState().txns.filter(txn => txn.type !== "opening")).toHaveLength(1);
     expect(store.getState().txns[0]?.profit).toBe(1000);
   });
   it.each([["bk_a1", 3.7], ["ng_a1", 4], ["rk_a1", 4], ["up_a1", 4]] as const)("posts exact commission and both movements for %s", (id, commission) => {
@@ -59,7 +59,7 @@ describe("money-flow validation", () => {
     store.getState().mfsAgent(id, "out", 1000, "01710000000");
     expect(balance(id)).toBe(1000 + commission * 2);
     expect(balance("cash")).toBe(10000);
-    expect(store.getState().txns).toHaveLength(2);
+    expect(store.getState().txns.filter(txn => txn.type !== "opening")).toHaveLength(2);
   });
   it("leaves customer due untouched when the collection cannot post", () => {
     const product = store.getState().products[2];
@@ -70,7 +70,7 @@ describe("money-flow validation", () => {
     store.setState({ accounts: store.getState().accounts.filter(a => a.id !== "cash") });
     expect(() => store.getState().collectDue(customer.id, 70)).toThrow();
     expect(store.getState().customers[0]?.due).toBe(120);
-    expect(store.getState().txns).toHaveLength(1);
+    expect(store.getState().txns.filter(txn => txn.type !== "opening")).toHaveLength(1);
   });
   it("leaves a 1000 repair undelivered when its 800 delivery balance cannot post", () => {
     store.getState().addRepair({ customer: "Rahim", phone: "", device: "Phone", problem: "Display", estimate: 1000, advance: 200 });
@@ -80,12 +80,12 @@ describe("money-flow validation", () => {
     expect(() => store.getState().setRepairStatus(repair.id, "delivered")).toThrow();
     expect(store.getState().repairs[0]?.status).toBe("received");
     expect(store.getState().repairs[0]?.deliveryCollected).toBe(false);
-    expect(store.getState().txns).toHaveLength(1);
+    expect(store.getState().txns.filter(txn => txn.type !== "opening")).toHaveLength(1);
   });
   it("rejects infinite money without ledger or balance changes", () => {
     expect(() => store.getState().transfer("dbbl", "cash", Infinity, "Transfer")).toThrow();
     expect(balance("cash")).toBe(10000);
     expect(balance("dbbl")).toBe(5000);
-    expect(store.getState().txns).toHaveLength(0);
+    expect(store.getState().txns.filter(txn => txn.type !== "opening")).toHaveLength(0);
   });
 });
