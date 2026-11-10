@@ -31,3 +31,4 @@ use the editor.
 
 - All money movements must go through the store's ledger `post()` (src/lib/store.ts) so balances and profit stay auditable; pure rules live in src/lib/rules.ts.
 - Device-local zustand is the offline cache; authenticated Cloud shop snapshots are authoritative for shared actions, with server-side role checks and optimistic versions preventing stale overwrites. Per-shop durable outboxes retry UUID-identified actions, and server-side receipts must make every retry idempotent.
+- Inline server dependency imports in the Nitro bundle to prevent cross-chunk CommonJS helper initialization failures on hosted previews.

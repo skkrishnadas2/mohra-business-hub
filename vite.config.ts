@@ -8,8 +8,17 @@
 // hosting already compresses at the edge.
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import type { NitroConfig } from "nitro/types";
+
+// Keep server dependency helpers in the same bundle: split CommonJS chunks
+// can initialize before their helper exports in the hosted Worker runtime.
+const nitroOptions: NitroConfig = {
+  preset: "cloudflare-module",
+  inlineDynamicImports: true,
+};
 
 export default defineConfig({
+  nitro: nitroOptions,
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
