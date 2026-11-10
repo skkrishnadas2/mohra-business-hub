@@ -1,5 +1,11 @@
 # Live device monitor
 
+## External hosting preparation
+
+- [x] Make browser Supabase configuration environment-based with environment-only Cloud fallbacks
+- [x] Add Wrangler configuration matching Nitro Worker output
+- [ ] Run the complete test suite and check automatic build results without publishing
+
 - [x] Track Cloud-connected owner and cashier devices with Realtime Presence
 - [x] Show online device type, role and current-device status in the owner monitor
 - [x] Test presence summaries and all existing shop rules
