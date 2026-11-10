@@ -53,7 +53,7 @@ export function SetupAccounts({ onFinish, error }: { onFinish: (accounts: Accoun
     </div>;
   };
   return <div className="flex min-h-0 flex-1 flex-col">
-    <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto pb-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-6">
+    <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto pb-3 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] md:gap-6">
       <div className="space-y-3">
         <section><h2 className="mb-2 text-sm font-semibold">ক্যাশ ড্রয়ার</h2>{rows.filter(row => row.kind === "cash").map(renderRow)}</section>
         {GROUPS.map(group => <section key={group.kind} aria-label={group.title}>
