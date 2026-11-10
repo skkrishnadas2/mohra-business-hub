@@ -96,6 +96,10 @@ export async function joinOnlineShop(shopId: string, joinCode: string) {
 }
 
 export async function initializeCloud() {
+  if (!isCloudConfigured) {
+    useCloud.setState({ status: "idle", shopId: null, role: null, pending: 0, error: null });
+    return;
+  }
   const { data } = await supabase.auth.getSession();
   if (!data.session) {
     useCloud.setState({ status: "idle", shopId: null, role: null, pending: 0, error: null });
