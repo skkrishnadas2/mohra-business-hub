@@ -43,3 +43,4 @@ use the editor.
 - Persist outbox actions under independent keys with acknowledgment tombstones; shared array rewrites can lose another tab's financial work.
 - Invalidate connection epochs on shop changes and reject switches with pending work; never adopt older snapshots or route actions while another shop is loading.
 - Allocate due collections oldest-first to sale-level totals, including inference for legacy snapshots; aggregate customer debt cannot authorize cancellation of a collected sale.
+- A device without a local shop shows the owner sign-in gate first; an existing online shop is loaded instead of re-running setup, and a new setup is uploaded as the owner's online shop.

@@ -3,7 +3,7 @@ import { actionError, useStore, type Account } from "@/lib/store";
 import { BigButton, Label, NumInput, TextInput } from "./kit";
 import { SetupAccounts } from "./SetupAccounts";
 
-export function Setup() {
+export function Setup({ onComplete }: { onComplete?: () => void } = {}) {
   const { completeSetup, shopName: defName } = useStore();
   const [step, setStep] = useState(0);
   const [shopName, setShopName] = useState(defName);
@@ -14,7 +14,8 @@ export function Setup() {
   const finishSetup = (accounts: Account[], balances: Record<string, number>) => {
     setError("");
     try { completeSetup({ shopName, ownerPin, cashierPin, accounts, balances }); }
-    catch (caught) { setError(actionError(caught)); }
+    catch (caught) { setError(actionError(caught)); return; }
+    onComplete?.();
   };
   return (
     <div className={`mx-auto w-full px-4 py-4 sm:px-6 ${step === 1 ? "flex h-dvh max-w-4xl flex-col overflow-hidden" : "min-h-screen max-w-lg sm:py-8"}`}>

@@ -5,7 +5,7 @@ import {
   MoonStar, Settings, Activity, Menu, LogOut, Cloud,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { Setup } from "./Setup";
+import { AccountGate } from "./AccountGate";
 import { CloudSync } from "./CloudSync";
 import { BigButton, PinPad } from "./kit";
 import { cn } from "@/lib/utils";
@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [loc.pathname, setupDone, role]);
 
   if (!hydrated) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">লোড হচ্ছে…</div>;
-  if (!setupDone) return <Setup />;
+  if (!setupDone) return <AccountGate />;
   if (!role)
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 py-10">
