@@ -1,6 +1,6 @@
 import { create, type StateCreator } from "zustand";
 import { persist } from "zustand/middleware";
-import { agentCommission, b2bLeg, round2, type MfsProvider, type Operator, DEFAULT_CIPHER_KEY } from "./rules";
+import { agentCommission, b2bLeg, round2, validAccountProvider, type MfsProvider, type Operator, DEFAULT_CIPHER_KEY } from "./rules";
 
 export type AccountKind = "cash" | "bank" | "mfs_agent" | "mfs_personal" | "recharge";
 export interface Account {
@@ -24,6 +24,7 @@ export interface Payment { accountId: string | "due"; amount: number }
 export interface Sale {
   id: string; at: number; items: CartLine[]; total: number; cost: number;
   payments: Payment[]; customerId?: string | undefined; by: Role;
+  dueCollected?: number;
 }
 export type ProfitCat = "product" | "mfs" | "recharge" | "service" | "none";
 export interface Txn {
@@ -204,6 +205,17 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
       };
       const own = () => requireOwner(get().role);
       const permitted = (key: keyof Perms) => requirePermission(get().role, get().perms, key);
+      // Allocate collections oldest-first; infer older snapshots from the aggregate balance.
+      const collectedBySale = (customer: Customer) => {
+        const sales = get().sales.filter(sale => sale.customerId === customer.id).slice().reverse().sort((a, b) => a.at - b.at);
+        const dueOf = (sale: Sale) => round2(sale.payments.filter(payment => payment.accountId === "due").reduce((sum, payment) => sum + payment.amount, 0));
+        let legacyCollected = round2(Math.max(0, sales.reduce((sum, sale) => sum + dueOf(sale) - (sale.dueCollected ?? 0), 0) - customer.due));
+        return new Map(sales.map(sale => {
+          const collected = sale.dueCollected ?? Math.min(dueOf(sale), legacyCollected);
+          if (sale.dueCollected === undefined) legacyCollected = round2(legacyCollected - collected);
+          return [sale.id, collected] as const;
+        }));
+      };
 
       return {
         ...initial,
@@ -229,6 +241,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
             names.add(normalizedName);
             const needsProvider = account.kind.startsWith("mfs") || account.kind === "recharge";
             const provider = needsProvider ? required(account.provider ?? "", account.kind === "recharge" ? "অপারেটর" : "MFS প্রোভাইডার") : undefined;
+            if (!validAccountProvider(account.kind, provider)) fail("হিসাবের সঠিক অপারেটর বা প্রোভাইডার বেছে নিন");
             if (account.kind === "cash") cashCount += 1;
             return { id, name, kind: account.kind, provider, balance: cleanBalances[id] ?? nonNegative(account.balance, "শুরুর ব্যালেন্স") };
           });
@@ -264,8 +277,13 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           own();
           const name = required(a.name, "হিসাবের নাম");
           if (get().accounts.some((x) => x.name.toLowerCase() === name.toLowerCase())) fail("এই নামে হিসাব আগেই আছে");
-          if (a.kind.startsWith("mfs") && !a.provider) fail("MFS প্রোভাইডার বেছে নিন");
-          set((s) => ({ accounts: [...s.accounts, { ...a, name, balance: nonNegative(a.balance, "শুরুর ব্যালেন্স"), id: uid() }] }));
+          if (!validAccountProvider(a.kind, a.provider)) fail("হিসাবের সঠিক অপারেটর বা প্রোভাইডার বেছে নিন");
+          if (a.kind === "cash") fail("একটি ক্যাশ ড্রয়ার ইতিমধ্যে আছে");
+          const opening = nonNegative(a.balance, "শুরুর ব্যালেন্স");
+          const account = { ...a, name, balance: 0, id: uid() };
+          validateMoves([...get().accounts, account], [{ accountId: account.id, delta: opening }]);
+          set((s) => ({ accounts: [...s.accounts, account] }));
+          if (opening > 0) post({ type: "opening", title: `শুরুর ব্যালেন্স · ${name}`, amount: opening, profit: 0, cat: "none", moves: [{ accountId: account.id, delta: opening }] });
         },
         setBalance: (id, value, pin) => {
           requireRole(get().role);
@@ -353,7 +371,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
             existing = phone ? get().customers.find((c) => c.phone === phone) : undefined;
             customerId = existing?.id ?? uid();
           }
-          const sale: Sale = { id: uid(), at: Date.now(), items: cleanLines, total, cost, payments: cleanPayments, customerId, by };
+          const sale: Sale = { id: uid(), at: Date.now(), items: cleanLines, total, cost, payments: cleanPayments, customerId, by, dueCollected: 0 };
           set((s) => ({
             sales: [sale, ...s.sales],
             products: s.products.map((p) => quantities.has(p.id) ? { ...p, stock: p.stock - (quantities.get(p.id) ?? 0) } : p),
@@ -375,6 +393,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const saleDue = round2(sale.payments.filter((p) => p.accountId === "due").reduce((sum, p) => sum + p.amount, 0));
           const customer = sale.customerId ? get().customers.find((c) => c.id === sale.customerId) : undefined;
           if (saleDue > 0 && (!customer || customer.due + EPSILON < saleDue)) fail("এই মেমোর বাকি ইতিমধ্যে আদায় হয়েছে, তাই মেমো বাতিল করা যাবে না");
+          if (customer && (collectedBySale(customer).get(sale.id) ?? 0) > 0) fail("এই মেমোর বাকি ইতিমধ্যে আদায় হয়েছে, তাই মেমো বাতিল করা যাবে না");
           const moves = sale.payments.filter((p) => p.accountId !== "due").map((p) => ({ accountId: p.accountId as string, delta: -p.amount }));
           validateMoves(get().accounts, moves);
           set((s) => ({
@@ -465,9 +484,10 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const repair = get().repairs.find((x) => x.id === id) ?? fail("রিপেয়ার এন্ট্রি পাওয়া যায়নি");
           if (repair.status === status) return;
           const rest = round2(Math.max(0, repair.estimate - repair.advance));
-          const collect = status === "delivered" && !repair.deliveryCollected;
+          const alreadyCollected = repair.deliveryCollected || repair.status === "delivered";
+          const collect = status === "delivered" && !alreadyCollected;
           if (collect && rest > 0) validateMoves(get().accounts, [{ accountId: "cash", delta: rest }]);
-          set((s) => ({ repairs: s.repairs.map((x) => x.id === id ? { ...x, status, deliveryCollected: x.deliveryCollected || collect } : x) }));
+          set((s) => ({ repairs: s.repairs.map((x) => x.id === id ? { ...x, status, deliveryCollected: alreadyCollected || collect } : x) }));
           if (collect && rest > 0) post({ type: "repair_bill", title: `রিপেয়ার ডেলিভারি · ${repair.device}`, amount: rest, profit: rest, cat: "service", moves: [{ accountId: "cash", delta: rest }] });
         },
         collectDue: (customerId, amount) => {
@@ -476,7 +496,20 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const value = positive(amount);
           if (value > customer.due + EPSILON) fail("বাকির চেয়ে বেশি টাকা আদায় করা যাবে না");
           validateMoves(get().accounts, [{ accountId: "cash", delta: value }]);
-          set((s) => ({ customers: s.customers.map((x) => x.id === customerId ? { ...x, due: round2(x.due - value) } : x) }));
+          const collected = collectedBySale(customer);
+          let remaining = value;
+          const allocations = new Map<string, number>();
+          for (const sale of get().sales.filter(sale => sale.customerId === customerId).slice().reverse().sort((a, b) => a.at - b.at)) {
+            const due = round2(sale.payments.filter(payment => payment.accountId === "due").reduce((sum, payment) => sum + payment.amount, 0));
+            const previous = collected.get(sale.id) ?? 0;
+            const paid = Math.min(Math.max(0, due - previous), remaining);
+            allocations.set(sale.id, round2(previous + paid));
+            remaining = round2(remaining - paid);
+          }
+          set((s) => ({
+            customers: s.customers.map((x) => x.id === customerId ? { ...x, due: round2(x.due - value) } : x),
+            sales: s.sales.map(sale => allocations.has(sale.id) ? { ...sale, dueCollected: allocations.get(sale.id) ?? 0 } : sale),
+          }));
           post({ type: "due_collect", title: `বাকি আদায় · ${customer.name}`, amount: value, profit: 0, cat: "none", moves: [{ accountId: "cash", delta: value }] });
         },
         closeDay: (counted) => {

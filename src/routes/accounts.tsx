@@ -86,10 +86,11 @@ function Accounts() {
           <SheetHeader><SheetTitle>নতুন হিসাব</SheetTitle></SheetHeader>
           {nw && (
             <div className="space-y-3 p-4 pt-0">
-              <Chips value={nw.kind} onChange={(kind) => setNw({ ...nw, kind })} options={(Object.keys(KIND_LABEL) as Account["kind"][]).filter((k) => k !== "cash").map((k) => ({ value: k, label: KIND_LABEL[k] }))} />
+              <Chips value={nw.kind} onChange={(kind) => setNw({ ...nw, kind, provider: "" })} options={(Object.keys(KIND_LABEL) as Account["kind"][]).filter((k) => k !== "cash").map((k) => ({ value: k, label: KIND_LABEL[k] }))} />
               <TextInput placeholder="নাম (যেমন: বিকাশ এজেন্ট ৩)" value={nw.name} onChange={(e) => setNw({ ...nw, name: e.target.value })} />
               {nw.kind.startsWith("mfs") && <Chips value={nw.provider} onChange={(provider) => setNw({ ...nw, provider })} options={[{ value: "bkash", label: "বিকাশ" }, { value: "nagad", label: "নগদ" }, { value: "rocket", label: "রকেট" }, { value: "upay", label: "উপায়" }]} />}
-              <BigButton disabled={!nw.name || (nw.kind.startsWith("mfs") && !nw.provider)} onClick={() => {
+              {nw.kind === "recharge" && <Chips value={nw.provider} onChange={(provider) => setNw({ ...nw, provider })} options={[{ value: "gp", label: "গ্রামীণফোন" }, { value: "robi", label: "রবি" }, { value: "airtel", label: "এয়ারটেল" }, { value: "banglalink", label: "বাংলালিংক" }, { value: "teletalk", label: "টেলিটক" }]} />}
+              <BigButton disabled={!nw.name.trim() || ((nw.kind.startsWith("mfs") || nw.kind === "recharge") && !nw.provider)} onClick={() => {
                 try { addAccount({ name: nw.name, kind: nw.kind, provider: nw.provider || undefined, balance: 0 }); setNw(null); }
                 catch (error) { toast.error(actionError(error)); }
               }}>যোগ করুন</BigButton>
