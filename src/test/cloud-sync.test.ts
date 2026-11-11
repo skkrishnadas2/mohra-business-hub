@@ -21,7 +21,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import { appendOutbox, readOutbox } from "@/lib/cloud-outbox";
-import { flushCloudOutbox, useCloud } from "@/lib/cloud-sync";
+import { disconnectCloud, flushCloudOutbox, openCloudShop, createOnlineShop, useCloud } from "@/lib/cloud-sync";
 import { shopSnapshot, useStore, type CartLine, type State } from "@/lib/store";
 
 const shopId = "11111111-1111-4111-8111-111111111111";
@@ -51,6 +51,27 @@ beforeEach(() => {
 });
 
 describe("Cloud conflict recovery", () => {
+  it("does not let an older version 1 response overwrite version 2", async () => {
+    const authoritative = shopSnapshot(useStore.getState());
+    let resolve: ((value: ReturnType<typeof cloudShop>) => void) | undefined;
+    mocks.get.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    const opening = openCloudShop(shopId);
+    useCloud.setState({ version: 2 });
+    resolve?.(cloudShop(authoritative, 1));
+    await opening;
+    expect(useCloud.getState().version).toBe(2);
+  });
+  it("does not reconnect after disconnecting a pending create", async () => {
+    let resolve: ((value: { shopId: string }) => void) | undefined;
+    mocks.create.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    mocks.get.mockResolvedValue(cloudShop(shopSnapshot(useStore.getState()), 1));
+    const creating = createOnlineShop();
+    disconnectCloud();
+    resolve?.({ shopId });
+    await creating;
+    expect(useCloud.getState().shopId).toBeNull();
+    expect(mocks.get).not.toHaveBeenCalled();
+  });
   it("removes a server-rejected optimistic sale and restores the authoritative state", async () => {
     const authoritative = shopSnapshot(useStore.getState());
     const product = authoritative.products[1]!;
