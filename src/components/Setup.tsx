@@ -16,9 +16,6 @@ export function Setup({ onComplete }: { onComplete?: () => void } = {}) {
     try { completeSetup({ shopName, ownerPin, cashierPin, accounts, balances }); }
     catch (caught) { setError(actionError(caught)); return; }
     onComplete?.();
-    return;
-    try {}
-    catch (caught) { setError(actionError(caught)); }
   };
   return (
     <div className={`mx-auto w-full px-4 py-4 sm:px-6 ${step === 1 ? "flex h-dvh max-w-4xl flex-col overflow-hidden" : "min-h-screen max-w-lg sm:py-8"}`}>
