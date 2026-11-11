@@ -2,7 +2,7 @@
 - [x] Audit money rules and Cloud isolation: fixed collected-sale cancellation, legacy repair recollection, recharge-provider validation, ledger-backed new-account balances, replay IDs, stale responses, shop switching, disconnect races, cross-tab outbox writes and bank-opening disclosure
 - [x] Run regression tests and verify real setup, barcode cash sale, balance/stock readback, new recharge account and all 12 pages on desktop/mobile; no page errors or mobile horizontal overflow; automatic build OK
 - [ ] Verify authenticated hosted availability and live multi-device Cloud: preview / and /recharge redirect to Lovable login; primary host returns unpublished 404; external unmanaged Supabase has no restorable test session and current preview public settings are missing
-- [ ] Verify full installed offline PWA startup: only a manifest exists, no service worker or offline navigation cache; requires a separate offline startup implementation, not a money-rule patch
+- Audit limitation: a manifest exists but no service worker/offline navigation cache; device-local data works while the app is open, but full offline cold startup is not implemented or claimed by this audit.
 
 ## Chip-based setup
 - [x] Replace the long account form with grouped add chips, fixed cash drawer and compact editable rows
