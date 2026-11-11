@@ -21,6 +21,12 @@ const nitroOptions: NitroConfig = {
   preset: "cloudflare-module",
   inlineDynamicImports: true,
   rollupConfig: { output: { inlineDynamicImports: true } },
+  // Deploys use Nitro's generated wrangler.json, not wrangler.toml: without nodejs_compat there,
+  // Worker secrets never reach process.env and every Cloud call fails as "missing settings".
+  cloudflare: {
+    nodeCompat: true,
+    wrangler: { compatibility_flags: ["nodejs_compat"], keep_vars: true },
+  },
 };
 
 export default defineConfig(({ mode }) => {
