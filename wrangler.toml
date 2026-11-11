@@ -2,6 +2,8 @@ name = "mohra-business-hub"
 main = ".output/server/index.mjs"
 compatibility_date = "2026-11-10"
 compatibility_flags = ["nodejs_compat"]
+# Keep variables set in the Cloudflare dashboard when deploying.
+keep_vars = true
 
 [assets]
 directory = ".output/public"
