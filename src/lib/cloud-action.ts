@@ -1,7 +1,7 @@
 import { createStore } from "zustand/vanilla";
 import {
-  actionError, shopSnapshot, shopStoreCreator,
-  type CloudActionName, type Role, type ShopStore, type State,
+  actionError, shopSnapshot, createShopStoreCreator,
+  type CloudAction, type Role, type ShopStore, type State,
 } from "@/lib/store";
 
 export type CloudReplay =
@@ -12,9 +12,9 @@ export type CloudReplay =
 export function replayCloudAction(
   current: State,
   role: Role,
-  action: { name: CloudActionName; args: unknown[] },
+  action: CloudAction,
 ): CloudReplay {
-  const fresh = createStore<ShopStore>()(shopStoreCreator);
+  const fresh = createStore<ShopStore>()(createShopStoreCreator(action));
   fresh.setState({ ...current, role });
   try {
     const operation = fresh.getState()[action.name] as unknown as (...args: unknown[]) => unknown;

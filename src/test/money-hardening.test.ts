@@ -11,6 +11,46 @@ beforeEach(() => {
 });
 
 describe("money-flow validation", () => {
+  it("does not let a new 120 credit sale hide collection of an older 120 sale", () => {
+    const product = store.getState().products[2];
+    if (!product) throw new Error("Missing product");
+    const line = { productId: product.id, name: product.name, qty: 1, price: 120, cost: product.cost };
+    const customer = { name: "Rahim", phone: "01710000000" };
+    const older = store.getState().checkout([line], [{ accountId: "due", amount: 120 }], customer);
+    if (!older.customerId) throw new Error("Missing customer");
+    store.getState().collectDue(older.customerId, 120);
+    const newer = store.getState().checkout([line], [{ accountId: "due", amount: 120 }], customer);
+    expect(() => store.getState().deleteSale(older.id)).toThrow();
+    expect(store.getState().customers[0]?.due).toBe(120);
+    expect(balance("cash")).toBe(10120);
+    expect(store.getState().sales).toHaveLength(2);
+    store.getState().deleteSale(newer.id);
+    expect(store.getState().customers[0]?.due).toBe(0);
+    expect(balance("cash")).toBe(10120);
+  });
+  it("does not recollect an already delivered legacy repair's 800 balance", () => {
+    store.getState().addRepair({ customer: "Rahim", phone: "", device: "Phone", problem: "Display", estimate: 1000, advance: 200 });
+    const repair = store.getState().repairs[0];
+    if (!repair) throw new Error("Missing repair");
+    store.getState().setRepairStatus(repair.id, "delivered");
+    store.setState({ repairs: store.getState().repairs.map(({ deliveryCollected: _marker, ...saved }) => saved) });
+    store.getState().setRepairStatus(repair.id, "ready");
+    store.getState().setRepairStatus(repair.id, "delivered");
+    expect(balance("cash")).toBe(11000);
+    expect(store.getState().txns.filter(txn => txn.type === "repair_bill")).toHaveLength(1);
+  });
+  it("rejects recharge accounts without an operator", () => {
+    expect(() => store.getState().addAccount({ name: "New SIM", kind: "recharge", balance: 0 })).toThrow();
+    expect(store.getState().accounts.some(account => account.name === "New SIM")).toBe(false);
+  });
+  it("records a new bank's 500 opening balance in the ledger", () => {
+    store.getState().addAccount({ name: "New bank", kind: "bank", balance: 500 });
+    const account = store.getState().accounts.find(item => item.name === "New bank");
+    if (!account) throw new Error("Missing account");
+    expect(account.balance).toBe(500);
+    expect(store.getState().txns[0]?.moves).toEqual([{ accountId: account.id, delta: 500 }]);
+    expect(store.getState().txns[0]?.profit).toBe(0);
+  });
   it("requires the full cash-in principal before crediting bKash commission", () => {
     expect(() => store.getState().mfsAgent("bk_a1", "in", 1001, "01710000000")).toThrow();
     expect(balance("bk_a1")).toBe(1000);

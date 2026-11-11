@@ -3,6 +3,12 @@
 export type MfsProvider = "bkash" | "nagad" | "rocket" | "upay";
 export type Operator = "gp" | "robi" | "airtel" | "banglalink" | "teletalk";
 
+export function validAccountProvider(kind: string, provider?: string) {
+  if (kind === "mfs_agent" || kind === "mfs_personal") return ["bkash", "nagad", "rocket", "upay"].includes(provider ?? "");
+  if (kind === "recharge") return ["gp", "robi", "airtel", "banglalink", "teletalk"].includes(provider ?? "");
+  return kind === "cash" || kind === "bank";
+}
+
 /** SR settlement is separate from customer cash-in/out. */
 export function b2bLeg(kind: "mfs" | "recharge", sourceKind: string, targetKind: string): "sim_cash" | "bank_sim" | "bank_cash" | "cash_sim" | null {
   const simKind = kind === "mfs" ? "mfs_agent" : "recharge";

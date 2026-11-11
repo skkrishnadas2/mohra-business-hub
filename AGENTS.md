@@ -39,3 +39,7 @@ use the editor.
 
 - Persisted shop upgrades discard retired synthetic snapshots and preserve real shop data; never upload synthetic records as real financial history.
 - Setup account chips create only explicitly selected UUID-backed rows; pure naming, money-input and available-leg rules stay in rules.ts, and opening balances enter through one ledger post so later adjustments remain independently auditable.
+- Use one action identity and timestamp for local execution and authoritative replay, deriving generated entity IDs per action; dependent offline work must reference the same IDs on every device.
+- Persist outbox actions under independent keys with acknowledgment tombstones; shared array rewrites can lose another tab's financial work.
+- Invalidate connection epochs on shop changes and reject switches with pending work; never adopt older snapshots or route actions while another shop is loading.
+- Allocate due collections oldest-first to sale-level totals, including inference for legacy snapshots; aggregate customer debt cannot authorize cancellation of a collected sale.

@@ -1,6 +1,6 @@
 import { create, type StateCreator } from "zustand";
 import { persist } from "zustand/middleware";
-import { agentCommission, b2bLeg, round2, type MfsProvider, type Operator, DEFAULT_CIPHER_KEY } from "./rules";
+import { agentCommission, b2bLeg, round2, validAccountProvider, type MfsProvider, type Operator, DEFAULT_CIPHER_KEY } from "./rules";
 
 export type AccountKind = "cash" | "bank" | "mfs_agent" | "mfs_personal" | "recharge";
 export interface Account {
@@ -24,6 +24,7 @@ export interface Payment { accountId: string | "due"; amount: number }
 export interface Sale {
   id: string; at: number; items: CartLine[]; total: number; cost: number;
   payments: Payment[]; customerId?: string | undefined; by: Role;
+  dueCollected?: number;
 }
 export type ProfitCat = "product" | "mfs" | "recharge" | "service" | "none";
 export interface Txn {
@@ -46,7 +47,6 @@ export interface Perms {
   editSales: boolean; manageProducts: boolean; b2b: boolean;
 }
 
-const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const EPSILON = 0.0001;
 
 function fail(message: string): never {
@@ -175,7 +175,16 @@ const initial: State = {
 export type ShopStore = State & Actions;
 
 /** Framework-free store creator: the browser persists it and the server uses a fresh instance per action. */
-export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
+export interface ActionIdentity { id?: string | undefined; at?: number | undefined }
+export function createShopStoreCreator(identity: ActionIdentity = {}): StateCreator<ShopStore> {
+  return (set, get) => {
+      let sequence = 0;
+      let previousId: string | undefined;
+      const uid = () => {
+        if (identity.id !== previousId) { sequence = 0; previousId = identity.id; }
+        return identity.id ? `${identity.id}-${++sequence}` : Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+      };
+      const now = () => identity.at ?? Date.now();
       const acc = (id: string) => get().accounts.find((a) => a.id === id);
       const requireAccount = (id: string) => acc(id) ?? fail("হিসাবটি পাওয়া যায়নি");
       const validateMoves = (accounts: Account[], moves: Txn["moves"]) => {
@@ -195,7 +204,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
         const by = requireRole(get().role);
         if (!Number.isFinite(t.amount) || !Number.isFinite(t.profit)) fail("লেনদেনের পরিমাণ সঠিক নয়");
         const deltas = validateMoves(get().accounts, t.moves);
-        const txn: Txn = { ...t, id: uid(), at: Date.now(), by };
+        const txn: Txn = { ...t, id: uid(), at: now(), by };
         set((s) => ({
           accounts: s.accounts.map((a) => deltas.has(a.id) ? { ...a, balance: round2(a.balance + (deltas.get(a.id) ?? 0)) } : a),
           txns: [txn, ...s.txns],
@@ -204,6 +213,17 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
       };
       const own = () => requireOwner(get().role);
       const permitted = (key: keyof Perms) => requirePermission(get().role, get().perms, key);
+      // Allocate collections oldest-first; infer older snapshots from the aggregate balance.
+      const collectedBySale = (customer: Customer) => {
+        const sales = get().sales.filter(sale => sale.customerId === customer.id).slice().reverse().sort((a, b) => a.at - b.at);
+        const dueOf = (sale: Sale) => round2(sale.payments.filter(payment => payment.accountId === "due").reduce((sum, payment) => sum + payment.amount, 0));
+        let legacyCollected = round2(Math.max(0, sales.reduce((sum, sale) => sum + dueOf(sale) - (sale.dueCollected ?? 0), 0) - customer.due));
+        return new Map(sales.map(sale => {
+          const collected = sale.dueCollected ?? Math.min(dueOf(sale), legacyCollected);
+          if (sale.dueCollected === undefined) legacyCollected = round2(legacyCollected - collected);
+          return [sale.id, collected] as const;
+        }));
+      };
 
       return {
         ...initial,
@@ -229,6 +249,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
             names.add(normalizedName);
             const needsProvider = account.kind.startsWith("mfs") || account.kind === "recharge";
             const provider = needsProvider ? required(account.provider ?? "", account.kind === "recharge" ? "অপারেটর" : "MFS প্রোভাইডার") : undefined;
+            if (!validAccountProvider(account.kind, provider)) fail("হিসাবের সঠিক অপারেটর বা প্রোভাইডার বেছে নিন");
             if (account.kind === "cash") cashCount += 1;
             return { id, name, kind: account.kind, provider, balance: cleanBalances[id] ?? nonNegative(account.balance, "শুরুর ব্যালেন্স") };
           });
@@ -264,8 +285,13 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           own();
           const name = required(a.name, "হিসাবের নাম");
           if (get().accounts.some((x) => x.name.toLowerCase() === name.toLowerCase())) fail("এই নামে হিসাব আগেই আছে");
-          if (a.kind.startsWith("mfs") && !a.provider) fail("MFS প্রোভাইডার বেছে নিন");
-          set((s) => ({ accounts: [...s.accounts, { ...a, name, balance: nonNegative(a.balance, "শুরুর ব্যালেন্স"), id: uid() }] }));
+          if (!validAccountProvider(a.kind, a.provider)) fail("হিসাবের সঠিক অপারেটর বা প্রোভাইডার বেছে নিন");
+          if (a.kind === "cash") fail("একটি ক্যাশ ড্রয়ার ইতিমধ্যে আছে");
+          const opening = nonNegative(a.balance, "শুরুর ব্যালেন্স");
+          const account = { ...a, name, balance: 0, id: uid() };
+          validateMoves([...get().accounts, account], [{ accountId: account.id, delta: opening }]);
+          set((s) => ({ accounts: [...s.accounts, account] }));
+          if (opening > 0) post({ type: "opening", title: `শুরুর ব্যালেন্স · ${name}`, amount: opening, profit: 0, cat: "none", moves: [{ accountId: account.id, delta: opening }] });
         },
         setBalance: (id, value, pin) => {
           requireRole(get().role);
@@ -353,7 +379,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
             existing = phone ? get().customers.find((c) => c.phone === phone) : undefined;
             customerId = existing?.id ?? uid();
           }
-          const sale: Sale = { id: uid(), at: Date.now(), items: cleanLines, total, cost, payments: cleanPayments, customerId, by };
+          const sale: Sale = { id: uid(), at: now(), items: cleanLines, total, cost, payments: cleanPayments, customerId, by, dueCollected: 0 };
           set((s) => ({
             sales: [sale, ...s.sales],
             products: s.products.map((p) => quantities.has(p.id) ? { ...p, stock: p.stock - (quantities.get(p.id) ?? 0) } : p),
@@ -375,6 +401,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const saleDue = round2(sale.payments.filter((p) => p.accountId === "due").reduce((sum, p) => sum + p.amount, 0));
           const customer = sale.customerId ? get().customers.find((c) => c.id === sale.customerId) : undefined;
           if (saleDue > 0 && (!customer || customer.due + EPSILON < saleDue)) fail("এই মেমোর বাকি ইতিমধ্যে আদায় হয়েছে, তাই মেমো বাতিল করা যাবে না");
+          if (customer && (collectedBySale(customer).get(sale.id) ?? 0) > 0) fail("এই মেমোর বাকি ইতিমধ্যে আদায় হয়েছে, তাই মেমো বাতিল করা যাবে না");
           const moves = sale.payments.filter((p) => p.accountId !== "due").map((p) => ({ accountId: p.accountId as string, delta: -p.amount }));
           validateMoves(get().accounts, moves);
           set((s) => ({
@@ -455,7 +482,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const advance = nonNegative(r.advance, "অগ্রিম");
           if (advance > estimate) fail("অগ্রিম আনুমানিক বিলের বেশি হতে পারবে না");
           if (advance > 0) validateMoves(get().accounts, [{ accountId: "cash", delta: advance }]);
-          const repair: Repair = { ...r, customer, device, estimate, advance, id: uid(), at: Date.now(), status: "received", deliveryCollected: false };
+          const repair: Repair = { ...r, customer, device, estimate, advance, id: uid(), at: now(), status: "received", deliveryCollected: false };
           set((s) => ({ repairs: [repair, ...s.repairs] }));
           if (advance > 0) post({ type: "repair_advance", title: `রিপেয়ার অগ্রিম · ${device}`, amount: advance, profit: advance, cat: "service", moves: [{ accountId: "cash", delta: advance }] });
         },
@@ -465,9 +492,10 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const repair = get().repairs.find((x) => x.id === id) ?? fail("রিপেয়ার এন্ট্রি পাওয়া যায়নি");
           if (repair.status === status) return;
           const rest = round2(Math.max(0, repair.estimate - repair.advance));
-          const collect = status === "delivered" && !repair.deliveryCollected;
+          const alreadyCollected = repair.deliveryCollected || repair.status === "delivered";
+          const collect = status === "delivered" && !alreadyCollected;
           if (collect && rest > 0) validateMoves(get().accounts, [{ accountId: "cash", delta: rest }]);
-          set((s) => ({ repairs: s.repairs.map((x) => x.id === id ? { ...x, status, deliveryCollected: x.deliveryCollected || collect } : x) }));
+          set((s) => ({ repairs: s.repairs.map((x) => x.id === id ? { ...x, status, deliveryCollected: alreadyCollected || collect } : x) }));
           if (collect && rest > 0) post({ type: "repair_bill", title: `রিপেয়ার ডেলিভারি · ${repair.device}`, amount: rest, profit: rest, cat: "service", moves: [{ accountId: "cash", delta: rest }] });
         },
         collectDue: (customerId, amount) => {
@@ -476,7 +504,20 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const value = positive(amount);
           if (value > customer.due + EPSILON) fail("বাকির চেয়ে বেশি টাকা আদায় করা যাবে না");
           validateMoves(get().accounts, [{ accountId: "cash", delta: value }]);
-          set((s) => ({ customers: s.customers.map((x) => x.id === customerId ? { ...x, due: round2(x.due - value) } : x) }));
+          const collected = collectedBySale(customer);
+          let remaining = value;
+          const allocations = new Map<string, number>();
+          for (const sale of get().sales.filter(sale => sale.customerId === customerId).slice().reverse().sort((a, b) => a.at - b.at)) {
+            const due = round2(sale.payments.filter(payment => payment.accountId === "due").reduce((sum, payment) => sum + payment.amount, 0));
+            const previous = collected.get(sale.id) ?? 0;
+            const paid = Math.min(Math.max(0, due - previous), remaining);
+            allocations.set(sale.id, round2(previous + paid));
+            remaining = round2(remaining - paid);
+          }
+          set((s) => ({
+            customers: s.customers.map((x) => x.id === customerId ? { ...x, due: round2(x.due - value) } : x),
+            sales: s.sales.map(sale => allocations.has(sale.id) ? { ...sale, dueCollected: allocations.get(sale.id) ?? 0 } : sale),
+          }));
           post({ type: "due_collect", title: `বাকি আদায় · ${customer.name}`, amount: value, profit: 0, cat: "none", moves: [{ accountId: "cash", delta: value }] });
         },
         closeDay: (counted) => {
@@ -484,7 +525,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const actual = nonNegative(counted, "গণনা করা ক্যাশ");
           const expected = requireAccount("cash").balance;
           const profit = get().txns.filter((t) => t.at > get().lastClosedAt).reduce((sum, t) => sum + t.profit, 0);
-          const closing: Closing = { id: uid(), at: Date.now(), expected, counted: actual, diff: round2(actual - expected), profit: round2(profit), by };
+          const closing: Closing = { id: uid(), at: now(), expected, counted: actual, diff: round2(actual - expected), profit: round2(profit), by };
           if (closing.diff !== 0) post({ type: "close_adjust", title: "দিন শেষ ক্যাশ গরমিল", amount: closing.diff, profit: 0, cat: "none", moves: [{ accountId: "cash", delta: closing.diff }] });
           set((s) => ({ closings: [closing, ...s.closings], lastClosedAt: closing.at }));
           return closing;
@@ -494,7 +535,9 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           set({ ...initial });
         },
       };
-};
+  };
+}
+export const shopStoreCreator = createShopStoreCreator();
 
 export const CLOUD_ACTIONS = [
   "completeSetup", "setPerm", "setPins", "addAccount", "setBalance", "transfer",
@@ -503,21 +546,31 @@ export const CLOUD_ACTIONS = [
   "closeDay", "resetAll",
 ] as const;
 export type CloudActionName = (typeof CLOUD_ACTIONS)[number];
-export interface CloudAction { name: CloudActionName; args: unknown[] }
+export interface CloudAction extends ActionIdentity { name: CloudActionName; args: unknown[] }
 export const CLOUD_ACTION_EVENT = "mohra:cloud-action";
+let cloudActionGuard: (() => void) | undefined;
+export function setCloudActionGuard(guard: () => void) { cloudActionGuard = guard; }
 
-function withCloudActions(store: ShopStore): ShopStore {
+function withCloudActions(store: ShopStore, identity: ActionIdentity): ShopStore {
   const wrapped = { ...store };
   const target = wrapped as unknown as Record<string, unknown>;
   const source = store as unknown as Record<string, unknown>;
   for (const name of CLOUD_ACTIONS) {
     const original = source[name] as (...args: unknown[]) => unknown;
     target[name] = (...args: unknown[]) => {
-      const result = original(...args);
-      if (result !== false && typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent<CloudAction>(CLOUD_ACTION_EVENT, { detail: { name, args } }));
+      cloudActionGuard?.();
+      identity.id = crypto.randomUUID();
+      identity.at = Date.now();
+      try {
+        const result = original(...args);
+        if (result !== false && typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent<CloudAction>(CLOUD_ACTION_EVENT, { detail: { name, args, id: identity.id, at: identity.at } }));
+        }
+        return result;
+      } finally {
+        delete identity.id;
+        delete identity.at;
       }
-      return result;
     };
   }
   return wrapped;
@@ -536,7 +589,10 @@ export function shopSnapshot(state: State): State {
 
 export const useStore = create<ShopStore>()(
   persist(
-    (set, get, api) => withCloudActions(shopStoreCreator(set, get, api)),
+    (set, get, api) => {
+      const identity: ActionIdentity = {};
+      return withCloudActions(createShopStoreCreator(identity)(set, get, api), identity);
+    },
     {
       name: "mohra-pos-v1", skipHydration: true, version: 1,
       migrate: (persisted) => {

@@ -7,7 +7,7 @@ import {
 } from "@/lib/cloud.functions";
 import { acknowledgeOutbox, appendOutbox, readOutbox, type OutboxAction } from "@/lib/cloud-outbox";
 import {
-  CLOUD_ACTION_EVENT, actionError, shopSnapshot, useStore,
+  CLOUD_ACTION_EVENT, actionError, shopSnapshot, useStore, setCloudActionGuard,
   type CloudAction, type Role,
 } from "@/lib/store";
 
@@ -33,6 +33,8 @@ export const useCloud = create<CloudUiState>(() => ({
 
 let activeFlush: Promise<void> | null = null;
 let connectionEpoch = 0;
+let switchingShop = false;
+setCloudActionGuard(() => { if (switchingShop) throw new Error("দোকান খোলা হচ্ছে—একটু অপেক্ষা করুন"); });
 function savedShopId() {
   return typeof window === "undefined" ? null : window.localStorage.getItem(SHOP_KEY);
 }
@@ -44,6 +46,8 @@ function saveVersion(version: number) {
   if (typeof window !== "undefined") window.localStorage.setItem(VERSION_KEY, String(version));
 }
 function adopt(shop: CloudShop) {
+  const current = useCloud.getState();
+  if (current.shopId === shop.shopId && shop.version < current.version) return;
   const pending = readOutbox(shop.shopId).length;
   // A remote refresh must not wipe local work that has not been acknowledged yet.
   if (pending === 0) useStore.setState({ ...shop.state, setupDone: true, role: shop.role });
@@ -56,11 +60,14 @@ function adopt(shop: CloudShop) {
 }
 
 export async function openCloudShop(shopId: string) {
-  const epoch = connectionEpoch;
   const current = useCloud.getState();
+  const switching = current.shopId !== shopId;
+  if (switching && ((current.shopId && readOutbox(current.shopId).length) || readOutbox(shopId).length)) throw new Error("আগের দোকানের জমা কাজ সিঙ্ক করে তারপর দোকান বদলান");
+  if (switching) { connectionEpoch += 1; switchingShop = true; }
+  const epoch = connectionEpoch;
   useCloud.setState({
     status: current.status === "connected" && current.shopId === shopId ? "connected" : "connecting",
-    shopId, pending: readOutbox(shopId).length, error: null,
+    pending: switching ? current.pending : readOutbox(shopId).length, error: null,
   });
   try {
     const shop = await getCloudShop({ data: { shopId } });
@@ -72,27 +79,35 @@ export async function openCloudShop(shopId: string) {
     const message = actionError(error);
     useCloud.setState({ status: "error", error: message });
     throw error;
+  } finally {
+    if (epoch === connectionEpoch) switchingShop = false;
   }
 }
 
 export async function createOnlineShop() {
+  const epoch = connectionEpoch;
   useCloud.setState({ status: "connecting", error: null });
   try {
     const local = useStore.getState();
     const { shopId } = await createCloudShop({ data: { name: local.shopName, state: shopSnapshot(local) } });
+    if (epoch !== connectionEpoch) return;
     return await openCloudShop(shopId);
   } catch (error) {
+    if (epoch !== connectionEpoch) return;
     useCloud.setState({ status: "error", error: actionError(error) });
     throw error;
   }
 }
 
 export async function joinOnlineShop(shopId: string, joinCode: string) {
+  const epoch = connectionEpoch;
   useCloud.setState({ status: "connecting", error: null });
   try {
     await joinCloudShop({ data: { shopId, joinCode } });
+    if (epoch !== connectionEpoch) return;
     return await openCloudShop(shopId);
   } catch (error) {
+    if (epoch !== connectionEpoch) return;
     useCloud.setState({ status: "error", error: actionError(error) });
     throw error;
   }
@@ -119,6 +134,7 @@ export async function initializeCloud() {
 
 export function disconnectCloud() {
   connectionEpoch += 1;
+  switchingShop = false;
   useCloud.setState({ status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null, notice: null });
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(SHOP_KEY);
@@ -130,7 +146,7 @@ export function queueCloudAction(action: CloudAction) {
   const connected = useCloud.getState();
   const shopId = connected.shopId ?? savedShopId();
   if (!shopId) return;
-  const queued: OutboxAction = { ...action, id: crypto.randomUUID() };
+  const queued: OutboxAction = { ...action, id: action.id ?? crypto.randomUUID() };
   const pending = appendOutbox(shopId, queued).length;
   useCloud.setState({
     shopId, pending,

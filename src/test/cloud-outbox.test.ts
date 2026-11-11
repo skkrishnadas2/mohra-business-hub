@@ -9,6 +9,13 @@ const actionB = { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "transfer" a
 beforeEach(() => window.localStorage.clear());
 
 describe("durable Cloud outbox", () => {
+  it("retains an independently appended action when another tab restores a stale legacy array", () => {
+    appendOutbox(shopA, actionA);
+    appendOutbox(shopA, actionB);
+    acknowledgeOutbox(shopA, actionA.id);
+    window.localStorage.setItem(`mohra-cloud-outbox-v1:${shopA}`, JSON.stringify([actionA]));
+    expect(readOutbox(shopA)).toEqual([actionB]);
+  });
   it("keeps unsynced actions isolated per shop and prevents duplicate IDs", () => {
     appendOutbox(shopA, actionA);
     appendOutbox(shopA, actionA);

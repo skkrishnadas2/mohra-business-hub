@@ -17,6 +17,18 @@ function saleLine(state: ReturnType<typeof initialShop>, qty: number): CartLine 
 }
 
 describe("authoritative multi-device action replay", () => {
+  it("preserves product IDs across offline creation and a later 120 sale", () => {
+    const action = { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", at: 100, name: "upsertProduct" as const, args: [{ name: "Offline product", barcodes: ["AUDIT-1"], cost: 60, price: 120, stock: 2, lowStock: 1 }] };
+    const local = replayCloudAction(initialShop(), "owner", action);
+    const server = replayCloudAction(initialShop(), "owner", action);
+    if (local.status !== "ok" || server.status !== "ok") throw new Error("Creation failed");
+    const product = local.state.products.find(item => item.name === "Offline product");
+    if (!product) throw new Error("Missing product");
+    expect(server.state.products.find(item => item.name === "Offline product")?.id).toBe(product.id);
+    const sale = replayCloudAction(server.state, "owner", { name: "checkout", args: [[{ productId: product.id, name: product.name, qty: 1, price: 120, cost: 60 }], [{ accountId: "cash", amount: 120 }]] });
+    expect(sale.status).toBe("ok");
+    if (sale.status === "ok") expect(sale.state.accounts.find(account => account.id === "cash")?.balance).toBe(10120);
+  });
   it("keeps the first sale and rejects the second device when only two items exist", () => {
     const initial = initialShop();
     const product = initial.products[1]!;

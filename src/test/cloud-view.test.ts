@@ -11,6 +11,11 @@ beforeEach(() => {
 });
 
 describe("Cloud cashier field permissions", () => {
+  it("does not expose the hidden 5000 bank opening movement", () => {
+    const view = stateForRole(useStore.getState(), "cashier");
+    expect(view.txns.some(txn => txn.moves.some(move => move.accountId === "dbbl" && move.delta === 5000))).toBe(false);
+    expect(view.txns.find(txn => txn.type === "opening")?.amount).toBe(0);
+  });
   it("removes owner PIN, product cost, profit and bank balance when each permission is off", () => {
     const view = stateForRole(useStore.getState(), "cashier");
     expect(view.ownerPin).toBe("");
