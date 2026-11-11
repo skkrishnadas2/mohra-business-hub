@@ -1,3 +1,8 @@
+## Final engineering audit
+- [ ] Audit money rules and Cloud isolation; reproduce and fix concrete defects without design changes or publishing
+- [ ] Run regression tests and verify real setup, transactions and all pages on desktop/mobile
+- [ ] Recheck hosted availability and clearly record any externally blocked verification
+
 ## Chip-based setup
 - [x] Replace the long account form with grouped add chips, fixed cash drawer and compact editable rows
 - [x] Record one opening ledger transaction; hide unavailable B2B legs without changing settlement rules
