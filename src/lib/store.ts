@@ -47,7 +47,6 @@ export interface Perms {
   editSales: boolean; manageProducts: boolean; b2b: boolean;
 }
 
-const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const EPSILON = 0.0001;
 
 function fail(message: string): never {
@@ -176,11 +175,15 @@ const initial: State = {
 export type ShopStore = State & Actions;
 
 /** Framework-free store creator: the browser persists it and the server uses a fresh instance per action. */
-export interface ActionIdentity { id?: string; at?: number }
+export interface ActionIdentity { id?: string | undefined; at?: number | undefined }
 export function createShopStoreCreator(identity: ActionIdentity = {}): StateCreator<ShopStore> {
   return (set, get) => {
       let sequence = 0;
-      const uid = () => identity.id ? `${identity.id}-${++sequence}` : Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+      let previousId: string | undefined;
+      const uid = () => {
+        if (identity.id !== previousId) { sequence = 0; previousId = identity.id; }
+        return identity.id ? `${identity.id}-${++sequence}` : Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+      };
       const now = () => identity.at ?? Date.now();
       const acc = (id: string) => get().accounts.find((a) => a.id === id);
       const requireAccount = (id: string) => acc(id) ?? fail("হিসাবটি পাওয়া যায়নি");

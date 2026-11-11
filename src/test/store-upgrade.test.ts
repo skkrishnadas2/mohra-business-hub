@@ -45,7 +45,7 @@ describe("saved shop upgrades", () => {
     } finally {
       window.removeEventListener(CLOUD_ACTION_EVENT, listener);
     }
-    expect(actions).toEqual([{ name: "transfer", args: ["cash", "dbbl", 100, "Deposit"] }]);
+    expect(actions).toEqual([{ name: "transfer", args: ["cash", "dbbl", 100, "Deposit"], id: expect.any(String), at: expect.any(Number) }]);
     expect(useStore.getState().accounts.find(a => a.id === "cash")?.balance).toBe(900);
   });
 });
