@@ -11,7 +11,11 @@ export function stateForRole(state: State, role: Role): State {
       ...sale, cost: state.perms.viewCost ? sale.cost : 0,
       items: sale.items.map((line) => state.perms.viewCost ? line : { ...line, cost: 0 }),
     })),
-    txns: state.txns.map((txn) => state.perms.viewProfit ? txn : { ...txn, profit: 0 }),
+    txns: state.txns.map((txn) => ({
+      ...txn, profit: state.perms.viewProfit ? txn.profit : 0,
+      amount: !state.perms.viewBank && (txn.type === "opening" || txn.type === "adjust") ? 0 : txn.amount,
+      moves: txn.moves.filter(move => state.perms.viewBank || !state.accounts.some(account => account.id === move.accountId && account.kind === "bank")),
+    })),
     closings: state.closings.map((closing) => state.perms.viewProfit ? closing : { ...closing, profit: 0 }),
   };
 }

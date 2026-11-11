@@ -176,7 +176,12 @@ const initial: State = {
 export type ShopStore = State & Actions;
 
 /** Framework-free store creator: the browser persists it and the server uses a fresh instance per action. */
-export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
+export interface ActionIdentity { id?: string; at?: number }
+export function createShopStoreCreator(identity: ActionIdentity = {}): StateCreator<ShopStore> {
+  return (set, get) => {
+      let sequence = 0;
+      const uid = () => identity.id ? `${identity.id}-${++sequence}` : Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+      const now = () => identity.at ?? Date.now();
       const acc = (id: string) => get().accounts.find((a) => a.id === id);
       const requireAccount = (id: string) => acc(id) ?? fail("হিসাবটি পাওয়া যায়নি");
       const validateMoves = (accounts: Account[], moves: Txn["moves"]) => {
@@ -196,7 +201,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
         const by = requireRole(get().role);
         if (!Number.isFinite(t.amount) || !Number.isFinite(t.profit)) fail("লেনদেনের পরিমাণ সঠিক নয়");
         const deltas = validateMoves(get().accounts, t.moves);
-        const txn: Txn = { ...t, id: uid(), at: Date.now(), by };
+        const txn: Txn = { ...t, id: uid(), at: now(), by };
         set((s) => ({
           accounts: s.accounts.map((a) => deltas.has(a.id) ? { ...a, balance: round2(a.balance + (deltas.get(a.id) ?? 0)) } : a),
           txns: [txn, ...s.txns],
@@ -371,7 +376,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
             existing = phone ? get().customers.find((c) => c.phone === phone) : undefined;
             customerId = existing?.id ?? uid();
           }
-          const sale: Sale = { id: uid(), at: Date.now(), items: cleanLines, total, cost, payments: cleanPayments, customerId, by, dueCollected: 0 };
+          const sale: Sale = { id: uid(), at: now(), items: cleanLines, total, cost, payments: cleanPayments, customerId, by, dueCollected: 0 };
           set((s) => ({
             sales: [sale, ...s.sales],
             products: s.products.map((p) => quantities.has(p.id) ? { ...p, stock: p.stock - (quantities.get(p.id) ?? 0) } : p),
@@ -474,7 +479,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const advance = nonNegative(r.advance, "অগ্রিম");
           if (advance > estimate) fail("অগ্রিম আনুমানিক বিলের বেশি হতে পারবে না");
           if (advance > 0) validateMoves(get().accounts, [{ accountId: "cash", delta: advance }]);
-          const repair: Repair = { ...r, customer, device, estimate, advance, id: uid(), at: Date.now(), status: "received", deliveryCollected: false };
+          const repair: Repair = { ...r, customer, device, estimate, advance, id: uid(), at: now(), status: "received", deliveryCollected: false };
           set((s) => ({ repairs: [repair, ...s.repairs] }));
           if (advance > 0) post({ type: "repair_advance", title: `রিপেয়ার অগ্রিম · ${device}`, amount: advance, profit: advance, cat: "service", moves: [{ accountId: "cash", delta: advance }] });
         },
@@ -517,7 +522,7 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           const actual = nonNegative(counted, "গণনা করা ক্যাশ");
           const expected = requireAccount("cash").balance;
           const profit = get().txns.filter((t) => t.at > get().lastClosedAt).reduce((sum, t) => sum + t.profit, 0);
-          const closing: Closing = { id: uid(), at: Date.now(), expected, counted: actual, diff: round2(actual - expected), profit: round2(profit), by };
+          const closing: Closing = { id: uid(), at: now(), expected, counted: actual, diff: round2(actual - expected), profit: round2(profit), by };
           if (closing.diff !== 0) post({ type: "close_adjust", title: "দিন শেষ ক্যাশ গরমিল", amount: closing.diff, profit: 0, cat: "none", moves: [{ accountId: "cash", delta: closing.diff }] });
           set((s) => ({ closings: [closing, ...s.closings], lastClosedAt: closing.at }));
           return closing;
@@ -527,7 +532,9 @@ export const shopStoreCreator: StateCreator<ShopStore> = (set, get) => {
           set({ ...initial });
         },
       };
-};
+  };
+}
+export const shopStoreCreator = createShopStoreCreator();
 
 export const CLOUD_ACTIONS = [
   "completeSetup", "setPerm", "setPins", "addAccount", "setBalance", "transfer",
@@ -536,21 +543,31 @@ export const CLOUD_ACTIONS = [
   "closeDay", "resetAll",
 ] as const;
 export type CloudActionName = (typeof CLOUD_ACTIONS)[number];
-export interface CloudAction { name: CloudActionName; args: unknown[] }
+export interface CloudAction extends ActionIdentity { name: CloudActionName; args: unknown[] }
 export const CLOUD_ACTION_EVENT = "mohra:cloud-action";
+let cloudActionGuard: (() => void) | undefined;
+export function setCloudActionGuard(guard: () => void) { cloudActionGuard = guard; }
 
-function withCloudActions(store: ShopStore): ShopStore {
+function withCloudActions(store: ShopStore, identity: ActionIdentity): ShopStore {
   const wrapped = { ...store };
   const target = wrapped as unknown as Record<string, unknown>;
   const source = store as unknown as Record<string, unknown>;
   for (const name of CLOUD_ACTIONS) {
     const original = source[name] as (...args: unknown[]) => unknown;
     target[name] = (...args: unknown[]) => {
-      const result = original(...args);
-      if (result !== false && typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent<CloudAction>(CLOUD_ACTION_EVENT, { detail: { name, args } }));
+      cloudActionGuard?.();
+      identity.id = crypto.randomUUID();
+      identity.at = Date.now();
+      try {
+        const result = original(...args);
+        if (result !== false && typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent<CloudAction>(CLOUD_ACTION_EVENT, { detail: { name, args, id: identity.id, at: identity.at } }));
+        }
+        return result;
+      } finally {
+        delete identity.id;
+        delete identity.at;
       }
-      return result;
     };
   }
   return wrapped;
@@ -569,7 +586,10 @@ export function shopSnapshot(state: State): State {
 
 export const useStore = create<ShopStore>()(
   persist(
-    (set, get, api) => withCloudActions(shopStoreCreator(set, get, api)),
+    (set, get, api) => {
+      const identity: ActionIdentity = {};
+      return withCloudActions(createShopStoreCreator(identity)(set, get, api), identity);
+    },
     {
       name: "mohra-pos-v1", skipHydration: true, version: 1,
       migrate: (persisted) => {
