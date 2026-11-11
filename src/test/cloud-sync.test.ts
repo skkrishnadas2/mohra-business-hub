@@ -51,6 +51,31 @@ beforeEach(() => {
 });
 
 describe("Cloud conflict recovery", () => {
+  it("blocks money actions while switching shops and ignores the older shop response", async () => {
+    const authoritative = shopSnapshot(useStore.getState());
+    let resolveOld: ((value: ReturnType<typeof cloudShop>) => void) | undefined;
+    let resolveNew: ((value: ReturnType<typeof cloudShop>) => void) | undefined;
+    mocks.get.mockImplementationOnce(() => new Promise(done => { resolveOld = done; }))
+      .mockImplementationOnce(() => new Promise(done => { resolveNew = done; }));
+    const oldRequest = openCloudShop(shopId);
+    const secondId = "22222222-2222-4222-8222-222222222222";
+    const newRequest = openCloudShop(secondId);
+    expect(() => useStore.getState().serviceSlip("Print", 500, "cash")).toThrow();
+    expect(useStore.getState().accounts.find(account => account.id === "cash")?.balance).toBe(10000);
+    resolveNew?.({ ...cloudShop(authoritative, 3), shopId: secondId });
+    await newRequest;
+    resolveOld?.(cloudShop(authoritative, 1));
+    await oldRequest;
+    expect(useCloud.getState().shopId).toBe(secondId);
+    expect(useCloud.getState().version).toBe(3);
+  });
+  it("does not switch into a shop with an unresolved outbox", async () => {
+    const secondId = "22222222-2222-4222-8222-222222222222";
+    appendOutbox(secondId, { id: actionId, name: "serviceSlip", args: ["Print", 500, "cash"] });
+    await expect(openCloudShop(secondId)).rejects.toThrow();
+    expect(useCloud.getState().shopId).toBe(shopId);
+    expect(mocks.get).not.toHaveBeenCalled();
+  });
   it("does not let an older version 1 response overwrite version 2", async () => {
     const authoritative = shopSnapshot(useStore.getState());
     let resolve: ((value: ReturnType<typeof cloudShop>) => void) | undefined;
