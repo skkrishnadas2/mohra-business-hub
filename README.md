@@ -73,3 +73,9 @@ Partial sales returns allocate the original discounted line value in integer pai
 Run `npm run test:all` for the browser/business tests and the production Edge handler contract tests. The latter run the actual bundled engine and HTTP handler against simulated Auth/database I/O, checking role forgery, cost redaction, owner-only setup, unrelated-shop access, stale writes, duplicate checkouts and suspended employees. They create no real users, transactions or provider requests.
 
 The assigned store and proprietor membership have been administratively prepared as a blank ledger. Sign in with the existing proprietor account; no Auth password was changed. Opening balances, stock and cashier identities must reflect actual business data.
+
+## Phone installation and link branding
+
+Open `/install` for the public MOHRA installation page. The login screen and Store & Team link to it. Supported browsers expose the real install prompt through a captured `beforeinstallprompt` event; other environments get Android Chrome or iPhone Share/Add to Home Screen instructions. A request being accepted is not displayed as a completed installation until the browser reports `appinstalled` or standalone display mode. There is no APK download masquerading as an installer.
+
+`public/sw.js` caches only public icon assets and a static connection-help page. Authentication, financial APIs, shop responses and app JavaScript are not cached by the worker. Page navigations stay network-first; failed navigations show public connection help. Home and install routes declare a dedicated MOHRA share image; the root retains generic metadata so financial pages do not inherit a report preview.

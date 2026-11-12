@@ -1,3 +1,4 @@
+import { PwaLifecycle } from "@/components/PwaInstall";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -103,11 +104,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico?v=mohra-2", type: "image/x-icon" },
-      { rel: "icon", href: "/favicon.png?v=mohra-2", type: "image/png", sizes: "32x32" },
-      { rel: "icon", href: "/store-mark.svg?v=mohra-2", type: "image/svg+xml" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=mohra-2", sizes: "180x180" },
-      { rel: "manifest", href: "/manifest.webmanifest?v=mohra-2" },
+      { rel: "icon", href: "/favicon.ico?v=mohra-3", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png?v=mohra-3", type: "image/png", sizes: "32x32" },
+      { rel: "icon", href: "/store-mark.svg?v=mohra-3", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=mohra-3", sizes: "180x180" },
+      { rel: "manifest", href: "/manifest.webmanifest?v=mohra-3" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -153,6 +154,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <PwaLifecycle />
       <AppShell>
         <Outlet />
       </AppShell>

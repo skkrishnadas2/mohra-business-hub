@@ -1,3 +1,4 @@
+import { InstallLink } from "./PwaInstall";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 import { supabase, isCloudConfigured } from "@/integrations/supabase/client";
@@ -267,6 +268,9 @@ export function AccountGate() {
               )}
             </form>
           )}
+          <div className="mt-5 flex justify-center">
+            <InstallLink />
+          </div>
           <div className="store-auth-trust">
             <ShieldCheck size={15} />
             <span>মালিক ও অনুমোদিত কর্মীদের জন্য সংরক্ষিত</span>

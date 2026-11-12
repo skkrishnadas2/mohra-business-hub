@@ -81,6 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
     logout();
   };
+  if (loc.pathname.replace(/\/$/, "") === "/install") return <>{children}</>;
   if (!hydrated || authenticated === null)
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">

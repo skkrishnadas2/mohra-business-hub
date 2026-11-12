@@ -1,3 +1,4 @@
+import { InstallLink } from "@/components/PwaInstall";
 import { DeviceCheck } from "@/components/DeviceCheck";
 import { downloadFile } from "@/lib/export";
 import { confirmed } from "@/lib/confirmed-write";
@@ -66,7 +67,12 @@ function StoreTeam() {
           <ShieldCheck size={14} /> দোকানের নিজস্ব কর্মক্ষেত্র
         </div>
       </div>
-      <div className="mb-5"><DeviceCheck/></div>
+      <div className="mb-5">
+        <InstallLink />
+      </div>
+      <div className="mb-5">
+        <DeviceCheck />
+      </div>
       <div className="grid items-start gap-5 lg:grid-cols-2">
         <Panel title="সংযোগের অবস্থা">
           {role === "owner" &&

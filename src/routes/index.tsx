@@ -1,3 +1,4 @@
+import { storePreviewMeta } from "@/lib/brand-preview";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Activity,
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "ড্যাশবোর্ড — মোহরা আইটি কেয়ার" },
       { property: "og:description", content: "Live fund summary and today's net profit." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      ...storePreviewMeta,
     ],
   }),
   component: Dashboard,
