@@ -26,6 +26,7 @@ export interface Account {
   balance: number;
   number?: string | undefined;
   inactive?: boolean | undefined;
+  cashierAllowed?: boolean | undefined;
   commissionIn?: number | undefined;
   commissionOut?: number | undefined;
   commissionDeferred?: boolean | undefined;
@@ -356,6 +357,8 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
     const requireAccount = (id: string) => {
       const a = acc(id) ?? fail("হিসাবটি পাওয়া যায়নি");
       if (a.inactive) fail("হিসাবটি নিষ্ক্রিয়");
+      if (get().role === "cashier" && a.cashierAllowed === false)
+        fail("এই অ্যাকাউন্টে ক্যাশিয়ারের অনুমতি নেই");
       return a;
     };
     const validateMoves = (accounts: Account[], moves: Txn["moves"]) => {
@@ -370,6 +373,8 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
       for (const [accountId, delta] of deltas) {
         const account =
           accounts.find((a) => a.id === accountId) ?? fail("লেনদেনের হিসাবটি পাওয়া যায়নি");
+        if (get().role === "cashier" && account.cashierAllowed === false)
+          fail("এই অ্যাকাউন্টে ক্যাশিয়ারের অনুমতি নেই");
         if (
           !Number.isFinite(delta) ||
           !Number.isFinite(account.balance) ||
@@ -556,7 +561,7 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
           });
       },
       setBalance: (id, value, pin) => {
-        requireRole(get().role);
+        own();
         if (pin !== get().ownerPin) return false;
         const a = acc(id);
         if (!a) return false;

@@ -3,6 +3,9 @@ import type { Role, State } from "@/lib/store";
 /** Return only what this role may see; raw shop_states is owner-readable only. */
 export function stateForRole(state: State, role: Role): State {
   if (role === "owner") return { ...state, role: null };
+  const blocked = new Set(
+    state.accounts.filter((a) => a.cashierAllowed === false).map((a) => a.id),
+  );
   return {
     ...state,
     role: null,
@@ -10,20 +13,34 @@ export function stateForRole(state: State, role: Role): State {
     business: state.business
       ? {
           ...state.business,
-          purchases: state.perms.viewCost ? state.business.purchases : [],
-          commissions: state.perms.viewProfit ? state.business.commissions : [],
+          purchases: state.perms.viewCost
+            ? state.business.purchases.filter((p) => !blocked.has(p.accountId))
+            : [],
+          settlements: state.business.settlements.filter(
+            (s) => !blocked.has(s.sourceId) && !blocked.has(s.targetId),
+          ),
+          commissions: state.perms.viewProfit
+            ? state.business.commissions.filter((c) => !blocked.has(c.accountId))
+            : [],
         }
       : undefined,
-    accounts: state.accounts.map((a) =>
-      a.kind === "bank" && !state.perms.viewBank ? { ...a, balance: 0 } : a,
-    ),
+    accounts: state.accounts
+      .filter((a) => !blocked.has(a.id))
+      .map((a) => (a.kind === "bank" && !state.perms.viewBank ? { ...a, balance: 0 } : a)),
     products: state.products.map((p) => (state.perms.viewCost ? p : { ...p, cost: 0 })),
-    sales: state.sales.map((sale) => ({
-      ...sale,
-      cost: state.perms.viewCost ? sale.cost : 0,
-      items: sale.items.map((line) => (state.perms.viewCost ? line : { ...line, cost: 0 })),
-    })),
+    sales: state.sales
+      .filter((s) => !s.payments.some((p) => blocked.has(p.accountId)))
+      .map((sale) => ({
+        ...sale,
+        cost: state.perms.viewCost ? sale.cost : 0,
+        items: sale.items.map((line) => (state.perms.viewCost ? line : { ...line, cost: 0 })),
+      })),
     txns: state.txns
+      .filter(
+        (txn) =>
+          !txn.moves.some((m) => blocked.has(m.accountId)) &&
+          !(txn.type === "account_settings" && blocked.has(txn.ref ?? "")),
+      )
       .filter((txn) => state.perms.viewProfit || txn.type !== "commission_received")
       .map((txn) => ({
         ...txn,
@@ -46,7 +63,7 @@ export function stateForRole(state: State, role: Role): State {
         ? r
         : { ...r, directCost: 0, parts: r.parts?.map((p) => ({ ...p, cost: 0 })) },
     ),
-    closings: state.closings.map((closing) =>
+    closings: (blocked.has("cash") ? [] : state.closings).map((closing) =>
       state.perms.viewProfit ? closing : { ...closing, profit: 0 },
     ),
   };

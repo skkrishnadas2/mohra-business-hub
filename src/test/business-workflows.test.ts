@@ -365,15 +365,13 @@ describe("backup and shared parties", () => {
     s.getState().expense("cash", 100, "Rent", "A");
     const backup = shopSnapshot(s.getState());
     const target = createStore<ShopStore>()(createShopStoreCreator());
-    target
-      .getState()
-      .completeSetup({
-        shopName: "Recovery",
-        ownerPin: "1111",
-        cashierPin: "2222",
-        balances: { cash: 0 },
-        emptyCatalog: true,
-      });
+    target.getState().completeSetup({
+      shopName: "Recovery",
+      ownerPin: "1111",
+      cashierPin: "2222",
+      balances: { cash: 0 },
+      emptyCatalog: true,
+    });
     target.getState().restoreBackup(backup);
     expect(target.getState().accounts.find((a) => a.id === "cash")!.balance).toBe(9900);
     expect(target.getState().txns[0]!.type).toBe("backup_restored");
@@ -384,15 +382,13 @@ describe("backup and shared parties", () => {
     const backup = shopSnapshot(s.getState());
     backup.accounts = backup.accounts.map((a) => (a.id === "cash" ? { ...a, balance: 99999 } : a));
     const target = createStore<ShopStore>()(createShopStoreCreator());
-    target
-      .getState()
-      .completeSetup({
-        shopName: "Recovery",
-        ownerPin: "1111",
-        cashierPin: "2222",
-        balances: { cash: 0 },
-        emptyCatalog: true,
-      });
+    target.getState().completeSetup({
+      shopName: "Recovery",
+      ownerPin: "1111",
+      cashierPin: "2222",
+      balances: { cash: 0 },
+      emptyCatalog: true,
+    });
     expect(() => target.getState().restoreBackup(backup)).toThrow();
     expect(target.getState().accounts.find((a) => a.id === "cash")!.balance).toBe(0);
   });
@@ -417,5 +413,54 @@ describe("backup and shared parties", () => {
     expect(sale.customerId).toBe(party);
     expect(allParties(s.getState())).toHaveLength(1);
     expect(partyBalance(s.getState(), party).receivable).toBe(100);
+  });
+});
+
+describe("account boundaries and mixed dues", () => {
+  it("denies cashier writes and removes a restricted account from server snapshots", () => {
+    const { s } = fixture();
+    s.getState().configureAccount("dbbl", { name: "Owner bank", cashierAllowed: false });
+    s.getState().setPerm("b2b", true);
+    const state = shopSnapshot(s.getState());
+    const view = stateForRole(state, "cashier");
+    expect(view.accounts.some((a) => a.id === "dbbl")).toBe(false);
+    const replay = replayCloudAction(state, "cashier", {
+      name: "transfer",
+      args: ["dbbl", "cash", 100, "Transfer"],
+    });
+    expect(replay.status).toBe("rejected");
+  });
+  it("denies balance adjustment even when a cashier knows the owner PIN", () => {
+    const { s } = fixture();
+    const replay = replayCloudAction(shopSnapshot(s.getState()), "cashier", {
+      name: "setBalance",
+      args: ["cash", 99999, "1111"],
+    });
+    expect(replay.status).toBe("rejected");
+  });
+  it("accepts cash plus MFS plus a due portion and recognizes the invoice exactly once", () => {
+    const { s, party } = fixture();
+    s.getState().upsertProduct({
+      name: "Cable",
+      barcodes: ["C"],
+      cost: 100,
+      price: 1000,
+      stock: 1,
+      lowStock: 0,
+    });
+    const p = s.getState().products[0]!;
+    s.getState().checkout(
+      [{ productId: p.id, name: p.name, qty: 1, price: 1000, cost: 100 }],
+      [
+        { accountId: "cash", amount: 500 },
+        { accountId: "bk_p1", amount: 300 },
+        { accountId: "due", amount: 200 },
+      ],
+      { id: party, name: "SR / Supplier", phone: "01700000000" },
+    );
+    expect(partyBalance(s.getState(), party).receivable).toBe(200);
+    expect(bal(s, "cash")).toBe(10500);
+    expect(bal(s, "bk_p1")).toBe(300);
+    expect(todayProfit(s.getState().txns).total).toBe(900);
   });
 });

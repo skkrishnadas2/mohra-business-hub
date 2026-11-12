@@ -90,7 +90,13 @@ export interface BusinessActions {
     id: string,
     options: Pick<
       Account,
-      "name" | "number" | "inactive" | "commissionIn" | "commissionOut" | "commissionDeferred"
+      | "name"
+      | "number"
+      | "inactive"
+      | "commissionIn"
+      | "commissionOut"
+      | "commissionDeferred"
+      | "cashierAllowed"
     >,
   ) => void;
   collectCommission: (id: string, accountId: string, amount: number) => void;
@@ -156,6 +162,10 @@ export function businessActions({
   const account = (id: string, payment = false) => {
     const a = get().accounts.find((a) => a.id === id);
     check(a && !a.inactive, "সক্রিয় হিসাব বেছে নিন");
+    check(
+      get().role !== "cashier" || a!.cashierAllowed !== false,
+      "এই অ্যাকাউন্টে ক্যাশিয়ারের অনুমতি নেই",
+    );
     check(!payment || a!.kind !== "recharge", "পেমেন্টের জন্য ক্যাশ, ব্যাংক বা MFS বেছে নিন");
     return a!;
   };
@@ -706,6 +716,7 @@ export function businessActions({
         commissionIn: options.commissionIn,
         commissionOut: options.commissionOut,
         commissionDeferred: !!options.commissionDeferred,
+        cashierAllowed: options.cashierAllowed ?? a!.cashierAllowed ?? true,
       };
       post({
         type: "account_settings",

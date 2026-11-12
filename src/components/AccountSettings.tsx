@@ -12,6 +12,7 @@ export function AccountSettings() {
   const [rateOut, setOut] = useState("");
   const [deferred, setDeferred] = useState(false);
   const [inactive, setInactive] = useState(false);
+  const [cashierAllowed, setCashierAllowed] = useState(true);
   if (s.role !== "owner") return <p className="p-4 text-sm">শুধু মালিকের জন্য।</p>;
   return (
     <div className="max-w-xl">
@@ -29,6 +30,7 @@ export function AccountSettings() {
             setOut(a?.commissionOut === undefined ? "" : String(a.commissionOut));
             setDeferred(!!a?.commissionDeferred);
             setInactive(!!a?.inactive);
+            setCashierAllowed(a?.cashierAllowed !== false);
           }}
         >
           <option value="">অ্যাকাউন্ট বেছে নিন</option>
@@ -75,6 +77,14 @@ export function AccountSettings() {
               />
               অ্যাকাউন্ট নিষ্ক্রিয়
             </label>
+            <label className="flex items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={cashierAllowed}
+                onChange={(e) => setCashierAllowed(e.target.checked)}
+              />
+              ক্যাশিয়ার এই অ্যাকাউন্ট দেখতে ও ব্যবহার করতে পারবেন
+            </label>
             <BigButton
               onClick={() =>
                 act(() =>
@@ -85,6 +95,7 @@ export function AccountSettings() {
                     commissionIn: rateIn === "" ? undefined : Number(rateIn),
                     commissionOut: rateOut === "" ? undefined : Number(rateOut),
                     commissionDeferred: deferred,
+                    cashierAllowed,
                   }),
                 )
               }
@@ -92,7 +103,8 @@ export function AccountSettings() {
               সেটিং সংরক্ষণ
             </BigButton>
             <p className="text-xs text-muted-foreground">
-              পুরোনো লেনদেন অপরিবর্তিত থাকবে। বন্ধ করার আগে ব্যালেন্স শূন্য ও SR settlement সম্পন্ন করুন।
+              পুরোনো লেনদেন অপরিবর্তিত থাকবে। বন্ধ করার আগে ব্যালেন্স শূন্য ও SR settlement সম্পন্ন
+              করুন।
             </p>
           </>
         )}

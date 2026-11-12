@@ -456,6 +456,7 @@ function PaySheet({
         Object.entries(split)
           .filter(([, v]) => Number(v) > 0)
           .map(([k, v]) => ({ accountId: k, amount: Number(v) })),
+        Number(split["due"]) > 0 ? cust : undefined,
       );
     const now = Math.min(Number(paidNow) || 0, total);
     onDone(
@@ -468,7 +469,8 @@ function PaySheet({
   };
   const ok =
     mode === "split"
-      ? Math.round(splitSum * 100) === Math.round(total * 100)
+      ? Math.round(splitSum * 100) === Math.round(total * 100) &&
+        (!(Number(split["due"]) > 0) || !!cust.name.trim())
       : mode === "due"
         ? cust.name.trim().length > 0 && Number(paidNow) >= 0 && Number(paidNow) <= total
         : !!acc;
@@ -521,6 +523,14 @@ function PaySheet({
                   />
                 </div>
               ))}
+              <div className="flex items-center gap-3">
+                <span className="flex-1 text-sm">বাকি</span>
+                <NumInput
+                  className="h-10 w-32 text-right text-base"
+                  value={split["due"] ?? ""}
+                  onChange={(v) => setSplit({ ...split, due: v })}
+                />
+              </div>
               <div
                 className={`text-sm ${Math.abs(splitSum - total) < 0.01 ? "text-primary" : "text-destructive"}`}
               >
@@ -528,7 +538,7 @@ function PaySheet({
               </div>
             </div>
           )}
-          {mode === "due" && (
+          {(mode === "due" || (mode === "split" && Number(split["due"]) > 0)) && (
             <div className="space-y-3">
               <PartySelect
                 value={cust.id ?? ""}
@@ -552,10 +562,12 @@ function PaySheet({
                   onChange={(e) => setCust({ ...cust, phone: e.target.value })}
                 />
               </div>
-              <div>
-                <Label>এখন নগদ দিলেন (ঐচ্ছিক)</Label>
-                <NumInput value={paidNow} onChange={setPaidNow} />
-              </div>
+              {mode === "due" && (
+                <div>
+                  <Label>এখন নগদ দিলেন (ঐচ্ছিক)</Label>
+                  <NumInput value={paidNow} onChange={setPaidNow} />
+                </div>
+              )}
             </div>
           )}
           <BigButton disabled={!ok || busy} onClick={submit}>
