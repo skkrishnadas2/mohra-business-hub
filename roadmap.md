@@ -1,3 +1,11 @@
+# 2026-11-12 — Business workflow completion
+
+Implemented: six primary navigation groups; two-sided party ledger and shared customer identity; supplier purchases/weighted cost/full returns; pending and partial bank/cash–SR settlements; account names/numbers/deactivation and commission settings; deferred commission collection; expenses/capital/drawings; repair final bills, parts, costs and cancellation; report/CSV/journal/backup export and validated empty-shop recovery; cross-browser camera scanner; A4/thermal/batch labels; default cash POS with acknowledged completion and local draft/hold carts. Privileged Cloud operations now run in an authenticated Supabase Edge Function.
+
+Verification: regression and workflow/UI tests, TypeScript, production build and remote smoke checks are recorded in the final delivery. Local preview browser access was blocked by the environment; this is not a completed visual/device acceptance check. Live multi-device owner/cashier sign-in and physical scanner/printer calibration remain shop-device acceptance tasks. Provider API execution, full offline cold start and subscription SaaS billing remain future scope.
+
+The earlier engineering history below is retained for context; its hosted-configuration notes describe prior versions.
+
 ## Final engineering audit
 - [x] Audit money rules and Cloud isolation: fixed collected-sale cancellation, legacy repair recollection, recharge-provider validation, ledger-backed new-account balances, replay IDs, stale responses, shop switching, disconnect races, cross-tab outbox writes and bank-opening disclosure
 - [x] Run regression tests and verify real setup, barcode cash sale, balance/stock readback, new recharge account and all 12 pages on desktop/mobile; no page errors or mobile horizontal overflow; automatic build OK

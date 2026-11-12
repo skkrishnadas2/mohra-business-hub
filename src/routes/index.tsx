@@ -29,9 +29,9 @@ function Dashboard() {
   const showBank = can("viewBank"), showProfit = can("viewProfit");
   const low = products.filter((x) => x.stock <= x.lowStock);
   const todays = txns.filter((t) => sinceToday(t.at));
-  const todaySales = sales.filter((s) => sinceToday(s.at));
+  const todaySales = sales.filter((s) => !s.voidedAt && sinceToday(s.at));
   const salesTotal = todaySales.reduce((sum, sale) => sum + sale.total, 0);
-  const openRepairs = repairs.filter((r) => r.status !== "delivered").length;
+  const openRepairs = repairs.filter((r) => r.status !== "delivered" && r.status !== "cancelled").length;
   const visibleFund = cash + (showBank ? bank : 0) + mfs + rc;
 
   const week = Array.from({ length: 7 }, (_, index) => {

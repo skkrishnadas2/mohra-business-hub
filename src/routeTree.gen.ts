@@ -19,6 +19,7 @@ import { Route as MonitorRouteImport } from './routes/monitor'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as RechargeRouteImport } from './routes/recharge'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as SettingsRouteImport } from './routes/settings'
 
@@ -72,6 +73,11 @@ const RechargeRoute = RechargeRouteImport.update({
   path: '/recharge',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ServicesRoute = ServicesRouteImport.update({
   id: '/services',
   path: '/services',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/recharge': typeof RechargeRoute
+  '/reports': typeof ReportsRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/recharge': typeof RechargeRoute
+  '/reports': typeof ReportsRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/recharge': typeof RechargeRoute
+  '/reports': typeof ReportsRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/products'
     | '/recharge'
+    | '/reports'
     | '/services'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/products'
     | '/recharge'
+    | '/reports'
     | '/services'
     | '/settings'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/products'
     | '/recharge'
+    | '/reports'
     | '/services'
     | '/settings'
   fileRoutesById: FileRoutesById
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   PosRoute: typeof PosRoute
   ProductsRoute: typeof ProductsRoute
   RechargeRoute: typeof RechargeRoute
+  ReportsRoute: typeof ReportsRoute
   ServicesRoute: typeof ServicesRoute
   SettingsRoute: typeof SettingsRoute
 }
@@ -258,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RechargeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/services': {
       id: '/services'
       path: '/services'
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   PosRoute: PosRoute,
   ProductsRoute: ProductsRoute,
   RechargeRoute: RechargeRoute,
+  ReportsRoute: ReportsRoute,
   ServicesRoute: ServicesRoute,
   SettingsRoute: SettingsRoute,
 }

@@ -2,13 +2,21 @@ import { create } from "zustand";
 import { toast } from "sonner";
 import { isCloudConfigured, supabase } from "@/integrations/supabase/client";
 import {
-  applyCloudAction, createCloudShop, getCloudShop, joinCloudShop,
+  applyCloudAction,
+  createCloudShop,
+  getCloudShop,
+  joinCloudShop,
   type CloudShop,
 } from "@/lib/cloud.functions";
 import { acknowledgeOutbox, appendOutbox, readOutbox, type OutboxAction } from "@/lib/cloud-outbox";
 import {
-  CLOUD_ACTION_EVENT, actionError, shopSnapshot, useStore, setCloudActionGuard,
-  type CloudAction, type Role,
+  CLOUD_ACTION_EVENT,
+  actionError,
+  shopSnapshot,
+  useStore,
+  setCloudActionGuard,
+  type CloudAction,
+  type Role,
 } from "@/lib/store";
 
 export type CloudStatus = "idle" | "connecting" | "connected" | "error";
@@ -28,13 +36,25 @@ interface CloudUiState {
 const SHOP_KEY = "mohra-cloud-shop-v1";
 const VERSION_KEY = "mohra-cloud-version-v1";
 export const useCloud = create<CloudUiState>(() => ({
-  status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null, notice: null,
+  status: "idle",
+  shopId: null,
+  shopName: null,
+  role: null,
+  version: 0,
+  joinCode: null,
+  pending: 0,
+  error: null,
+  notice: null,
 }));
 
 let activeFlush: Promise<void> | null = null;
 let connectionEpoch = 0;
 let switchingShop = false;
-setCloudActionGuard(() => { if (switchingShop) throw new Error("দোকান খোলা হচ্ছে—একটু অপেক্ষা করুন"); });
+setCloudActionGuard(() => {
+  if (switchingShop) throw new Error("দোকান খোলা হচ্ছে—একটু অপেক্ষা করুন");
+  if (typeof navigator !== "undefined" && !navigator.onLine && savedShopId())
+    throw new Error("ইন্টারনেট নেই—কার্ট খসড়া রাখুন, সংযোগ ফিরলে লেনদেন করুন");
+});
 function savedShopId() {
   return typeof window === "undefined" ? null : window.localStorage.getItem(SHOP_KEY);
 }
@@ -52,8 +72,14 @@ function adopt(shop: CloudShop) {
   // A remote refresh must not wipe local work that has not been acknowledged yet.
   if (pending === 0) useStore.setState({ ...shop.state, setupDone: true, role: shop.role });
   useCloud.setState({
-    status: "connected", shopId: shop.shopId, shopName: shop.name, role: shop.role,
-    version: shop.version, joinCode: shop.joinCode, pending, error: null,
+    status: "connected",
+    shopId: shop.shopId,
+    shopName: shop.name,
+    role: shop.role,
+    version: shop.version,
+    joinCode: shop.joinCode,
+    pending,
+    error: null,
   });
   if (typeof window !== "undefined") window.localStorage.setItem(SHOP_KEY, shop.shopId);
   saveVersion(shop.version);
@@ -62,12 +88,21 @@ function adopt(shop: CloudShop) {
 export async function openCloudShop(shopId: string) {
   const current = useCloud.getState();
   const switching = current.shopId !== shopId;
-  if (switching && ((current.shopId && readOutbox(current.shopId).length) || readOutbox(shopId).length)) throw new Error("আগের দোকানের জমা কাজ সিঙ্ক করে তারপর দোকান বদলান");
-  if (switching) { connectionEpoch += 1; switchingShop = true; }
+  if (
+    switching &&
+    ((current.shopId && readOutbox(current.shopId).length) || readOutbox(shopId).length)
+  )
+    throw new Error("আগের দোকানের জমা কাজ সিঙ্ক করে তারপর দোকান বদলান");
+  if (switching) {
+    connectionEpoch += 1;
+    switchingShop = true;
+  }
   const epoch = connectionEpoch;
   useCloud.setState({
-    status: current.status === "connected" && current.shopId === shopId ? "connected" : "connecting",
-    pending: switching ? current.pending : readOutbox(shopId).length, error: null,
+    status:
+      current.status === "connected" && current.shopId === shopId ? "connected" : "connecting",
+    pending: switching ? current.pending : readOutbox(shopId).length,
+    error: null,
   });
   try {
     const shop = await getCloudShop({ data: { shopId } });
@@ -89,7 +124,9 @@ export async function createOnlineShop() {
   useCloud.setState({ status: "connecting", error: null });
   try {
     const local = useStore.getState();
-    const { shopId } = await createCloudShop({ data: { name: local.shopName, state: shopSnapshot(local) } });
+    const { shopId } = await createCloudShop({
+      data: { name: local.shopName, state: shopSnapshot(local) },
+    });
     if (epoch !== connectionEpoch) return;
     return await openCloudShop(shopId);
   } catch (error) {
@@ -127,7 +164,11 @@ export async function initializeCloud() {
   }
   const shopId = savedShopId();
   if (shopId) {
-    try { await openCloudShop(shopId); } catch { /* The saved outbox remains available for retry. */ }
+    try {
+      await openCloudShop(shopId);
+    } catch {
+      /* The saved outbox remains available for retry. */
+    }
     if (readOutbox(shopId).length) void flushCloudOutbox();
   }
 }
@@ -135,7 +176,17 @@ export async function initializeCloud() {
 export function disconnectCloud() {
   connectionEpoch += 1;
   switchingShop = false;
-  useCloud.setState({ status: "idle", shopId: null, shopName: null, role: null, version: 0, joinCode: null, pending: 0, error: null, notice: null });
+  useCloud.setState({
+    status: "idle",
+    shopId: null,
+    shopName: null,
+    role: null,
+    version: 0,
+    joinCode: null,
+    pending: 0,
+    error: null,
+    notice: null,
+  });
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(SHOP_KEY);
     window.localStorage.removeItem(VERSION_KEY);
@@ -149,7 +200,8 @@ export function queueCloudAction(action: CloudAction) {
   const queued: OutboxAction = { ...action, id: action.id ?? crypto.randomUUID() };
   const pending = appendOutbox(shopId, queued).length;
   useCloud.setState({
-    shopId, pending,
+    shopId,
+    pending,
     version: connected.version || savedVersion(),
     status: connected.status === "idle" ? "connecting" : connected.status,
   });
@@ -167,7 +219,10 @@ async function runFlush() {
     const action = readOutbox(shopId)[0];
     if (!action) break;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      useCloud.setState({ status: "error", error: "ইন্টারনেট ফিরলে জমা থাকা কাজ নিজে থেকেই সিঙ্ক হবে।" });
+      useCloud.setState({
+        status: "error",
+        error: "ইন্টারনেট ফিরলে জমা থাকা কাজ নিজে থেকেই সিঙ্ক হবে।",
+      });
       break;
     }
     try {
@@ -185,9 +240,21 @@ async function runFlush() {
       }
       if (result.status === "rejected") {
         // A business-rule rejection is final: do not retry it forever or block later actions.
+        if (typeof window !== "undefined")
+          window.dispatchEvent(
+            new CustomEvent(CLOUD_RESULT_EVENT, {
+              detail: { id: action.id, ok: false, message: result.message },
+            }),
+          );
         const pending = acknowledgeOutbox(shopId, action.id).length;
         const notice = `একটি কাজ Cloud-এ গ্রহণ করা যায়নি: ${result.message}`;
-        useCloud.setState({ status: "connected", version: result.version, pending, error: null, notice });
+        useCloud.setState({
+          status: "connected",
+          version: result.version,
+          pending,
+          error: null,
+          notice,
+        });
         saveVersion(result.version);
         if (pending === 0) {
           useStore.setState({ ...result.state, setupDone: true, role: useCloud.getState().role });
@@ -196,6 +263,10 @@ async function runFlush() {
         synced = true;
         continue;
       }
+      if (typeof window !== "undefined")
+        window.dispatchEvent(
+          new CustomEvent(CLOUD_RESULT_EVENT, { detail: { id: action.id, ok: true } }),
+        );
       const pending = acknowledgeOutbox(shopId, action.id).length;
       useCloud.setState({ status: "connected", version: result.version, pending, error: null });
       saveVersion(result.version);
@@ -204,7 +275,10 @@ async function runFlush() {
       if (epoch !== connectionEpoch) return;
       const message = actionError(error);
       const shouldNotify = useCloud.getState().status !== "error";
-      useCloud.setState({ status: "error", error: `${message} · ${readOutbox(shopId).length}টি কাজ জমা আছে` });
+      useCloud.setState({
+        status: "error",
+        error: `${message} · ${readOutbox(shopId).length}টি কাজ জমা আছে`,
+      });
       if (shouldNotify) toast.error("Cloud সিঙ্ক হয়নি—কাজটি ডিভাইসে জমা আছে");
       break;
     }
@@ -212,12 +286,19 @@ async function runFlush() {
 
   // Re-read the authoritative result after the whole batch, including other devices' changes.
   if (synced && readOutbox(shopId).length === 0) {
-    try { await openCloudShop(shopId); } catch { /* The next poll/online event will retry. */ }
+    try {
+      await openCloudShop(shopId);
+    } catch {
+      /* The next poll/online event will retry. */
+    }
   }
 }
 
 export function flushCloudOutbox(): Promise<void> {
-  if (!activeFlush) activeFlush = runFlush().finally(() => { activeFlush = null; });
+  if (!activeFlush)
+    activeFlush = runFlush().finally(() => {
+      activeFlush = null;
+    });
   return activeFlush;
 }
 
@@ -242,4 +323,45 @@ export function refreshCloudIfIdle() {
   if (!shopId) return;
   if (readOutbox(shopId).length) void flushCloudOutbox();
   else void openCloudShop(shopId).catch(() => undefined);
+}
+
+export const CLOUD_RESULT_EVENT = "mohra:cloud-result";
+/** Wait for this exact action's acknowledgement; never treat a network queue as a completed sale. */
+export async function confirmCloudWrite<T>(
+  operation: () => T,
+): Promise<{ result: T; confirmed: boolean }> {
+  const shopId = useCloud.getState().shopId ?? savedShopId();
+  if (!shopId) return { result: operation(), confirmed: true };
+  let actionId: string | undefined;
+  let resolve: ((v: { ok: boolean; message?: string }) => void) | undefined;
+  const answer = new Promise<{ ok: boolean; message?: string }>((r) => {
+    resolve = r;
+  });
+  const capture = (e: Event) => {
+    actionId = (e as CustomEvent<CloudAction>).detail.id;
+  };
+  const receipt = (e: Event) => {
+    const v = (e as CustomEvent<{ id: string; ok: boolean; message?: string }>).detail;
+    if (v.id === actionId) resolve?.(v);
+  };
+  window.addEventListener(CLOUD_ACTION_EVENT, capture);
+  window.addEventListener(CLOUD_RESULT_EVENT, receipt);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const result = operation();
+    if (!actionId) return { result, confirmed: true };
+    const status = await Promise.race([
+      answer,
+      new Promise<{ ok: false; pending: true }>((r) => {
+        timer = setTimeout(() => r({ ok: false, pending: true }), 15000);
+      }),
+    ]);
+    if ("pending" in status) return { result, confirmed: false };
+    if (!status.ok) throw new Error(status.message ?? "লেনদেন গ্রহণ করা যায়নি");
+    return { result, confirmed: true };
+  } finally {
+    if (timer) clearTimeout(timer);
+    window.removeEventListener(CLOUD_ACTION_EVENT, capture);
+    window.removeEventListener(CLOUD_RESULT_EVENT, receipt);
+  }
 }

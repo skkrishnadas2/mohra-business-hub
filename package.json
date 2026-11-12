@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "node scripts/build-edge.mjs && vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:edge": "node scripts/build-edge.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -50,6 +52,7 @@
     "@tanstack/react-router": "1.170.41",
     "@tanstack/react-start": "1.168.60",
     "@tanstack/router-plugin": "1.168.42",
+    "@zxing/browser": "0.2.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -97,6 +100,7 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "4.160.0"
   }
 }

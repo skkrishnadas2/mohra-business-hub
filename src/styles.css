@@ -56,7 +56,7 @@
 }
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.8rem;
   --background: oklch(0.982 0.003 260);
   --foreground: oklch(0.24 0.015 260);
   --card: oklch(1 0 0);
@@ -160,3 +160,5 @@
   .print-area, .print-area * { visibility: visible; }
   .print-area { position: absolute; left: 0; top: 0; }
 }
+
+@media print { aside, nav, header, button, [role="dialog"] { display:none!important } main {width:100%} body{background:white!important} }

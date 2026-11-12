@@ -1,87 +1,43 @@
-# Mohra IT Care & Telecom Center — Architecture
+# Architecture — MOHRA Business Hub
 
-## Mind map
-```text
-App (TanStack Start + React 19, Tailwind v4, Hind Siliguri)
-├── AppShell  — hydration gate → Setup (first run) → PIN lock → nav (sidebar desktop / bottom bar mobile)
-├── /           Bento dashboard: total fund, today's net profit split, quick actions, low stock
-├── /pos        Barcode POS: debounced auto-add, +1 on rescan, camera scan (BarcodeDetector),
-│               1-tap cash, MFS/Bank/Split/Due sheet, long-press cipher preview, 58/80mm receipt
-├── /recharge   Operator quick pad (GP/Robi/Airtel/BL/Teletalk) + Recharge B2B with manual commission
-├── /mfs        Agent cash-in/out (auto commission), Personal send/receive (manual fee), MFS B2B (0%)
-├── /products   Catalog, multi-barcode, auto EAN-13, sticker print with/without cipher
-├── /services   Quick service slips + repair intake tracker (received → repairing → ready → delivered)
-├── /accounts   All balances, Cash⇄Bank, add accounts, PIN-protected balance adjust
-├── /khata      Customer due ledger, one-tap collection
-├── /closing    Note counting, expected vs counted, shift close
-├── /monitor    Owner-only live device presence, activity log and invoice voids
-├── /cloud      Email auth, online shop creation/joining, profile and private avatar
-└── /settings   Owner-only permission switchboard, PINs, cipher preview
-```
+## Surfaces
 
-## Data model (`src/lib/store.ts`)
-Persisted shop upgrades preserve real shop data and discard retired synthetic snapshots, returning those devices to first-run setup. Connection epochs discard late remote responses after disconnect.
+Six primary destinations: Overview, Counter, Accounts, Party & Khata, Stock & Purchases, Reports. Counter tabs group POS, recharge, MFS and services. Management tools group closing, connection, presence and settings. Mobile uses four frequent destinations plus a More drawer.
 
-| Entity | Key fields |
-|---|---|
-| Account | id, name, kind (`cash`/`bank`/`mfs_agent`/`mfs_personal`/`recharge`), provider, balance |
-| Product | id, name, barcodes[], cost, price, stock, lowStock |
-| Sale | items[], total, cost, payments[{accountId \| "due", amount}], customerId, by |
-| Txn (ledger) | type, title, amount, profit, cat (`product`/`mfs`/`recharge`/`service`/`none`), by, ref, moves[{accountId, delta}] |
-| Customer | name, phone, due |
-| Repair | customer, phone, device, problem, estimate, advance, status |
-| Closing | expected, counted, diff, profit |
-| Perms | viewCost, viewProfit, viewBank, editSales, manageProducts, b2b |
+## Authoritative actions
 
-Every money movement goes through `post()` which writes one `Txn` and applies its `moves` to balances — the ledger is the single source of truth for profit and audit. `post()` validates every target account and rejects any movement that would make an account negative. Store actions validate before changing related entities, so a rejected sale cannot partially reduce stock or create a customer due.
+The React/TanStack Start frontend keeps a Zustand device cache. User actions have stable UUID identities/timestamps; durable per-shop outboxes submit them to Supabase `business-api`. The function calls `auth.getUser`, checks database membership (never editable metadata), loads the authoritative shop snapshot and replays the allow-listed action through the shared store creator. Version compare-and-swap and transactional receipts prevent stale overwrites and duplicate retries. Filtered cashier snapshots remove owner PIN, journals and restricted cost/profit data.
 
-## Business rules
-- **Sale safeguards**: cart quantities must be positive integers and cannot exceed stock. Payments must equal the bill exactly in integer paisa after two-decimal rounding, payment accounts must exist, and recharge SIMs cannot receive retail payments.
-- **Due safeguards**: a due sale requires a customer name. Collection cannot exceed outstanding due. A due invoice cannot be voided after its due has been collected.
-- **Permissions**: every privileged store action re-checks the current role; hiding a button is not the permission boundary. Product changes/deletions require `manageProducts`, invoice voids require `editSales`, and B2B requires `b2b`. Account creation, permission changes and PIN changes are owner-only.
-- **Product history**: a product referenced by an invoice cannot be deleted; set its stock to zero instead. Barcodes must be unique across products.
-- **Agent commission** = amount / 1000 × rate (bKash 3.70, Nagad/Rocket/Upay 4.00). Credited to the agent wallet and to profit (`cat: mfs`).
-- **Money validation**: MFS directions are validated at runtime. Principal debits must be affordable before commission or fee credits; these earnings cannot cover a short principal balance. Ledger amounts, profit and resulting balances must be finite. Due collection and repair delivery validate cash movements before changing customer due or repair status.
-- **Cash-in**: cash +amount, wallet −amount. **Cash-out**: reverse.
-- **Personal send**: cash +(amount+fee), wallet −amount. **Receive**: wallet +amount, cash −amount+fee. Fee = profit.
-- **SR B2B (separate from customers)**: exactly four legs in both forms: SIM −amount / cash +amount; bank −amount / SIM +amount; bank −amount / cash +amount; cash −amount / SIM +amount. SIM means MFS agent for MFS, recharge SIM for recharge. SIM-to-bank, cash-to-cash, personal wallets and cross-kind SIMs are rejected before posting.
-- **B2B commission**: MFS always 0. Recharge bank-to-SIM and cash-to-SIM add manual commission/extra balance to the SIM and profit; cash-receipt legs have no extra balance or profit. Reference and `b2b` permission remain required. One `post()` records each SR settlement without creating customer records.
-- **Legacy queued B2B**: old bank-to-SIM and cash-to-SIM `load` payloads remain compatible; legacy `return` payloads are rejected, never silently reinterpreted in the durable outbox.
-- **Recharge sale**: SIM −amount, cash +amount.
-- **Sale**: stock −qty, paid accounts +amount, due → customer ledger; profit = total − cost. Void reverses all.
-- **Repairs**: advance and first delivery balance are service income. `deliveryCollected` prevents charging the balance again if a delivered repair is moved back to ready and delivered again. Advance cannot exceed the estimate.
-- **B2B audit**: a check/slip/TrxID reference is required before a B2B transaction can post.
-- **Cipher**: DHAKACITY, digit n → nth letter, 0 → X (150 = DAX).
-- **Roles**: owner has all permissions; cashier only what the owner toggles.
-- **Day close**: counted − expected cash; a non-zero diff is posted as an adjustment.
+Supabase owns privileged credentials. Browser and Cloudflare builds use only the project URL and publishable key. No admin key is requested from the user or exported. Gateway JWT verification remains enabled and the function independently verifies the user. The existing SQL tables, grants and migrations are preserved.
 
-## Storage and Cloud synchronization
-The app uses a hybrid model: zustand `persist` (`mohra-pos-v1`) is the immediate device cache, while an authenticated Cloud shop is authoritative once connected.
+## Ledger and entities
 
-### Supabase tables
-| Table | Purpose |
-|---|---|
-| `profiles` | Display name, private avatar path and preferences for each auth user |
-| `shops` | Shop name and owner |
-| `shop_members` | Owner/cashier membership; roles never live in editable profile metadata |
-| `shop_invites` | UUID joining code, visible only to the owner |
-| `shop_states` | Versioned JSON snapshot of the complete business store |
-| `shop_action_receipts` | Committed action UUIDs and resulting versions for idempotent retries |
+All money moves still go through `post()` in `src/lib/store.ts`. Each new voucher receives balanced journal lines from `src/lib/journal.ts` or validated business-specific entries. Cash/bank/wallet balances, inventory, receivables, payables, SR clearing, commission receivables, repair work-in-progress, income, expenses and equity are separate journal accounts. Older vouchers are not silently rewritten/backfilled.
 
-The `avatars` storage bucket is private; signed URLs expire and storage policies restrict each user to their own folder. Raw `shop_states` rows are owner-readable only. Cashiers receive a field-filtered snapshot through a server function, never direct table access.
+`business` is an optional, backwards-compatible snapshot field containing parties, receivable/payable entries, purchases, pending SR settlements and deferred commissions. `src/lib/business.ts` implements these workflows. Customer invoice debt and party entries share a party identity; collections allocate oldest-first without nested Cloud actions.
 
-### Action flow
-1. The browser executes the normal store action immediately and emits `mohra:cloud-action` for an allow-listed business action.
-2. `src/lib/cloud-sync.ts` serializes actions and sends the shop ID, last known version and action arguments to `applyCloudAction`.
-3. `src/lib/cloud.functions.ts` re-validates the bearer user and membership, loads the authoritative snapshot, and executes the same `shopStoreCreator` action through `src/lib/cloud-action.ts` with the server-side role. Product price/cost therefore come from the authoritative catalog, not the browser payload.
-4. A conditional `version = baseVersion` write increments the version. A stale write returns the latest version instead of overwriting another device's work; the client automatically retries the same action UUID against that version.
-5. If the replay violates a business rule (for example, another device sold the last item), the server returns a final rejection without committing. The client removes only that action, restores the authoritative snapshot, notifies the user, and continues with later queued actions. Network failures remain queued for retry.
-6. Owners receive Realtime version updates; cashiers poll every 15 seconds. The saved shop ID and version let a sale made immediately after a page reload wait for Cloud instead of being dropped.
-7. `src/lib/cloud-presence.ts` and the `shop-presence-{shopId}` Realtime channel track owner/cashier devices per browser tab. The monitor shows role, mobile/desktop type, a short device ID and whether it is the current device. Presence carries no PIN, balance or customer data and is never used for authorization.
+Principal debits are validated before earnings/fees. Rejected actions do not partially change related entities. Amounts use two-decimal rounding and safe integer-paisa boundaries. Stock purchase costs use weighted averages. Voided invoices remain in history; a second reversal is rejected. Existing collected-invoice safeguards remain.
 
-`stateForRole` (`src/lib/cloud-view.ts`) removes the owner PIN and applies cost, profit and bank visibility before cashier data leaves the server. Permission changes use the same versioned action path, so owner switches propagate to other devices. Internal SECURITY DEFINER helpers are not callable by PUBLIC, anon or authenticated roles; only service_role retains access. The automatic-RLS event trigger remains enabled.
+## Important accounting conventions
 
-### Durable offline outbox and idempotency
-Every browser action receives a UUID and is stored in a per-shop localStorage outbox before network submission. A failed or offline write leaves the action in order; the `online` event, periodic refresh and Cloud page retry button resume it. Remote refreshes never replace local state while that shop has unacknowledged actions.
+- MFS cash-in increases cash and decreases the selected agent wallet; cash-out reverses the principal flow.
+- Account-specific commission settings apply only to future entries. Deferred commission is profit/receivable until actually credited; collection is profit-neutral.
+- SR advances debit their actual funding account immediately. Partial confirmation credits only what arrived. MFS rebalancing is profit-neutral. Recharge extra balance is recognized once on receipt, and recharge sale does not count that commission again.
+- Party receivable and payable balances are retained separately. Explicit offsets leave the original records and remaining balances auditable. Pending SR value is displayed separately.
+- Purchases debit inventory and credit cash/payables. Full returns account for supplier payments already allocated against the remaining debt.
+- New repair advances are liabilities. Parts/direct costs accumulate as work-in-progress and are recognized on first delivery or cancellation. Older records retain legacy recognition flags to avoid counting historical advances twice.
+- Capital/drawings and internal transfers are not operating profit. Operating expenses reduce net profit, including on the dashboard.
 
-`shop_action_receipts` records each committed `(shop_id, action_id)` with its resulting version. The private `commit_cloud_action` SQL function updates the shop snapshot and writes the receipt in one transaction. Repeating an action ID therefore returns the original acknowledgement without posting another ledger transaction. Receipts are service-role-only and inaccessible to browser roles. After the outbox drains, the app fetches the authoritative snapshot once to reconcile the complete batch.
+## Scan and print
+
+`CameraScanner` uses ZXing's browser reader, cleans up media streams and keeps callbacks stable across cart changes. A continuously visible barcode does not repeatedly add units; it must leave the frame before the same code rearms. Hardware scanners use the existing keyboard/debounce path. Product creation and stock receipt have camera entry points.
+
+`print.ts` escapes all user text before HTML printing and renders Code 128 labels. A4 sheets and 58mm label rolls support price visibility, per-product counts and batch printing. Internal generated codes are not represented as globally registered retail identifiers. Physical printer calibration and camera focus are device acceptance checks.
+
+## Persistence, recovery and boundaries
+
+A full backup has a format/version marker. Recovery validates typed records, account references, journal balance and account balances against movements. It is restricted to a new empty destination shop and creates a recovery audit entry. No active shop can be overwritten through this workflow.
+
+POS waits for its exact Cloud acknowledgement before showing success or a receipt. Timeouts show pending and retain idempotent retry state. Other financial screens retain existing optimistic interaction with a global pending/error indicator. Financial actions are blocked while an authenticated shop is offline; draft and held carts persist separately per shop/device. There is no service worker for cold offline startup.
+
+Snapshots grow with history. This iteration preserves the existing database contract rather than introducing a risky live schema rewrite. Large-scale SaaS needs a measured migration to normalized/versioned records, retention and pagination, and separate tenant provisioning/billing. Provider API automation and subscription billing are not included in the initial-shop release.

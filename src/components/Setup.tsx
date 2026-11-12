@@ -13,7 +13,7 @@ export function Setup({ onComplete }: { onComplete?: () => void } = {}) {
   const pinsMatch = ownerPin.length === 4 && ownerPin === cashierPin;
   const finishSetup = (accounts: Account[], balances: Record<string, number>) => {
     setError("");
-    try { completeSetup({ shopName, ownerPin, cashierPin, accounts, balances }); }
+    try { completeSetup({ shopName, ownerPin, cashierPin, accounts, balances, emptyCatalog:true }); }
     catch (caught) { setError(actionError(caught)); return; }
     onComplete?.();
   };
