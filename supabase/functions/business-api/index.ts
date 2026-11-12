@@ -26,7 +26,7 @@ const response = (value: unknown, status = 200) =>
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return response({ ok: true });
   if (req.method !== "POST") return response({ error: "Method not allowed" }, 405);
-  if (req.headers.get("x-mohra-client") !== "2")
+  if (req.headers.get("x-mohra-client") !== "3")
     return response(
       {
         error: "অ্যাপের নতুন সংস্করণ এসেছে। পাতাটি রিফ্রেশ করে আবার চেষ্টা করুন।",
@@ -277,7 +277,13 @@ Deno.serve(async (req: Request) => {
         .eq("action_id", p.action.id)
         .maybeSingle();
       if (error) throw error;
-      if (receipt) return response({ status: "ok", version: receipt.version });
+      if (receipt)
+        return response({
+          status: "ok",
+          version: current.version,
+          state: stateForRole(current.state, role, userId),
+          actor,
+        });
     }
     if (p.op === "get") {
       let joinCode = null;
@@ -332,7 +338,12 @@ Deno.serve(async (req: Request) => {
         state: stateForRole(latest.state, role, userId),
       });
     }
-    return response({ status: "ok", version: committed.result_version });
+    return response({
+      status: "ok",
+      version: committed.result_version,
+      state: stateForRole(replay.state, role, userId),
+      actor,
+    });
   } catch (e) {
     console.error("business-api request failed", e instanceof Error ? e.message : "error");
     return response({ error: "অনুরোধ সংরক্ষণ করা যায়নি। পুনরায় চেষ্টা করুন।" }, 400);

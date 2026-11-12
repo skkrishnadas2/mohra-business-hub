@@ -320,13 +320,21 @@ async function runFlush() {
         synced = true;
         continue;
       }
+      const pending = acknowledgeOutbox(shopId, action.id).length;
+      if (pending === 0 && result.state)
+        useStore.setState({
+          ...result.state,
+          operations: result.state.operations ?? emptyOperations(),
+          actor: result.actor ?? useStore.getState().actor,
+          setupDone: true,
+          role: useCloud.getState().role,
+        });
+      useCloud.setState({ status: "connected", version: result.version, pending, error: null });
+      saveVersion(result.version);
       if (typeof window !== "undefined")
         window.dispatchEvent(
           new CustomEvent(CLOUD_RESULT_EVENT, { detail: { id: action.id, ok: true } }),
         );
-      const pending = acknowledgeOutbox(shopId, action.id).length;
-      useCloud.setState({ status: "connected", version: result.version, pending, error: null });
-      saveVersion(result.version);
       synced = true;
     } catch (error) {
       if (epoch !== connectionEpoch) return;

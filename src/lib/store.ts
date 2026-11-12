@@ -710,6 +710,7 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
       },
       checkout: (lines, payments, customer, options) => {
         const by = requireRole(get().role);
+        const saleId = uid();
         if (!lines.length) fail("কার্টে অন্তত একটি পণ্য যোগ করুন");
         const quantities = new Map<string, number>();
         const usedSerials = new Set<string>();
@@ -831,7 +832,7 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
           shiftId: activeShift(get())?.id,
           approvalId: approval?.id,
           requestedBy: approval?.requestedBy,
-          id: uid(),
+          id: saleId,
           at: now(),
           items: cleanLines,
           total,

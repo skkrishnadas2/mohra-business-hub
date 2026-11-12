@@ -203,7 +203,7 @@ function Pos() {
       setCart([]);
       setPayOpen(false);
       setDiscount("");
-      setLast(saved ? sale : null);
+      setLast(saved ? (useStore.getState().sales.find((s) => s.id === sale.id) ?? sale) : null);
       if (saved) toast.success(`বিক্রি সম্পন্ন · ${taka(sale.total)}`);
       else toast.info("লেনদেন যাচাই অপেক্ষমাণ—আবার বিক্রি করবেন না। সংযোগ পাতায় অবস্থা দেখুন।");
       inputRef.current?.focus();

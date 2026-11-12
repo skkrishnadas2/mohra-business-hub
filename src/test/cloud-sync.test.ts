@@ -300,3 +300,12 @@ describe("first-connection backup boundaries", () => {
     expect(useStore.getState().txns).toEqual([]);
   });
 });
+
+describe('canonical state before successful confirmation',()=>{
+  it('adopts acknowledged server data before announcing the exact receipt',async()=>{
+    const state=shopSnapshot(useStore.getState());state.accounts=state.accounts.map(a=>a.id==='cash'?{...a,balance:10100}:a);
+    appendOutbox(shopId,{id:actionId,name:'serviceSlip',args:['Copy',100,'cash']});mocks.apply.mockResolvedValue({status:'ok',version:2,state});mocks.get.mockResolvedValue(cloudShop(state,2));
+    let observed=0;const listener=()=>{observed=useStore.getState().accounts.find(a=>a.id==='cash')!.balance;};window.addEventListener('mohra:cloud-result',listener);
+    try{await flushCloudOutbox();expect(observed).toBe(10100);}finally{window.removeEventListener('mohra:cloud-result',listener);}
+  });
+});

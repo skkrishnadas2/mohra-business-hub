@@ -10,7 +10,7 @@ it("sends the current protocol when preparing the authenticated owners store", a
   await expect(bootstrapStore()).resolves.toEqual({ shopId: "ready" });
   expect(m.invoke).toHaveBeenCalledWith(
     "business-api",
-    expect.objectContaining({ body: { op: "bootstrap" }, headers: { "x-mohra-client": "2" } }),
+    expect.objectContaining({ body: { op: "bootstrap" }, headers: { "x-mohra-client": "3" } }),
   );
 });
 it("ends the local session when the server revokes store access", async () => {

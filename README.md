@@ -46,7 +46,7 @@ This deployment is exclusively MOHRA IT CARE & TELECOM CENTER, proprietor Sankar
 
 The proprietor signs in with the existing authenticated account; there is no additional online setup/PIN wizard. The empty ledger starts without fabricated balances or stock. Enter actual opening values through owner-only Accounts adjustments with a mandatory audit reason, then add products/SIM stock and start a counted shift. Online history cannot be erased with Reset All. Legacy PINs remain only for old local snapshots; online sign-out requires account authentication on return.
 
-Store & Team supports audited cashier access suspension/reactivation. Pending approvals and the employee's open shift must be resolved before suspension. A blocked employee is rejected by the API and signed out locally when access is checked. Protocol revision 2 protects the new preparation flow from older browser clients; refresh the page if asked.
+Store & Team supports audited cashier access suspension/reactivation. Pending approvals and the employee's open shift must be resolved before suspension. A blocked employee is rejected by the API and signed out locally when access is checked. Protocol revision 3 protects the new preparation flow from older browser clients; refresh the page if asked.
 
 Device diagnostics in Store & Team print test labels/receipts and check camera decoding without creating sales or stock movements. Manual barcode entry is not counted as camera verification.
 

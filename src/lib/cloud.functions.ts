@@ -11,14 +11,14 @@ export interface CloudShop {
   joinCode: string | null;
 }
 export type ApplyResult =
-  | { status: "ok"; version: number }
+  | { status: "ok"; version: number; state?: State; actor?: Actor }
   | { status: "conflict"; version: number; state: State }
   | { status: "rejected"; version: number; state: State; message: string };
 /** Authenticated Edge Function owns all privileged operations. No admin key is needed on Cloudflare. */
 async function invoke<T>(body: unknown): Promise<T> {
   const { data, error } = await supabase.functions.invoke("business-api", {
     body: body as Record<string, unknown>,
-    headers: { "x-mohra-client": "2" },
+    headers: { "x-mohra-client": "3" },
   });
   if (error) {
     let message = "সার্ভার সংযোগ হয়নি। ইন্টারনেট ও লগইন যাচাই করুন।";
