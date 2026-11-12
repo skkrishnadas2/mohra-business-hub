@@ -1,3 +1,4 @@
+import { confirmed } from "@/lib/confirmed-write";
 import { RepairDetails } from "@/components/RepairDetails";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -81,9 +82,9 @@ function Services() {
           <AccountSelect value={payment} onChange={setPayment} />
           <BigButton
             disabled={!Number(amt)}
-            onClick={() => {
+            onClick={async () => {
               try {
-                serviceSlip(svc, Number(amt), payment, Number(directCost));
+                await confirmed(() => serviceSlip(svc, Number(amt), payment, Number(directCost)));
                 toast.success(`${svc} · ${taka(Number(amt))}`);
                 setAmt("");
               } catch (error) {
@@ -132,13 +133,13 @@ function Services() {
             </div>
             <BigButton
               disabled={!r.customer || !r.device}
-              onClick={() => {
+              onClick={async () => {
                 try {
-                  addRepair({
+                  await confirmed(() => addRepair({
                     ...r,
                     estimate: Number(r.estimate) || 0,
                     advance: Number(r.advance) || 0,
-                  });
+                  }));
                   setR({
                     customer: "",
                     phone: "",
@@ -180,9 +181,9 @@ function Services() {
                 <div className="mt-3">
                   <Chips
                     value={x.status}
-                    onChange={(s) => {
+                    onChange={async (s) => {
                       try {
-                        setRepairStatus(x.id, s);
+                        await confirmed(() => setRepairStatus(x.id, s));
                       } catch (error) {
                         toast.error(actionError(error));
                       }

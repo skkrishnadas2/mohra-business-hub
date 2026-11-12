@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import {
   PartyWorkspace,
   PurchaseWorkspace,
@@ -22,10 +22,10 @@ beforeEach(() => {
     });
 });
 describe("business screens", () => {
-  it("renders and creates a party through the visible form", () => {
+  it("renders and creates a party through the visible form", async () => {
     render(<PartyWorkspace />);
     fireEvent.change(screen.getByLabelText("পার্টির নাম"), { target: { value: "Rahim" } });
-    fireEvent.click(screen.getByRole("button", { name: "পার্টি যোগ করুন" }));
+    await act(async()=>fireEvent.click(screen.getByRole("button", { name: "পার্টি যোগ করুন" })));
     expect(useStore.getState().business!.parties[0]!.name).toBe("Rahim");
     expect(screen.getByRole("button", { name: /Rahim/ })).toBeDefined();
   });

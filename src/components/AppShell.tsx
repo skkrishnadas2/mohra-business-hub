@@ -1,3 +1,4 @@
+import { activeShift } from "@/lib/operations";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
@@ -34,7 +35,7 @@ const NAV: NavItem[] = [
   { to: "/khata", label: "পার্টি ও খাতা", icon: BookUser },
   { to: "/products", label: "স্টক ও ক্রয়", icon: Package },
   { to: "/reports", label: "রিপোর্ট", icon: Activity, owner: true },
-  { to: "/closing", label: "শিফট / দিন শেষ", icon: MoonStar },
+  { to: "/closing", label: "শিফট ও অনুমোদন", icon: MoonStar },
   { to: "/cloud", label: "দোকান ও টিম", icon: Cloud },
   { to: "/monitor", label: "লাইভ মনিটর", icon: Activity, owner: true },
   { to: "/settings", label: "সেটিংস", icon: Settings, owner: true },
@@ -104,6 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-background md:flex">
       <CloudSync />
+      {!activeShift(useStore.getState()) && loc.pathname!=="/closing" && <Link to="/closing" className="fixed bottom-20 left-1/2 z-40 -translate-x-1/2 rounded-xl border bg-card px-4 py-3 text-sm shadow-lg md:bottom-5">লেনদেনের আগে শিফট শুরু করুন →</Link>}
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar p-3 md:flex lg:w-64">
         <div className="mb-4 border-b px-2 pb-5 pt-3">
           <StoreBrand compact />

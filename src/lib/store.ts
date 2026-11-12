@@ -1,3 +1,15 @@
+import {
+  operationsActions,
+  emptyOperations,
+  activeShift,
+  assertCredit,
+  validateSerials,
+  type Actor,
+  type Audit,
+  type Operations,
+  type OperationsActions,
+  type Approval,
+} from "./operations";
 import { STORE_BRAND } from "./store-brand";
 import { create, type StateCreator } from "zustand";
 import { journalFor, type JournalLine } from "./journal";
@@ -44,8 +56,11 @@ export interface Product {
   kind?: "product" | "sim" | undefined;
   operator?: string | undefined;
   serials?: string[] | undefined;
+  serialTracking?: boolean | undefined;
 }
 export interface CartLine {
+  serials?: string[] | undefined;
+  netTotal?: number | undefined;
   productId: string;
   name: string;
   qty: number;
@@ -56,7 +71,9 @@ export interface Payment {
   accountId: string | "due";
   amount: number;
 }
-export interface Sale {
+export interface Sale extends Audit {
+  discount?: number | undefined;
+  dueReturned?: number | undefined;
   id: string;
   at: number;
   items: CartLine[];
@@ -69,7 +86,7 @@ export interface Sale {
   voidedAt?: number | undefined;
 }
 export type ProfitCat = "product" | "mfs" | "recharge" | "service" | "none";
-export interface Txn {
+export interface Txn extends Audit {
   id: string;
   at: number;
   type: string;
@@ -109,7 +126,7 @@ export interface Repair {
   directCost?: number | undefined;
   parts?: { productId: string; name: string; qty: number; cost: number }[] | undefined;
 }
-export interface Closing {
+export interface Closing extends Audit {
   id: string;
   at: number;
   expected: number;
@@ -230,6 +247,8 @@ const SAMPLE_PRODUCTS: Product[] = [
 ];
 
 export interface State {
+  actor?: Actor | undefined;
+  operations?: Operations | undefined;
   business?: BusinessState | undefined;
   setupDone: boolean;
   shopName: string;
@@ -248,7 +267,7 @@ export interface State {
   lastClosedAt: number;
 }
 
-interface Actions extends BusinessActions {
+interface Actions extends BusinessActions, OperationsActions {
   completeSetup: (p: {
     shopName: string;
     ownerPin: string;
@@ -271,6 +290,7 @@ interface Actions extends BusinessActions {
     lines: CartLine[],
     payments: Payment[],
     customer?: { name: string; phone: string; id?: string | undefined },
+    options?: { discount?: number },
   ) => Sale;
   deleteSale: (id: string) => void;
   recharge: (
@@ -308,6 +328,8 @@ interface Actions extends BusinessActions {
 }
 
 const initial: State = {
+  actor: undefined,
+  operations: emptyOperations(),
   business: emptyBusiness(),
   setupDone: false,
   shopName: STORE_BRAND.fullName,
@@ -387,13 +409,31 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
       }
       return deltas;
     };
+    let approval: Approval | undefined;
     const post = (t: Omit<Txn, "id" | "at" | "by">) => {
       const by = requireRole(get().role);
+      const actor = get().actor;
+      const shift = activeShift(get());
+      if (
+        actor &&
+        (t.moves.length ||
+          t.profit ||
+          ["sale", "sale_void", "sale_return", "purchase", "purchase_return"].includes(t.type)) &&
+        !["opening", "adjust"].includes(t.type)
+      ) {
+        if (!shift) fail("আগে শিফট / দিন শেষ মেনু থেকে শিফট শুরু করুন");
+        if (by === "cashier" && shift.openedBy.userId !== actor.userId)
+          fail("অন্য কর্মীর শিফট চলছে");
+      }
       if (!Number.isFinite(t.amount) || !Number.isFinite(t.profit))
         fail("লেনদেনের পরিমাণ সঠিক নয়");
       const deltas = validateMoves(get().accounts, t.moves);
       const txn: Txn = {
         ...t,
+        actor,
+        shiftId: shift?.id,
+        approvalId: approval?.id,
+        requestedBy: approval?.requestedBy,
         journal: t.journal ?? journalFor(t, get()),
         id: uid(),
         at: now(),
@@ -420,7 +460,7 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
         round2(
           sale.payments
             .filter((payment) => payment.accountId === "due")
-            .reduce((sum, payment) => sum + payment.amount, 0),
+            .reduce((sum, payment) => sum + payment.amount, 0) - (sale.dueReturned ?? 0),
         );
       let legacyCollected = round2(
         Math.max(
@@ -439,8 +479,24 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
       );
     };
 
-    return {
+    const actions: ShopStore = {
       ...initial,
+      ...operationsActions({
+        set,
+        get,
+        post,
+        uid,
+        now,
+        run: (name, args, req) => {
+          const previous = approval;
+          approval = req;
+          try {
+            return (actions[name] as (...args: unknown[]) => unknown)(...args);
+          } finally {
+            approval = previous;
+          }
+        },
+      }),
       ...businessActions({ set, get, post, uid, now, validateMoves }),
       completeSetup: ({
         shopName,
@@ -613,7 +669,15 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
           (x) => x.id !== p.id && x.barcodes.some((b) => barcodes.includes(b)),
         );
         if (duplicate) fail(`এই বারকোডটি ${duplicate.name} পণ্যে ব্যবহৃত হচ্ছে`);
-        const clean = { ...p, name, barcodes, cost, price };
+        const serials = p.serials?.map((x) => x.trim()).filter(Boolean);
+        const serialTracking =
+          p.serialTracking ||
+          !!serials?.length ||
+          !!get().products.find((x) => x.id === p.id)?.serialTracking;
+        if (serialTracking && serials?.length !== p.stock)
+          fail("ট্র্যাক করা স্টকের প্রতি পিসের সিরিয়াল / ICCID দিন");
+        if (serials) validateSerials(get(), serials, p.id);
+        const clean = { ...p, name, barcodes, cost, price, serials, serialTracking };
         const previous = p.id ? get().products.find((x) => x.id === p.id) : undefined;
         if (p.id && !previous) fail("পণ্য পাওয়া যায়নি");
         const delta = p.stock - (previous?.stock ?? 0);
@@ -642,10 +706,11 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
           fail("বিক্রিত পণ্য মুছে ফেলা যাবে না; স্টক শূন্য করে রাখুন");
         set((s) => ({ products: s.products.filter((p) => p.id !== id) }));
       },
-      checkout: (lines, payments, customer) => {
+      checkout: (lines, payments, customer, options) => {
         const by = requireRole(get().role);
         if (!lines.length) fail("কার্টে অন্তত একটি পণ্য যোগ করুন");
         const quantities = new Map<string, number>();
+        const usedSerials = new Set<string>();
         const cleanLines = lines.map((line) => {
           const product =
             get().products.find((p) => p.id === line.productId) ??
@@ -656,13 +721,58 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
           const price = product.price;
           const cost = product.cost;
           quantities.set(line.productId, (quantities.get(line.productId) ?? 0) + line.qty);
-          return { productId: product.id, name: product.name, qty: line.qty, price, cost };
+          let serials: string[] | undefined;
+          if (product.serialTracking || product.serials?.length) {
+            const used = [...usedSerials];
+            serials = line.serials?.length
+              ? line.serials
+              : product.serials?.filter((x) => !used.includes(x)).slice(0, line.qty);
+            if (
+              !serials ||
+              serials.length !== line.qty ||
+              new Set(serials).size !== serials.length ||
+              serials.some((x) => !product.serials?.includes(x) || used.includes(x))
+            )
+              fail("সঠিক অবিক্রিত সিরিয়াল / ICCID বেছে নিন");
+          }
+          serials?.forEach((x) => usedSerials.add(x));
+          return {
+            productId: product.id,
+            name: product.name,
+            qty: line.qty,
+            price,
+            cost,
+            serials,
+            netTotal: 0,
+          };
         });
         for (const [productId, qty] of quantities) {
           const product = get().products.find((p) => p.id === productId)!;
           if (qty > product.stock) fail(`${product.name} এর স্টকে ${product.stock}টি আছে`);
         }
-        const total = round2(cleanLines.reduce((sum, line) => sum + line.qty * line.price, 0));
+        const subtotal = round2(cleanLines.reduce((sum, line) => sum + line.qty * line.price, 0));
+        const discount = nonNegative(options?.discount ?? 0, "ছাড়");
+        if (discount >= subtotal) fail("ছাড় বিলের চেয়ে কম হতে হবে");
+        if (
+          by === "cashier" &&
+          discount >
+            round2(
+              (subtotal * (get().operations ?? emptyOperations()).policy.cashierDiscountPercent) /
+                100,
+            )
+        )
+          fail("ছাড়ের সীমা অতিক্রম করেছে। মালিকের অনুমোদন নিন।");
+        const total = round2(subtotal - discount);
+        let cumulative = 0,
+          allocated = 0;
+        for (const line of cleanLines) {
+          cumulative += Math.round(line.qty * line.price * 100);
+          const next = Math.round(
+            (Math.round(total * 100) * cumulative) / Math.round(subtotal * 100),
+          );
+          line.netTotal = (next - allocated) / 100;
+          allocated = next;
+        }
         if (total <= 0) fail("বিক্রির মোট টাকা শূন্যের বেশি হতে হবে");
         const cost = round2(cleanLines.reduce((sum, line) => sum + line.qty * line.cost, 0));
         const cleanPayments: Payment[] = [];
@@ -712,7 +822,13 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
             get().business?.parties.find((p) => phone && p.phone === phone)?.id ??
             uid();
         }
+        assertCredit(get(), customerId, due);
         const sale: Sale = {
+          discount,
+          actor: get().actor,
+          shiftId: activeShift(get())?.id,
+          approvalId: approval?.id,
+          requestedBy: approval?.requestedBy,
           id: uid(),
           at: now(),
           items: cleanLines,
@@ -726,7 +842,15 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
         set((s) => ({
           sales: [sale, ...s.sales],
           products: s.products.map((p) =>
-            quantities.has(p.id) ? { ...p, stock: p.stock - (quantities.get(p.id) ?? 0) } : p,
+            quantities.has(p.id)
+              ? {
+                  ...p,
+                  stock: p.stock - (quantities.get(p.id) ?? 0),
+                  serials: p.serials?.filter(
+                    (x) => !cleanLines.some((l) => l.productId === p.id && l.serials?.includes(x)),
+                  ),
+                }
+              : p,
           ),
           customers:
             due > 0 && customer
@@ -762,6 +886,8 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
         permitted("editSales");
         const sale = get().sales.find((s) => s.id === id) ?? fail("বিক্রির মেমোটি পাওয়া যায়নি");
         if (sale.voidedAt) fail("মেমো ইতিমধ্যে বাতিল হয়েছে");
+        if (get().operations?.returns.some((x) => x.saleId === id))
+          fail("আংশিক ফেরত হয়েছে। অবশিষ্ট পণ্য ফেরত ফর্ম ব্যবহার করুন");
         const saleDue = round2(
           sale.payments.filter((p) => p.accountId === "due").reduce((sum, p) => sum + p.amount, 0),
         );
@@ -782,7 +908,20 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
             const qty = sale.items
               .filter((line) => line.productId === p.id)
               .reduce((sum, line) => sum + line.qty, 0);
-            return qty ? { ...p, stock: p.stock + qty } : p;
+            return qty
+              ? {
+                  ...p,
+                  stock: p.stock + qty,
+                  serials: p.serials
+                    ? [
+                        ...p.serials,
+                        ...sale.items
+                          .filter((l) => l.productId === p.id)
+                          .flatMap((l) => l.serials ?? []),
+                      ]
+                    : p.serials,
+                }
+              : p;
           }),
           customers: customer
             ? s.customers.map((c) =>
@@ -812,6 +951,7 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
             (get().business?.parties.some((p) => p.id === partyId) ||
               get().customers.some((p) => p.id === partyId));
           if (!party) fail("বাকি রিচার্জের জন্য পার্টি বেছে নিন");
+          assertCredit(get(), partyId, value);
         } else if (requireAccount(paymentId).kind === "recharge") fail("পেমেন্টের হিসাব বেছে নিন");
         post({
           type: "recharge",
@@ -1048,7 +1188,7 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
           const due = round2(
             sale.payments
               .filter((payment) => payment.accountId === "due")
-              .reduce((sum, payment) => sum + payment.amount, 0),
+              .reduce((sum, payment) => sum + payment.amount, 0) - (sale.dueReturned ?? 0),
           );
           const previous = collected.get(sale.id) ?? 0;
           const paid = Math.min(Math.max(0, due - previous), remaining);
@@ -1076,6 +1216,10 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
         });
       },
       closeDay: (counted) => {
+        if (get().actor) {
+          actions.closeShift(counted);
+          return get().closings[0]!;
+        }
         const by = requireRole(get().role);
         const actual = nonNegative(counted, "গণনা করা ক্যাশ");
         const expected = requireAccount("cash").balance;
@@ -1108,11 +1252,31 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
         set({ ...initial });
       },
     };
+    for (const name of CLOUD_ACTIONS) {
+      const raw = actions[name] as (...args: unknown[]) => unknown;
+      (actions as unknown as Record<string, unknown>)[name] = (...args: unknown[]) => {
+        const before = get();
+        try {
+          return raw(...args);
+        } catch (error) {
+          set(before, true);
+          throw error;
+        }
+      };
+    }
+    return actions;
   };
 }
 export const shopStoreCreator = createShopStoreCreator();
 
 export const CLOUD_ACTIONS = [
+  "openShift",
+  "closeShift",
+  "setCashierPolicy",
+  "setCreditLimit",
+  "requestApproval",
+  "decideApproval",
+  "returnSale",
   "completeSetup",
   "setPerm",
   "setPins",
@@ -1211,6 +1375,7 @@ export function shopSnapshot(state: State): State {
     closings: state.closings,
     lastClosedAt: state.lastClosedAt,
     business: state.business ?? emptyBusiness(),
+    operations: state.operations ?? emptyOperations(),
   };
 }
 

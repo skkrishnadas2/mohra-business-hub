@@ -40,14 +40,22 @@ This deployment is exclusively MOHRA IT CARE & TELECOM CENTER, proprietor Sankar
 6. Use Party & Khata for distinct receivable/payable balances and collections. SR balances awaiting receipt are shown separately; they cannot be accidentally collected twice as ordinary debt.
 7. Purchase stock through the supplier flow for weighted-average cost and payable tracking. Full purchase returns reconcile outstanding debt and refunds.
 8. Repair advances are liabilities until delivery; consumed parts and direct costs reduce repair profit. Historical repair entries keep their legacy recognition convention.
-9. Reconcile cash at closing. Export statements/stock/journals as CSV, print reports or save them as PDF, and download a full JSON backup.
+9. Open a counted cash shift before posting transactions; only one drawer shift can be active. Cashiers work in their own shift; owners can reconcile or close it. Cash variances need a reason and owner approval. Export statements/stock/journals as CSV, print reports or save them as PDF, and download a full JSON backup.
 
 ## Recovery and verification limits
 
 Backups can be restored only into a new empty shop, after schema, ledger/balance and journal validation. Active shop history cannot be overwritten through recovery. Restored snapshots keep a recovery audit voucher.
 
-POS success/receipt waits for the exact server acknowledgement. A timeout is visibly pending, not a successful sale. Existing durable outboxes retain action identities for safe retry. Other screens show the global pending/error banner during synchronization. Disconnected authenticated shops reject new financial mutations; existing drafts remain local. Full offline cold-start/navigation caching is not implemented.
+POS success/receipt waits for the exact server acknowledgement. A timeout is visibly pending, not a successful sale. Existing durable outboxes retain action identities for safe retry. All financial forms now await the exact receipt before success, block duplicate submissions while pending, and retain the global synchronization status. Disconnected authenticated shops reject new financial mutations; existing drafts remain local. Full offline cold-start/navigation caching is not implemented.
 
 Recharge, MFS and bank screens record completed real-world services and settlements; they do not initiate external money transfers or recharge requests without a separately authorized provider API.
 
 Free-tier quotas still apply. The current JSON snapshot approach is suitable for the initial shop, not an assertion of unlimited SaaS capacity. Real owner/cashier multi-device sign-in, camera hardware and physical printer output require acceptance checks on the shop's devices.
+
+## Employee controls and returns
+
+Verified Auth user ID and profile name are attached by the Edge Function to new vouchers. The current actor is transient, excluded from snapshots and cannot be supplied in a Cloud action. Reports and CSV include actor, shift, requesting employee and approval ID. Legacy vouchers are not retroactively assigned an employee.
+
+Owner settings define default per-party cashier credit and discount limits, with party-specific credit overrides. Beyond-limit POS sales and recharge credit, product refunds and cash-short shifts can be requested from the cashier and executed once by the owner under Shift & Approvals. Requests expire when their shift closes; a changed cash balance also invalidates a closing count.
+
+Partial sales returns allocate the original discounted line value in integer paisa, reduce outstanding invoice debt first, then refund actual paid/collected amounts. Collected dues do not block a return. Return journals restore stock/cost and reverse revenue, receivables and refunds. Serialized inventory requires one unique ICCID/serial per stocked piece; intake, sale, cancellation and exact-item return maintain its availability.

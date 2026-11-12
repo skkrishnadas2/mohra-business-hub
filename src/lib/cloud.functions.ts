@@ -1,6 +1,8 @@
+import type { Actor } from "./operations";
 import { supabase } from "@/integrations/supabase/client";
 import type { CloudAction, Role, State } from "./store";
 export interface CloudShop {
+  actor?: Actor | undefined;
   shopId: string;
   name: string;
   role: Role;

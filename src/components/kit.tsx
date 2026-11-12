@@ -1,3 +1,4 @@
+import { useSubmission } from "@/lib/confirmed-write";
 import { useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { taka } from "@/lib/rules";
@@ -108,8 +109,9 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement> & {
 }
 
 export function BigButton({ children, className, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const busy=useSubmission(s=>s.busy);
   return (
-    <Button {...p} className={cn("inline-flex h-auto min-h-11 w-full items-center justify-center gap-2 whitespace-normal rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold leading-snug text-primary-foreground transition-colors hover:enabled:bg-primary/90 active:enabled:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none", className)}>
+    <Button {...p} disabled={p.disabled || busy} className={cn("inline-flex h-auto min-h-11 w-full items-center justify-center gap-2 whitespace-normal rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold leading-snug text-primary-foreground transition-colors hover:enabled:bg-primary/90 active:enabled:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none", className)}>
       {children}
     </Button>
   );

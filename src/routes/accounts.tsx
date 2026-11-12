@@ -1,3 +1,4 @@
+import { confirmed } from "@/lib/confirmed-write";
 import {
   FinanceWorkspace,
   GeneralTransfer,
@@ -149,11 +150,11 @@ function Accounts() {
             </div>
             <BigButton
               disabled={!Number(amt) || !bank}
-              onClick={() => {
+              onClick={async () => {
                 try {
                   const a = Number(amt);
-                  if (dir === "dep") transfer("cash", bank, a, "ব্যাংকে জমা", ref);
-                  else transfer(bank, "cash", a, "ব্যাংক থেকে উত্তোলন", ref);
+                  if (dir === "dep") await confirmed(() => transfer("cash", bank, a, "ব্যাংকে জমা", ref));
+                  else await confirmed(() => transfer(bank, "cash", a, "ব্যাংক থেকে উত্তোলন", ref));
                   toast.success("সম্পন্ন");
                   setAmt("");
                   setRef("");
@@ -192,9 +193,9 @@ function Accounts() {
               />
             </div>
             <BigButton
-              onClick={() => {
+              onClick={async () => {
                 try {
-                  if (adj && setBalance(adj.id, Number(adjVal) || 0, pin)) {
+                  if (adj && await confirmed(() => setBalance(adj.id, Number(adjVal) || 0, pin))) {
                     toast.success("সমন্বয় হয়েছে");
                     setAdj(null);
                   } else toast.error("ভুল PIN");
@@ -261,14 +262,14 @@ function Accounts() {
                   !nw.name.trim() ||
                   ((nw.kind.startsWith("mfs") || nw.kind === "recharge") && !nw.provider)
                 }
-                onClick={() => {
+                onClick={async () => {
                   try {
-                    addAccount({
+                    await confirmed(() => addAccount({
                       name: nw.name,
                       kind: nw.kind,
                       provider: nw.provider || undefined,
                       balance: 0,
-                    });
+                    }));
                     setNw(null);
                   } catch (error) {
                     toast.error(actionError(error));

@@ -1,7 +1,7 @@
 import type { Role, State } from "@/lib/store";
 
 /** Return only what this role may see; raw shop_states is owner-readable only. */
-export function stateForRole(state: State, role: Role): State {
+export function stateForRole(state: State, role: Role, userId?: string): State {
   if (role === "owner") return { ...state, role: null };
   const blocked = new Set(
     state.accounts.filter((a) => a.cashierAllowed === false).map((a) => a.id),
@@ -9,6 +9,18 @@ export function stateForRole(state: State, role: Role): State {
   return {
     ...state,
     role: null,
+    actor: undefined,
+    operations: state.operations
+      ? {
+          ...state.operations,
+          creditLimits: state.operations.creditLimits,
+          requests: state.operations.requests.filter((r) => r.requestedBy.userId === userId),
+          returns: state.operations.returns.map((r) => ({
+            ...r,
+            cost: state.perms.viewCost ? r.cost : 0,
+          })),
+        }
+      : undefined,
     ownerPin: "",
     business: state.business
       ? {

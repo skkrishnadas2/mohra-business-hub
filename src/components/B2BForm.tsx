@@ -1,3 +1,4 @@
+import { confirmed } from "@/lib/confirmed-write";
 import { useState } from "react";
 import { toast } from "sonner";
 import { actionError, useStore } from "@/lib/store";
@@ -52,9 +53,9 @@ export function B2BForm({ kind }: { kind: "mfs" | "recharge" }) {
           {sName} <b className="text-destructive">−{taka(amt)}</b> · {tName} <b className="text-primary">+{taka(amt + c)}</b>{kind === "mfs" && " · কমিশন ০"}
         </div>
       )}
-      <BigButton disabled={amt <= 0 || !source || !target || !ref.trim()} onClick={() => {
+      <BigButton disabled={amt <= 0 || !source || !target || !ref.trim()} onClick={async () => {
         try {
-          b2b({ kind, targetId: target, sourceId: source, amount: amt, commission: c, ref });
+          await confirmed(() => b2b({ kind, targetId: target, sourceId: source, amount: amt, commission: c, ref }));
           toast.success("B2B লেনদেন সম্পন্ন"); setAmount(""); setCom(""); setRef("");
         } catch (error) { toast.error(actionError(error)); }
       }}>নিশ্চিত করুন</BigButton>

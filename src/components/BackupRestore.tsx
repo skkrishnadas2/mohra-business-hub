@@ -47,8 +47,8 @@ export function BackupRestore() {
           />
           <BigButton
             disabled={confirmation !== "RESTORE"}
-            onClick={() => {
-              if (act(() => s.restoreBackup(data), "ব্যাকআপ পুনরুদ্ধারের রেকর্ড হয়েছে")) {
+            onClick={async () => {
+              if (await act(() => s.restoreBackup(data), "ব্যাকআপ পুনরুদ্ধারের রেকর্ড হয়েছে")) {
                 setData(null);
                 setConfirmation("");
               }

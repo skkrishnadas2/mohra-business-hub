@@ -1,3 +1,4 @@
+import { confirmed } from "@/lib/confirmed-write";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { BulkLabels } from "@/components/BulkLabels";
@@ -69,14 +70,14 @@ function Products() {
       stock: String(p.stock),
       lowStock: String(p.lowStock),
     });
-  const save = () => {
+  const save = async () => {
     if (!d) return;
     try {
       const barcodes = d.barcodes
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
-      upsertProduct({
+      await confirmed(() => upsertProduct({
         category: d.category,
         kind: d.kind ?? "product",
         operator: d.operator,
@@ -91,7 +92,7 @@ function Products() {
         price: Number(d.price) || 0,
         stock: Number(d.stock) || 0,
         lowStock: Number(d.lowStock) || 0,
-      });
+      }));
       setD(null);
       toast.success("সেভ হয়েছে");
     } catch (error) {
@@ -280,9 +281,9 @@ function Products() {
               </BigButton>
               {d.id && (
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     try {
-                      deleteProduct(d.id!);
+                      await confirmed(() => deleteProduct(d.id!));
                       setD(null);
                       toast.success("পণ্য মুছে ফেলা হয়েছে");
                     } catch (error) {

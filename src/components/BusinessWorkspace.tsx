@@ -1,3 +1,4 @@
+import { confirmed } from "@/lib/confirmed-write";
 import { CameraScanner } from "./CameraScanner";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -69,9 +70,9 @@ export function Panel({ title, children }: { title: string; children: ReactNode 
     </section>
   );
 }
-export function act(fn: () => void, message = "সংরক্ষণ হয়েছে") {
+export async function act(fn: () => void, message = "সংরক্ষণ হয়েছে") {
   try {
-    fn();
+    await confirmed(fn);
     toast.success(message);
     return true;
   } catch (e) {
@@ -274,9 +275,9 @@ export function PartyWorkspace() {
               )}
               <BigButton
                 disabled={!Number(amount)}
-                onClick={() => {
+                onClick={async () => {
                   if (
-                    act(() => {
+                    await act(() => {
                       if (mode === "collect" || mode === "pay")
                         settleParty(
                           id,
@@ -332,8 +333,8 @@ export function PartyWorkspace() {
               </div>
               <BigButton
                 disabled={!name.trim() || !roles.length}
-                onClick={() => {
-                  if (act(() => saveParty({ name, phone, roles }))) {
+                onClick={async () => {
+                  if (await act(() => saveParty({ name, phone, roles }))) {
                     setName("");
                     setPhone("");
                   }
@@ -363,6 +364,7 @@ export function PurchaseWorkspace() {
       setScanner(false);
     } else toast.error("এই বারকোডের পণ্য নেই");
   };
+  const [serialText, setSerialText] = useState("");
   const [qty, setQty] = useState("1");
   const [cost, setCost] = useState("");
   const [paid, setPaid] = useState("");
@@ -402,6 +404,11 @@ export function PurchaseWorkspace() {
             <NumInput value={cost} onChange={setCost} />
           </Field>
         </div>
+        <TextInput
+          placeholder="সিরিয়াল / ICCID (কমা দিয়ে আলাদা)"
+          value={serialText}
+          onChange={(e) => setSerialText(e.target.value)}
+        />
         <p className="text-lg font-semibold">বিল {taka(Number(qty) * Number(cost))}</p>
         <Field title="এখন পরিশোধ (বাকিতে হলে ০)">
           <NumInput value={paid} onChange={setPaid} />
@@ -414,11 +421,15 @@ export function PurchaseWorkspace() {
         />
         <BigButton
           disabled={!partyId || !productId || !ref.trim()}
-          onClick={() => {
+          onClick={async () => {
             if (
-              act(() =>
+              await act(() =>
                 state.purchaseStock({
                   partyId,
+                  serials: serialText
+                    .split(",")
+                    .map((x) => x.trim())
+                    .filter(Boolean),
                   productId,
                   qty: Number(qty),
                   cost: Number(cost),
@@ -428,6 +439,7 @@ export function PurchaseWorkspace() {
                 }),
               )
             ) {
+              setSerialText("");
               setPaid("");
               setRef("");
             }
@@ -462,9 +474,9 @@ export function PurchaseWorkspace() {
             ) : (
               <button
                 className="rounded-lg border px-3 py-2 text-xs"
-                onClick={() => {
+                onClick={async () => {
                   if (confirm("পুরো ক্রয় ফেরত ও টাকা/দেনা সমন্বয় করবেন?"))
-                    act(() => state.returnPurchase(p.id));
+                    await act(() => state.returnPurchase(p.id));
                 }}
               >
                 পুরো ক্রয় ফেরত
@@ -518,9 +530,9 @@ export function FinanceWorkspace() {
         <TextInput placeholder="বিবরণ" value={note} onChange={(e) => setNote(e.target.value)} />
         <BigButton
           disabled={!Number(amount) || !note.trim()}
-          onClick={() => {
+          onClick={async () => {
             if (
-              act(() =>
+              await act(() =>
                 mode === "expense"
                   ? s.expense(account, Number(amount), category, note)
                   : s.capital(account, Number(amount), mode as "in" | "out", note),
@@ -611,13 +623,13 @@ export function SettlementWorkspace() {
         </p>
         <BigButton
           disabled={!partyId || !sourceId || !targetId || !Number(amount) || !ref.trim()}
-          onClick={() => {
+          onClick={async () => {
             const extra =
               s.accounts.find((a) => a.id === targetId)?.kind === "recharge"
                 ? Number(commission)
                 : 0;
             if (
-              act(() =>
+              await act(() =>
                 s.startSettlement({
                   partyId,
                   sourceId,
@@ -671,8 +683,8 @@ function SettlementRow({ id }: { id: string }) {
         <>
           <NumInput value={amount} onChange={setAmount} placeholder={`অবশিষ্ট ${remaining}`} />
           <BigButton
-            onClick={() => {
-              if (act(() => s.receiveSettlement(id, amount ? Number(amount) : remaining)))
+            onClick={async () => {
+              if (await act(() => s.receiveSettlement(id, amount ? Number(amount) : remaining)))
                 setAmount("");
             }}
           >
@@ -681,7 +693,7 @@ function SettlementRow({ id }: { id: string }) {
           {s.role === "owner" && p.received === 0 && (
             <button
               className="text-sm text-muted-foreground"
-              onClick={() => {
+              onClick={async () => {
                 if (confirm("SR থেকে অগ্রিম ফেরত পেয়েছেন?")) act(() => s.cancelSettlement(id));
               }}
             >
@@ -719,9 +731,11 @@ export function GeneralTransfer() {
       </div>
       <BigButton
         disabled={!to || to === from || !Number(amount)}
-        onClick={() => {
+        onClick={async () => {
           if (
-            act(() => s.transfer(from, to, Number(amount), "নিজের অ্যাকাউন্টে ট্রান্সফার", ref))
+            await act(() =>
+              s.transfer(from, to, Number(amount), "নিজের অ্যাকাউন্টে ট্রান্সফার", ref),
+            )
           ) {
             setAmount("");
             setRef("");

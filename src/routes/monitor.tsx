@@ -1,3 +1,4 @@
+import { confirmed } from "@/lib/confirmed-write";
 import { createFileRoute } from "@tanstack/react-router";
 import { MonitorSmartphone, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -89,8 +90,8 @@ function Monitor() {
               <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div><div>#{s.id.slice(0, 6).toUpperCase()} · {bn(s.items.length)}টি আইটেম</div><div className="text-xs text-muted-foreground">{new Date(s.at).toLocaleTimeString("bn-BD")} · {s.by === "owner" ? "মালিক" : "ক্যাশিয়ার"}</div></div>
                 <div className="flex items-center gap-2"><Money v={s.total} className="font-semibold" />
-                  {can("editSales") && <button aria-label="বাতিল" onClick={() => {
-                    try { deleteSale(s.id); toast.success("মেমো বাতিল, স্টক ও টাকা ফেরত"); }
+                  {can("editSales") && <button aria-label="বাতিল" onClick={async () => {
+                    try { await confirmed(() => deleteSale(s.id)); toast.success("মেমো বাতিল, স্টক ও টাকা ফেরত"); }
                     catch (error) { toast.error(actionError(error)); }
                   }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-destructive hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" /></button>}</div>
               </div>

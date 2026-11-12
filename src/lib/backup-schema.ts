@@ -1,3 +1,4 @@
+import { operationsSchema } from "./operations-schema";
 import { z } from "zod";
 const money = z.number().finite();
 const text = z.string();
@@ -111,8 +112,9 @@ export const backupStateSchema = z.object({
       diff: money,
       profit: money,
       by: role,
-    }),
+    }).passthrough(),
   ),
+  operations: operationsSchema.optional(),
   lastClosedAt: money,
   business: z
     .object({

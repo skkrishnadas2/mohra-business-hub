@@ -1,3 +1,4 @@
+import { confirmed } from "@/lib/confirmed-write";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, Minus, Plus, Printer, Search, X } from "lucide-react";
@@ -56,7 +57,7 @@ function PosRoute() {
   return <Pos key={shopId ?? name} />;
 }
 function Pos() {
-  const { products, checkout, accounts, shopName } = useStore();
+  const { products, checkout, accounts, shopName, requestApproval } = useStore();
   const [busy, setBusy] = useState(false);
   const checkoutLock = useRef(false);
   const shopId = useCloud((s) => s.shopId);
@@ -91,9 +92,11 @@ function Pos() {
   const [cam, setCam] = useState(false);
   const [last, setLast] = useState<Sale | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const total = cart.reduce((s, l) => s + l.qty * l.price, 0);
+  const [discount, setDiscount] = useState("");
+  const subtotal = cart.reduce((s, l) => s + l.qty * l.price, 0);
+  const total = Math.max(0, Math.round((subtotal - (Number(discount) || 0)) * 100) / 100);
 
-  const add = (pid: string) => {
+  const add = (pid: string, scannedSerial?: string) => {
     const p = products.find((x) => x.id === pid);
     if (!p) return;
     const inCart = cart.find((line) => line.productId === pid)?.qty ?? 0;
@@ -101,18 +104,47 @@ function Pos() {
       toast.error(`${p.name} এর স্টকে ${bn(p.stock)}টি আছে`);
       return;
     }
+    const selected = cart.find((l) => l.productId === pid)?.serials ?? [];
+    const serial =
+      p.serialTracking || p.serials?.length
+        ? (scannedSerial ?? p.serials?.find((x) => !selected.includes(x)))
+        : undefined;
+    if ((p.serialTracking || p.serials?.length) && (!serial || selected.includes(serial))) {
+      toast.error("এই সিরিয়াল কার্টে আছে অথবা অবিক্রিত সিরিয়াল নেই");
+      return;
+    }
     beep();
     setCart((c) => {
       const ex = c.find((l) => l.productId === pid);
       return ex
-        ? c.map((l) => (l.productId === pid ? { ...l, qty: l.qty + 1 } : l))
-        : [...c, { productId: p.id, name: p.name, qty: 1, price: p.price, cost: p.cost }];
+        ? c.map((l) =>
+            l.productId === pid
+              ? {
+                  ...l,
+                  qty: l.qty + 1,
+                  serials: serial ? [...(l.serials ?? []), serial] : l.serials,
+                }
+              : l,
+          )
+        : [
+            ...c,
+            {
+              productId: p.id,
+              name: p.name,
+              qty: 1,
+              price: p.price,
+              cost: p.cost,
+              serials: serial ? [serial] : undefined,
+            },
+          ];
     });
   };
   const scan = (code: string) => {
-    const p = products.find((x) => x.barcodes.includes(code.trim()));
+    const p = products.find(
+      (x) => x.barcodes.includes(code.trim()) || x.serials?.includes(code.trim()),
+    );
     if (p) {
-      add(p.id);
+      add(p.id, p.serials?.includes(code.trim()) ? code.trim() : undefined);
       return true;
     }
     return false;
@@ -141,18 +173,34 @@ function Pos() {
   const finish = async (
     payments: Payment[],
     customer?: { name: string; phone: string; id?: string | undefined },
+    approvalReason?: string,
   ) => {
     if (checkoutLock.current) return;
     checkoutLock.current = true;
     setBusy(true);
     try {
-      const { result: sale, confirmed } = await confirmCloudWrite(() =>
-        checkout(cart, payments, customer),
+      if (approvalReason) {
+        await confirmed(() =>
+          requestApproval(
+            "checkout",
+            [cart, payments, customer, { discount: Number(discount) || 0 }],
+            approvalReason,
+          ),
+        );
+        setCart([]);
+        setDiscount("");
+        setPayOpen(false);
+        toast.success("মালিকের অনুমোদনের অনুরোধ পাঠানো হয়েছে");
+        return;
+      }
+      const { result: sale, confirmed: saved } = await confirmCloudWrite(() =>
+        checkout(cart, payments, customer, { discount: Number(discount) || 0 }),
       );
       setCart([]);
       setPayOpen(false);
-      setLast(confirmed ? sale : null);
-      if (confirmed) toast.success(`বিক্রি সম্পন্ন · ${taka(sale.total)}`);
+      setDiscount("");
+      setLast(saved ? sale : null);
+      if (saved) toast.success(`বিক্রি সম্পন্ন · ${taka(sale.total)}`);
       else toast.info("লেনদেন যাচাই অপেক্ষমাণ—আবার বিক্রি করবেন না। সংযোগ পাতায় অবস্থা দেখুন।");
       inputRef.current?.focus();
     } catch (error) {
@@ -276,6 +324,11 @@ function Pos() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm">{l.name}</div>
                       <Money v={l.price * l.qty} className="text-sm font-semibold" />
+                      {l.serials?.map((x) => (
+                        <p className="break-all text-[10px] text-muted-foreground" key={x}>
+                          ICCID / SN: {x}
+                        </p>
+                      ))}
                     </div>
                     <button
                       aria-label="পরিমাণ কমান"
@@ -285,7 +338,7 @@ function Pos() {
                           c.flatMap((x) =>
                             x.productId === l.productId
                               ? x.qty > 1
-                                ? [{ ...x, qty: x.qty - 1 }]
+                                ? [{ ...x, qty: x.qty - 1, serials: x.serials?.slice(0, -1) }]
                                 : []
                               : [x],
                           ),
@@ -306,6 +359,10 @@ function Pos() {
                 ))}
               </div>
             )}
+            <div className="mt-3 border-t pt-3">
+              <Label>ছাড় (৳)</Label>
+              <NumInput value={discount} onChange={setDiscount} />
+            </div>
             <div className="mt-3 flex items-center justify-between border-t pt-3">
               <span className="text-muted-foreground">মোট</span>
               <Money v={total} className="text-2xl font-semibold" />
@@ -423,7 +480,11 @@ function PaySheet({
   onOpenChange: (v: boolean) => void;
   total: number;
   busy: boolean;
-  onDone: (p: Payment[], c?: { name: string; phone: string; id?: string | undefined }) => void;
+  onDone: (
+    p: Payment[],
+    c?: { name: string; phone: string; id?: string | undefined },
+    reason?: string,
+  ) => void;
 }) {
   const fullState = useStore();
   const { accounts } = fullState;
@@ -434,6 +495,7 @@ function PaySheet({
     name: "",
     phone: "",
   });
+  const [requestReason, setRequestReason] = useState("");
   const [paidNow, setPaidNow] = useState("");
   useEffect(() => {
     if (open) {
@@ -448,15 +510,16 @@ function PaySheet({
   const banks = accounts.filter((a) => !a.inactive && a.kind === "bank");
   const splitSum = Object.values(split).reduce((s, v) => s + (Number(v) || 0), 0);
 
-  const submit = () => {
+  const submit = (reason?: string) => {
     if (mode === "mfs" || mode === "bank")
-      return acc && onDone([{ accountId: acc, amount: total }]);
+      return acc && onDone([{ accountId: acc, amount: total }], undefined, reason);
     if (mode === "split")
       return onDone(
         Object.entries(split)
           .filter(([, v]) => Number(v) > 0)
           .map(([k, v]) => ({ accountId: k, amount: Number(v) })),
         Number(split["due"]) > 0 ? cust : undefined,
+        reason,
       );
     const now = Math.min(Number(paidNow) || 0, total);
     onDone(
@@ -465,6 +528,7 @@ function PaySheet({
         { accountId: "due", amount: total - now },
       ],
       cust,
+      reason,
     );
   };
   const ok =
@@ -570,9 +634,25 @@ function PaySheet({
               )}
             </div>
           )}
-          <BigButton disabled={!ok || busy} onClick={submit}>
+          <BigButton disabled={!ok || busy} onClick={() => submit()}>
             বিক্রি সম্পন্ন
           </BigButton>
+          {fullState.role === "cashier" && (
+            <div className="space-y-2 border-t pt-3">
+              <Label>সীমার বেশি বাকি / ছাড়ের কারণ</Label>
+              <TextInput
+                value={requestReason}
+                onChange={(e) => setRequestReason(e.target.value)}
+                placeholder="মালিকের অনুমোদনের জন্য বিবরণ"
+              />
+              <BigButton
+                disabled={!ok || busy || !requestReason.trim()}
+                onClick={() => submit(requestReason)}
+              >
+                মালিকের অনুমোদন চান
+              </BigButton>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

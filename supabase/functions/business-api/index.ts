@@ -45,6 +45,8 @@ Deno.serve(async(req:Request)=>{
   const {data:member,error:memberError}=await admin.from('shop_members').select('role').eq('shop_id',p.shopId).eq('user_id',userId).maybeSingle();
   if(memberError||!member)return response({error:'এই দোকানে আপনার প্রবেশাধিকার নেই'},403);
   const role=member.role;
+  const {data:actorProfile}=await admin.from('profiles').select('display_name').eq('id',userId).maybeSingle();
+  const actor={userId,name:actorProfile?.display_name||auth.user.email||'কর্মী',role};
   const read=async()=>{const {data,error}=await admin.from('shop_states').select('version,data').eq('shop_id',p.shopId).single();if(error)throw error;const parsed=snapshotSchemaSafe(data.data);return {version:data.version,state:{...parsed,shopName:STORE_BRAND.fullName}};};
   if(p.op==='apply'){
    const {data:receipt,error}=await admin.from('shop_action_receipts').select('version').eq('shop_id',p.shopId).eq('action_id',p.action.id).maybeSingle();if(error)throw error;if(receipt)return response({status:'ok',version:receipt.version});
@@ -52,13 +54,13 @@ Deno.serve(async(req:Request)=>{
   const current=await read();
   if(p.op==='get'){
    let joinCode=null;if(role==='owner'){const {data,error}=await admin.from('shop_invites').select('join_code').eq('shop_id',p.shopId).maybeSingle();if(error)throw error;joinCode=data?.join_code??null;}
-   return response({shopId:p.shopId,name:current.state.shopName,role,version:current.version,state:stateForRole(current.state,role),joinCode});
+   return response({shopId:p.shopId,name:current.state.shopName,role,actor,version:current.version,state:stateForRole(current.state,role,userId),joinCode});
   }
-  if(current.version!==p.baseVersion)return response({status:'conflict',version:current.version,state:stateForRole(current.state,role)});
-  const replay=replayCloudAction(current.state,role,p.action);
-  if(replay.status==='rejected')return response({status:'rejected',message:replay.message,version:current.version,state:stateForRole(current.state,role)});
+  if(current.version!==p.baseVersion)return response({status:'conflict',version:current.version,state:stateForRole(current.state,role,userId)});
+  const replay=replayCloudAction(current.state,role,p.action,actor);
+  if(replay.status==='rejected')return response({status:'rejected',message:replay.message,version:current.version,state:stateForRole(current.state,role,userId)});
   const {data:committed,error}=await admin.rpc('commit_cloud_action',{_shop_id:p.shopId,_action_id:p.action.id,_base_version:p.baseVersion,_data:{...replay.state,shopName:STORE_BRAND.fullName},_user_id:userId}).single();if(error||!committed)throw error||new Error('Commit failed');
-  if(committed.result_status==='conflict'){const latest=await read();return response({status:'conflict',version:latest.version,state:stateForRole(latest.state,role)});}
+  if(committed.result_status==='conflict'){const latest=await read();return response({status:'conflict',version:latest.version,state:stateForRole(latest.state,role,userId)});}
   return response({status:'ok',version:committed.result_version});
  }catch(e){console.error('business-api request failed',e instanceof Error?e.message:'error');return response({error:'অনুরোধ সংরক্ষণ করা যায়নি। পুনরায় চেষ্টা করুন।'},400);}
 });

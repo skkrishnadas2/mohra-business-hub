@@ -1,9 +1,15 @@
+import { confirmed } from "@/lib/confirmed-write";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { actionError, useStore } from "@/lib/store";
 import { Page, Money, BigButton, Chips, NumInput, TextInput, Label } from "@/components/kit";
-import { AccountSelect, PartySelect, SettlementWorkspace } from "@/components/BusinessWorkspace";
+import {
+  act,
+  AccountSelect,
+  PartySelect,
+  SettlementWorkspace,
+} from "@/components/BusinessWorkspace";
 import { bn, taka } from "@/lib/rules";
 
 export const Route = createFileRoute("/recharge")({
@@ -23,13 +29,14 @@ export const Route = createFileRoute("/recharge")({
 const QUICK = [20, 50, 100, 199, 298, 499];
 
 function Recharge() {
-  const { accounts, recharge } = useStore();
+  const { accounts, recharge, role, requestApproval } = useStore();
   const sims = accounts.filter((a) => !a.inactive && a.kind === "recharge");
   const [tab, setTab] = useState<"sell" | "b2b">("sell");
   const [sim, setSim] = useState(sims[0]?.id ?? "");
   const [num, setNum] = useState("");
   const [amt, setAmt] = useState("");
   const [payment, setPayment] = useState("cash");
+  const [reason, setReason] = useState("");
   const [party, setParty] = useState("");
   const a = Number(amt) || 0;
   const bal = sims.find((s) => s.id === sim)?.balance ?? 0;
@@ -109,9 +116,9 @@ function Recharge() {
               {a > bal && <p className="text-sm text-destructive">সিমে পর্যাপ্ত ব্যালেন্স নেই</p>}
               <BigButton
                 disabled={!a || num.length < 11 || a > bal}
-                onClick={() => {
+                onClick={async () => {
                   try {
-                    recharge(sim, a, num, payment, party || undefined);
+                    await confirmed(() => recharge(sim, a, num, payment, party || undefined));
                     toast.success(`রিচার্জ ${taka(a)} · রেকর্ড হয়েছে`);
                     setNum("");
                     setAmt("");
@@ -122,6 +129,32 @@ function Recharge() {
               >
                 রিচার্জ রেকর্ড {a ? taka(a) : ""}
               </BigButton>
+              {role === "cashier" && payment === "due" && (
+                <div className="space-y-2 border-t pt-3">
+                  <TextInput
+                    placeholder="সীমার বেশি বাকির কারণ"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                  />
+                  <BigButton
+                    disabled={!a || !party || num.length !== 11 || !reason.trim()}
+                    onClick={async () => {
+                      if (
+                        await act(
+                          () => requestApproval("recharge", [sim, a, num, payment, party], reason),
+                          "মালিকের অনুমোদনের অনুরোধ পাঠানো হয়েছে",
+                        )
+                      ) {
+                        setNum("");
+                        setAmt("");
+                        setReason("");
+                      }
+                    }}
+                  >
+                    রিচার্জের অনুমোদন চান
+                  </BigButton>
+                </div>
+              )}
             </div>
           )}
         </div>

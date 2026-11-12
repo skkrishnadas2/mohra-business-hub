@@ -1,3 +1,6 @@
+import { CashierPolicy } from "@/components/OperationsWorkspace";
+import { act } from "@/components/BusinessWorkspace";
+import { confirmed } from "@/lib/confirmed-write";
 import { BackupRestore } from "@/components/BackupRestore";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -55,7 +58,7 @@ function Settings() {
                 <div className="font-medium">{p.l}</div>
                 <div className="text-xs text-muted-foreground">{p.d}</div>
               </div>
-              <Switch checked={perms[p.k]} onCheckedChange={(v) => setPerm(p.k, v)} />
+              <Switch checked={perms[p.k]} onCheckedChange={async (v) => await act(() => setPerm(p.k, v))} />
             </label>
           ))}
         </div>
@@ -72,8 +75,8 @@ function Settings() {
             </div>
             <BigButton
               disabled={op.length !== 4 || cp.length !== 4 || op === cp}
-              onClick={() => {
-                setPins(op, cp);
+              onClick={async () => {
+                await confirmed(() => setPins(op, cp));
                 toast.success("PIN আপডেট হয়েছে");
               }}
             >
@@ -92,6 +95,7 @@ function Settings() {
               <span className="text-xl font-semibold">{cipherEncode(Number(sample) || 0)}</span>
             </div>
           </div>
+          <CashierPolicy />
           <BackupRestore />
           <BigButton
             onClick={() => {

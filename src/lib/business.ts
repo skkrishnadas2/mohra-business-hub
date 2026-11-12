@@ -1,3 +1,4 @@
+import { validateSerials, emptyOperations } from "./operations";
 import type { StateCreator } from "zustand";
 import type { Account, ShopStore, State, Txn } from "./store";
 import { backupStateSchema } from "./backup-schema";
@@ -20,6 +21,7 @@ export interface PartyEntry {
   ref?: string;
 }
 export interface Purchase {
+  serials?: string[] | undefined;
   id: string;
   at: number;
   partyId: string;
@@ -395,7 +397,8 @@ export function businessActions({
         .sort((a, b) => a.at - b.at);
       const dueOf = (sale: (typeof sales)[number]) =>
         round2(
-          sale.payments.filter((p) => p.accountId === "due").reduce((n, p) => n + p.amount, 0),
+          sale.payments.filter((p) => p.accountId === "due").reduce((n, p) => n + p.amount, 0) -
+            (sale.dueReturned ?? 0),
         );
       let legacyCollected = round2(
         Math.max(
@@ -479,6 +482,11 @@ export function businessActions({
         Number.isSafeInteger(p.qty) && p.qty > 0 && Number.isSafeInteger(product!.stock + p.qty),
         "সঠিক পিস দিন",
       );
+      const serials = p.serials?.map((x) => x.trim()).filter(Boolean) ?? [];
+      if (product!.serialTracking || product!.serials?.length || serials.length) {
+        check(serials.length === p.qty, "ক্রয়ের প্রতি পিসের সিরিয়াল / ICCID দিন");
+        validateSerials(get(), serials);
+      }
       const cost = money(p.cost, true);
       const total = money(p.qty * cost, true);
       const paid = money(p.paid, true);
@@ -501,7 +509,15 @@ export function businessActions({
       });
       set((s) => ({
         products: s.products.map((x) =>
-          x.id === p.productId ? { ...x, stock: x.stock + p.qty, cost: newCost } : x,
+          x.id === p.productId
+            ? {
+                ...x,
+                stock: x.stock + p.qty,
+                cost: newCost,
+                serialTracking: x.serialTracking || !!serials.length,
+                serials: serials.length ? [...(x.serials ?? []), ...serials] : x.serials,
+              }
+            : x,
         ),
       }));
       update({
@@ -530,6 +546,10 @@ export function businessActions({
       check(p && !p.returned, "ক্রয় পাওয়া যায়নি বা ফেরত হয়েছে");
       const product = get().products.find((x) => x.id === p!.productId);
       check(product && product.stock >= p!.qty, "ফেরত দেওয়ার মতো স্টক নেই");
+      check(
+        !p!.serials?.some((x) => !product!.serials?.includes(x)),
+        "বিক্রিত সিরিয়ালের ক্রয় ফেরত দেওয়া যাবে না",
+      );
       const outstanding = b()
         .entries.filter((e) => e.ref === id)
         .reduce((s, e) => s + e.remaining, 0);
@@ -558,6 +578,7 @@ export function businessActions({
             ? {
                 ...x,
                 stock: remainingStock,
+                serials: x.serials?.filter((v) => !p!.serials?.includes(v)),
                 cost: remainingStock ? round2(remainingValue / remainingStock) : x.cost,
               }
             : x,
@@ -793,7 +814,12 @@ export function businessActions({
         );
         check(value === round2(a.balance), "ব্যাকআপের ব্যালেন্স লেজারের সঙ্গে মেলেনি");
       }
-      set({ ...restored, role: "owner", business: restored.business ?? emptyBusiness() });
+      set({
+        ...restored,
+        operations: restored.operations ?? emptyOperations(),
+        role: "owner",
+        business: restored.business ?? emptyBusiness(),
+      });
       post({
         type: "backup_restored",
         title: "যাচাইকৃত ব্যাকআপ পুনরুদ্ধার",

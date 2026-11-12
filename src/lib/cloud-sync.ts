@@ -1,3 +1,4 @@
+import { emptyOperations } from "./operations";
 import { create } from "zustand";
 import { toast } from "sonner";
 import { isCloudConfigured, supabase } from "@/integrations/supabase/client";
@@ -52,6 +53,9 @@ let connectionEpoch = 0;
 let switchingShop = false;
 setCloudActionGuard(() => {
   if (switchingShop) throw new Error("দোকান খোলা হচ্ছে—একটু অপেক্ষা করুন");
+  const shop = useCloud.getState().shopId ?? savedShopId();
+  if (shop && readOutbox(shop).length)
+    throw new Error("আগের অনুরোধ নিশ্চিত হওয়া বাকি। সংযোগ পাতায় অবস্থা দেখুন।");
   if (typeof navigator !== "undefined" && !navigator.onLine && savedShopId())
     throw new Error("ইন্টারনেট নেই—কার্ট খসড়া রাখুন, সংযোগ ফিরলে লেনদেন করুন");
 });
@@ -70,7 +74,14 @@ function adopt(shop: CloudShop) {
   if (current.shopId === shop.shopId && shop.version < current.version) return;
   const pending = readOutbox(shop.shopId).length;
   // A remote refresh must not wipe local work that has not been acknowledged yet.
-  if (pending === 0) useStore.setState({ ...shop.state, setupDone: true, role: shop.role });
+  if (pending === 0)
+    useStore.setState({
+      ...shop.state,
+      operations: shop.state.operations ?? emptyOperations(),
+      setupDone: true,
+      role: shop.role,
+      actor: shop.actor,
+    });
   useCloud.setState({
     status: "connected",
     shopId: shop.shopId,
@@ -257,7 +268,13 @@ async function runFlush() {
         });
         saveVersion(result.version);
         if (pending === 0) {
-          useStore.setState({ ...result.state, setupDone: true, role: useCloud.getState().role });
+          useStore.setState({
+            ...result.state,
+            operations: result.state.operations ?? emptyOperations(),
+            actor: useStore.getState().actor,
+            setupDone: true,
+            role: useCloud.getState().role,
+          });
         }
         toast.error(notice);
         synced = true;

@@ -1,3 +1,4 @@
+import { confirmed } from "@/lib/confirmed-write";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -118,7 +119,7 @@ function Mfs() {
                   </div>
                 )}
               </div>
-              {tab === "agent" && a > 0 && w && (
+              {tab === "agent" && a > 0 && w && useStore.getState().can("viewProfit") && (
                 <div className="rounded-xl bg-accent p-3 text-sm text-accent-foreground">
                   অটো কমিশন: <b>{taka(com)}</b>{" "}
                   <span className="opacity-70">(প্রতি হাজারে ৳{bn(rate.toFixed(2))})</span>
@@ -126,13 +127,13 @@ function Mfs() {
               )}
               <BigButton
                 disabled={!a || !wallet || num.length !== 11}
-                onClick={() => {
+                onClick={async () => {
                   try {
                     if (tab === "agent") {
-                      const c = mfsAgent(wallet, dir, a, num);
-                      toast.success(`সম্পন্ন · কমিশন ${taka(c)}`);
+                      const c = await confirmed(() => mfsAgent(wallet, dir, a, num));
+                      toast.success(useStore.getState().can("viewProfit") ? `সম্পন্ন · কমিশন ${taka(c)}` : "সম্পন্ন");
                     } else {
-                      mfsPersonal(wallet, pdir, a, Number(fee) || 0, num);
+                      await confirmed(() => mfsPersonal(wallet, pdir, a, Number(fee) || 0, num));
                       toast.success("সম্পন্ন");
                     }
                     setAmt("");

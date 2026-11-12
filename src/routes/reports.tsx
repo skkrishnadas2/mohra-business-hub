@@ -149,14 +149,14 @@ function Reports() {
           onClick={() =>
             exportCsv(
               "mohra-transactions",
-              ["ভাউচার", "তারিখ", "ধরন", "বিবরণ", "পরিমাণ", "লাভ"],
+              ["ভাউচার", "তারিখ", "ধরন", "বিবরণ", "পরিমাণ", "লাভ", "কর্মী", "কর্মী ID", "শিফট", "অনুমোদন", "অনুরোধকারী"],
               rows.map((t) => [
                 t.id,
                 new Date(t.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" }),
                 t.type,
                 t.title,
                 t.amount,
-                t.profit,
+                t.profit, t.actor?.name??"পুরনো রেকর্ড", t.actor?.userId??"", t.shiftId??"", t.approvalId??"", t.requestedBy?.name??"",
               ]),
             )
           }
@@ -183,7 +183,9 @@ function Reports() {
                   <td className="py-3 pr-3">
                     {t.title}
                     <div className="text-xs text-muted-foreground">
-                      {t.type} · {t.by === "owner" ? "মালিক" : "ক্যাশিয়ার"}
+                      {t.type} · {t.actor?.name ?? (t.by === "owner" ? "মালিক" : "ক্যাশিয়ার")}
+                      {t.shiftId && <span> · শিফট {t.shiftId.slice(-8)}</span>}
+                      {t.requestedBy && <span> · অনুরোধ: {t.requestedBy.name}</span>}
                     </div>
                   </td>
                   <td className="text-right">

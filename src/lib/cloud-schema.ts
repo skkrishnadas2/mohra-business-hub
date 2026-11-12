@@ -1,3 +1,4 @@
+import { operationsSchema } from "./operations-schema";
 import { z } from "zod";
 import { CLOUD_ACTIONS } from "./store";
 export const snapshotSchema = z.object({
@@ -36,6 +37,7 @@ export const snapshotSchema = z.object({
   customers: z.array(z.unknown()),
   repairs: z.array(z.unknown()),
   closings: z.array(z.unknown()),
+  operations: operationsSchema.optional(),
   lastClosedAt: z.number().finite(),
   business: z
     .object({

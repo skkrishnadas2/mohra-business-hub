@@ -81,15 +81,15 @@ export function RepairDetails({ repair: r }: { repair: Repair }) {
               <AccountSelect value={account} onChange={setAccount} />
               <button
                 className="rounded-lg border px-3 py-2 text-sm"
-                onClick={() => {
-                  if (act(() => s.repairCost(r.id, Number(cost), account))) setCost("");
+                onClick={async () => {
+                  if (await act(() => s.repairCost(r.id, Number(cost), account))) setCost("");
                 }}
               >
                 খরচ রেকর্ড
               </button>
               <button
                 className="block rounded-lg border border-destructive/30 px-3 py-2 text-sm text-destructive"
-                onClick={() => {
+                onClick={async () => {
                   if (confirm("রিপেয়ার বাতিল ও অগ্রিম ফেরত দেওয়া রেকর্ড করবেন?"))
                     act(() => s.cancelRepair(r.id, account));
                 }}

@@ -24,7 +24,7 @@ export function printReceipt(
   const lines = sale.items
     .map(
       (l) =>
-        `<div>${escapeHtml(l.name)}</div><div class="r"><span>${l.qty} × ${taka(l.price)}</span><span>${taka(l.qty * l.price)}</span></div>`,
+        `<div>${escapeHtml(l.name)}</div><div class="r"><span>${l.qty} × ${taka(l.price)}</span><span>${taka(l.qty * l.price)}</span></div>${(l.serials ?? []).map((x) => `<div style="font-size:10px;overflow-wrap:anywhere">SN: ${escapeHtml(x)}</div>`).join("")}`,
     )
     .join("");
   const pays = sale.payments
@@ -34,7 +34,7 @@ export function printReceipt(
     )
     .join("");
   openPrint(
-    `<div class="c b" style="font-size:14px">${escapeHtml(STORE_BRAND.fullName)}</div><div class="c" style="font-size:10px;margin:4px 0">Proprietor · ${STORE_BRAND.proprietor}</div><div class="c">${new Date(sale.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" })}</div><div class="c">মেমো #${escapeHtml(sale.id.slice(0, 8).toUpperCase())}${sale.voidedAt ? " — বাতিল" : ""}</div><hr>${lines}<hr><div class="r b"><span>মোট</span><span>${taka(sale.total)}</span></div>${pays}<hr><div class="c">ধন্যবাদ, আবার আসবেন!</div>`,
+    `<div class="c b" style="font-size:14px">${escapeHtml(STORE_BRAND.fullName)}</div><div class="c" style="font-size:10px;margin:4px 0">Proprietor · ${STORE_BRAND.proprietor}</div><div class="c">${new Date(sale.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" })}</div><div class="c">মেমো #${escapeHtml(sale.id.slice(0, 8).toUpperCase())}${sale.voidedAt ? " — বাতিল" : ""}</div><hr>${lines}<hr>${sale.discount ? `<div class="r"><span>ছাড়</span><span>${taka(sale.discount)}</span></div>` : ""}<div class="r b"><span>মোট</span><span>${taka(sale.total)}</span></div>${pays}${sale.actor ? `<hr><div>কাউন্টার: ${escapeHtml(sale.requestedBy?.name ?? sale.actor.name)}</div>` : ""}<hr><div class="c">ধন্যবাদ, আবার আসবেন!</div>`,
     widthMm,
   );
 }
