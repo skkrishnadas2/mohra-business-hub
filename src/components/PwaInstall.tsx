@@ -17,16 +17,17 @@ export function PwaLifecycle() {
   return null;
 }
 /** A deliberate tap opens installation in place; no navigation or automatic popup. */
-export function InstallButton() {
+export function InstallButton({ compact = false }: { compact?: boolean }) {
   const installed = usePwa((s) => s.installed);
   return installed ? null : (
     <Dialog>
       <DialogTrigger asChild>
         <button
           type="button"
-          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-4 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-primary/15 bg-primary/5 ${compact ? "w-11" : "px-4"} py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
         >
-          <Download size={15} aria-hidden="true" /> অ্যাপ নিন
+          <Download size={15} aria-hidden="true" />
+          <span className={compact ? "sr-only" : undefined}>অ্যাপ নিন</span>
         </button>
       </DialogTrigger>
       <DialogContent className="max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm gap-5 overflow-y-auto rounded-3xl p-6 sm:rounded-3xl">
