@@ -27,7 +27,8 @@ def render(maskable=False):
     return im
 
 master = render()
-for name, pixels in [('mohra-icon-512.png',512),('mohra-icon-192.png',192),('apple-touch-icon.png',180),('favicon.png',32)]:
+for name, pixels in [('mohra-icon-512.png',512),('mohra-icon-192.png',192),('favicon.png',32)]:
     master.resize((pixels,pixels),Image.Resampling.LANCZOS).save(root/'public'/name)
 render(True).resize((512,512),Image.Resampling.LANCZOS).save(root/'public/mohra-maskable-512.png')
+render(True).resize((180,180),Image.Resampling.LANCZOS).convert('RGB').save(root/'public/apple-touch-icon.png')
 master.resize((512,512),Image.Resampling.LANCZOS).save(root/'public/favicon.ico',format='ICO',sizes=[(n,n) for n in [16,32,48,64,128,256]])
