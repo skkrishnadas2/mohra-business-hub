@@ -1,3 +1,4 @@
+import { refreshCart } from "@/lib/cart";
 import { confirmed } from "@/lib/confirmed-write";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -81,6 +82,9 @@ function Pos() {
   };
   const [cart, setCart] = useState<CartLine[]>(() => readCart(cartKey));
   const [held, setHeld] = useState<CartLine[]>(() => readCart(cartKey + ":held"));
+  useEffect(() => {
+    setCart((current) => refreshCart(current, products));
+  }, [products, cart]);
   useEffect(() => {
     try {
       localStorage.setItem(cartKey, JSON.stringify(cart));

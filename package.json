@@ -13,7 +13,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:edge": "node scripts/build-edge.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:edge": "node scripts/build-edge.mjs && node --test scripts/edge-contract.test.mjs",
+    "test:all": "npm run test && npm run test:edge"
   },
   "overrides": {
     "rolldown": "1.2.1"

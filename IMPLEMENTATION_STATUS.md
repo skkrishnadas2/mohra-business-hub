@@ -1,3 +1,9 @@
+# 2026-11-12 — Final live provisioning and HTTP verification
+
+Prepared the assigned MOHRA store and verified proprietor membership using the existing database provisioning function. Verified ready state, version 1, and zero sales, stock products and financial transaction entries. Existing Auth credentials are unchanged. No cashier identity or business balance was invented.
+
+New transaction audit timestamps are assigned by the server, and current/held-cart prices refresh from the latest catalog without changing quantities or serial selections. The live frontend references the current build, all 13 routes respond, and the API rejects outdated clients and unauthenticated sessions. Added nine executable HTTP contract tests using the production handler/engine with simulated Auth and storage. Combined validation: 198 browser/business tests plus 9 HTTP contract tests, all passing. Physical device output and external provider execution remain outside this remote test coverage.
+
 # 2026-11-12 — Ready-to-use store and device controls
 
 Added automatic owner-only blank store preparation, server-verified owner balance adjustments with mandatory reasons, local sign-out instead of online PIN switching, audited cashier access suspension/reactivation, and protection against clearing online accounting history. Staff access uses the same snapshot version lock as money actions, so stale requests cannot commit across a suspension. Active staff shifts and unresolved approvals must be settled first.

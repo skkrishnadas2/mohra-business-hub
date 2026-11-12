@@ -306,7 +306,7 @@ Deno.serve(async (req: Request) => {
         version: current.version,
         state: stateForRole(current.state, role, userId),
       });
-    const replay = replayCloudAction(current.state, role, p.action, actor);
+    const replay = replayCloudAction(current.state, role, { ...p.action, at: Date.now() }, actor);
     if (replay.status === "rejected")
       return response({
         status: "rejected",

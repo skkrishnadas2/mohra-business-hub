@@ -67,3 +67,9 @@ Verified Auth user ID and profile name are attached by the Edge Function to new 
 Owner settings define default per-party cashier credit and discount limits, with party-specific credit overrides. Beyond-limit POS sales and recharge credit, product refunds and cash-short shifts can be requested from the cashier and executed once by the owner under Shift & Approvals. Requests expire when their shift closes; a changed cash balance also invalidates a closing count.
 
 Partial sales returns allocate the original discounted line value in integer paisa, reduce outstanding invoice debt first, then refund actual paid/collected amounts. Collected dues do not block a return. Return journals restore stock/cost and reverse revenue, receivables and refunds. Serialized inventory requires one unique ICCID/serial per stocked piece; intake, sale, cancellation and exact-item return maintain its availability.
+
+## HTTP permission and retry verification
+
+Run `npm run test:all` for the browser/business tests and the production Edge handler contract tests. The latter run the actual bundled engine and HTTP handler against simulated Auth/database I/O, checking role forgery, cost redaction, owner-only setup, unrelated-shop access, stale writes, duplicate checkouts and suspended employees. They create no real users, transactions or provider requests.
+
+The assigned store and proprietor membership have been administratively prepared as a blank ledger. Sign in with the existing proprietor account; no Auth password was changed. Opening balances, stock and cashier identities must reflect actual business data.
