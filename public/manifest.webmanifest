@@ -1,1 +1,31 @@
-{"name":"MOHRA IT CARE & TELECOM CENTER","short_name":"MOHRA","description":"Proprietor: Sankar Das — Store workspace","start_url":"/","display":"standalone","background_color":"#f8f9f7","theme_color":"#123c32","icons":[{"src":"/store-mark.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]}
+{
+  "name": "MOHRA IT CARE & TELECOM CENTER",
+  "short_name": "MOHRA",
+  "description": "Proprietor: Sankar Das — Store workspace",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f9f7",
+  "theme_color": "#123c32",
+  "icons": [
+    {
+      "src": "/mohra-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/mohra-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/mohra-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "/",
+  "scope": "/"
+}
