@@ -1,3 +1,4 @@
+import { useRecovery } from "@/lib/recovery";
 import { InstallButton } from "./PwaInstall";
 import { toast } from "sonner";
 import { activeShift } from "@/lib/operations";
@@ -44,6 +45,7 @@ const NAV: NavItem[] = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const recoveryActive = useRecovery((s) => s.active);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     void Promise.resolve(useStore.persist.rehydrate()).then(() => setHydrated(true));
@@ -83,6 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     logout();
   };
   if (loc.pathname.replace(/\/$/, "") === "/install") return <>{children}</>;
+  if (recoveryActive) return <AccountGate />;
   if (!hydrated || authenticated === null)
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">

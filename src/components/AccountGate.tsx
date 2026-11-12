@@ -1,3 +1,4 @@
+import { useRecovery, beginRecovery, finishRecovery, authMessage } from "@/lib/recovery";
 import { InstallButton } from "./PwaInstall";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
@@ -19,7 +20,7 @@ export function AccountGate() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const recovering = useRef(false);
+  const recovering = useRef(useRecovery.getState().active);
   const loadStore = async () => {
     if (recovering.current) return;
     setPhase("loading");
@@ -52,19 +53,34 @@ export function AccountGate() {
       setPhase("signin");
       return;
     }
-    recovering.current = window.location.hash.includes("type=recovery");
-    if (recovering.current) setPhase("reset");
+    recovering.current =
+      useRecovery.getState().active || window.location.hash.includes("type=recovery");
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
+        beginRecovery();
         recovering.current = true;
         setPhase("reset");
       }
     });
-    void supabase.auth.getSession().then(({ data }) => {
-      if (recovering.current) return;
-      if (data.session) void loadStore();
-      else setPhase("signin");
-    });
+    void supabase.auth
+      .getSession()
+      .then(({ data, error: sessionError }) => {
+        if (recovering.current) {
+          if (sessionError) throw sessionError;
+          if (data.session && !useRecovery.getState().invalid) setPhase("reset");
+          else {
+            setPhase("recover");
+            setError("রিসেট লিংকটির মেয়াদ শেষ বা ব্যবহার হয়ে গেছে। ইমেইল দিয়ে নতুন লিংক নিন।");
+          }
+          return;
+        }
+        if (data.session) void loadStore();
+        else setPhase("signin");
+      })
+      .catch((e) => {
+        setError(authMessage(e));
+        setPhase(recovering.current ? "recover" : "signin");
+      });
     return () => data.subscription.unsubscribe();
   }, []);
   const submit = async () => {
@@ -88,6 +104,7 @@ export function AccountGate() {
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
         recovering.current = false;
+        finishRecovery();
         setPassword("");
         setConfirm("");
         setNotice("পাসওয়ার্ড সংরক্ষিত হয়েছে।");
@@ -99,7 +116,7 @@ export function AccountGate() {
       setPassword("");
       await loadStore();
     } catch (e) {
-      setError(actionError(e));
+      setError(authMessage(e));
     } finally {
       setBusy(false);
     }
@@ -162,7 +179,7 @@ export function AccountGate() {
             {loading
               ? "আপনার পরিচয় ও অনুমতি যাচাই করছি।"
               : reset
-                ? "আপনার অ্যাকাউন্টের জন্য একটি নতুন পাসওয়ার্ড দিন।"
+                ? "নিচে নতুন পাসওয়ার্ড দুবার লিখে সংরক্ষণ করুন।"
                 : recovery
                   ? "আপনার অ্যাকাউন্টের ইমেইল লিখুন।"
                   : "আপনার অ্যাকাউন্টে প্রবেশ করুন।"}
@@ -207,6 +224,7 @@ export function AccountGate() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        minLength={reset ? 8 : undefined}
                         disabled={busy}
                       />
                       <button
@@ -228,6 +246,8 @@ export function AccountGate() {
                         value={confirm}
                         onChange={(e) => setConfirm(e.target.value)}
                         required
+                        minLength={8}
+                        disabled={busy}
                       />
                     </label>
                   )}
@@ -253,19 +273,22 @@ export function AccountGate() {
                       : "প্রবেশ করুন"}
                 {!busy && <ArrowRight size={19} />}
               </button>
-              {!reset && (
-                <button
-                  type="button"
-                  className="store-forgot"
-                  onClick={() => {
-                    setPhase(recovery ? "signin" : "recover");
-                    setError("");
-                    setNotice("");
-                  }}
-                >
-                  {recovery ? "লগইনে ফিরে যান" : "পাসওয়ার্ড ভুলে গেছেন?"}
-                </button>
-              )}
+              <button
+                type="button"
+                className="store-forgot"
+                disabled={busy}
+                onClick={() => {
+                  if (recovery || reset) {
+                    recovering.current = false;
+                    finishRecovery();
+                  }
+                  setPhase(recovery || reset ? "signin" : "recover");
+                  setError("");
+                  setNotice("");
+                }}
+              >
+                {recovery || reset ? "লগইনে ফিরে যান" : "পাসওয়ার্ড ভুলে গেছেন?"}
+              </button>
             </form>
           )}
           <div className="mt-5 flex justify-center">

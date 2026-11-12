@@ -1,4 +1,5 @@
 import "./lib/error-capture";
+import { cloudGateway } from "./lib/cloud-gateway";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
@@ -49,6 +50,21 @@ function isH3SwallowedErrorBody(body: string): boolean {
 // twice and renders garbled.
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    if (new URL(request.url).pathname.startsWith("/api/cloud/")) {
+      const vars = (env ?? {}) as Record<string, string | undefined>;
+      return cloudGateway(request, {
+        url:
+          vars["SUPABASE_URL"] ||
+          import.meta.env["VITE_SUPABASE_URL"] ||
+          import.meta.env["VITE_LOVABLE_SUPABASE_URL"] ||
+          "",
+        key:
+          vars["SUPABASE_PUBLISHABLE_KEY"] ||
+          import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+          import.meta.env["VITE_LOVABLE_SUPABASE_PUBLISHABLE_KEY"] ||
+          "",
+      });
+    }
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
