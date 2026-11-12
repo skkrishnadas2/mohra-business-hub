@@ -19,6 +19,8 @@ export function replayCloudAction(
   action: CloudAction,
   actor?: Actor,
 ): CloudReplay {
+  if (actor && current.operations?.disabledStaff?.includes(actor.userId))
+    return { status: "rejected", message: "এই দোকানে আপনার প্রবেশাধিকার বন্ধ করা হয়েছে।" };
   const fresh = createStore<ShopStore>()(createShopStoreCreator(action));
   fresh.setState({ ...current, role, actor: actor ? { ...actor, role } : undefined });
   try {

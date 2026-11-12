@@ -270,25 +270,69 @@ describe("partial refunds, debt collection and serialized SIMs", () => {
   });
 });
 
-describe('serialized stock intake and cash request freshness',()=>{
- it('adds purchased ICCIDs and forbids returning a purchase after its serial is sold',()=>{
-  const {s}=fixture();s.getState().saveParty({name:'Supplier',phone:'',roles:['supplier']});const partyId=s.getState().business!.parties[0]!.id;
-  s.getState().upsertProduct({name:'SIM',barcodes:['sim'],cost:50,price:100,stock:0,lowStock:1,serialTracking:true,serials:[]});const p=s.getState().products[0]!;
-  const buy={partyId,productId:p.id,qty:2,cost:50,paid:100,accountId:'cash',ref:'P1',serials:['S1','S2']};
-  s.getState().purchaseStock(buy);expect(s.getState().products[0]!.serials).toEqual(['S1','S2']);
-  expect(()=>s.getState().purchaseStock({...buy,ref:'P2'})).toThrow(/সিরিয়াল/);
-  const purchase=s.getState().business!.purchases[0]!;
-  const sale=s.getState().checkout([{productId:p.id,name:'SIM',qty:1,cost:50,price:100,serials:['S1']}],[{accountId:'cash',amount:100}]);
-  expect(()=>s.getState().returnPurchase(purchase.id)).toThrow();
-  s.getState().returnSale(sale.id,[{lineIndex:0,qty:1,serials:['S1']}],'cash','Returned');
-  s.getState().returnPurchase(purchase.id);expect(s.getState().products[0]!.serials).toEqual([]);balanced(s.getState());
- });
- it('blocks a close approval if cash changed after the count',()=>{
-  const {s}=fixture(cashier);s.getState().requestApproval('closeShift',[9990,'Short'],'Short');const id=s.getState().operations!.requests[0]!.id;
-  s.getState().serviceSlip('Copy',20,'cash');s.setState({actor:owner,role:'owner'});expect(()=>s.getState().decideApproval(id,true,'Approve')).toThrow(/ক্যাশ বদলেছে/);
-  expect(s.getState().operations!.shifts[0]!.closedAt).toBeUndefined();s.getState().decideApproval(id,false,'Recount');
- });
- it('clears previous operations and actor when resetting local setup',()=>{
-  const {s}=fixture();s.getState().resetAll();expect(s.getState().operations!.shifts).toEqual([]);expect(s.getState().actor).toBeUndefined();
- });
+describe("serialized stock intake and cash request freshness", () => {
+  it("adds purchased ICCIDs and forbids returning a purchase after its serial is sold", () => {
+    const { s } = fixture();
+    s.getState().saveParty({ name: "Supplier", phone: "", roles: ["supplier"] });
+    const partyId = s.getState().business!.parties[0]!.id;
+    s.getState().upsertProduct({
+      name: "SIM",
+      barcodes: ["sim"],
+      cost: 50,
+      price: 100,
+      stock: 0,
+      lowStock: 1,
+      serialTracking: true,
+      serials: [],
+    });
+    const p = s.getState().products[0]!;
+    const buy = {
+      partyId,
+      productId: p.id,
+      qty: 2,
+      cost: 50,
+      paid: 100,
+      accountId: "cash",
+      ref: "P1",
+      serials: ["S1", "S2"],
+    };
+    s.getState().purchaseStock(buy);
+    expect(s.getState().products[0]!.serials).toEqual(["S1", "S2"]);
+    expect(() => s.getState().purchaseStock({ ...buy, ref: "P2" })).toThrow(/সিরিয়াল/);
+    const purchase = s.getState().business!.purchases[0]!;
+    const sale = s
+      .getState()
+      .checkout(
+        [{ productId: p.id, name: "SIM", qty: 1, cost: 50, price: 100, serials: ["S1"] }],
+        [{ accountId: "cash", amount: 100 }],
+      );
+    expect(() => s.getState().returnPurchase(purchase.id)).toThrow();
+    s.getState().returnSale(
+      sale.id,
+      [{ lineIndex: 0, qty: 1, serials: ["S1"] }],
+      "cash",
+      "Returned",
+    );
+    s.getState().returnPurchase(purchase.id);
+    expect(s.getState().products[0]!.serials).toEqual([]);
+    balanced(s.getState());
+  });
+  it("blocks a close approval if cash changed after the count", () => {
+    const { s } = fixture(cashier);
+    s.getState().requestApproval("closeShift", [9990, "Short"], "Short");
+    const id = s.getState().operations!.requests[0]!.id;
+    s.getState().serviceSlip("Copy", 20, "cash");
+    s.setState({ actor: owner, role: "owner" });
+    expect(() => s.getState().decideApproval(id, true, "Approve")).toThrow(/ক্যাশ বদলেছে/);
+    expect(s.getState().operations!.shifts[0]!.closedAt).toBeUndefined();
+    s.getState().decideApproval(id, false, "Recount");
+  });
+  it("clears previous operations and actor when resetting local setup", () => {
+    const { s } = fixture();
+    expect(() => s.getState().resetAll()).toThrow(/অনলাইন হিসাব/);
+    s.setState({ actor: undefined });
+    s.getState().resetAll();
+    expect(s.getState().operations!.shifts).toEqual([]);
+    expect(s.getState().actor).toBeUndefined();
+  });
 });

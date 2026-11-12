@@ -18,12 +18,14 @@ export type ApplyResult =
 async function invoke<T>(body: unknown): Promise<T> {
   const { data, error } = await supabase.functions.invoke("business-api", {
     body: body as Record<string, unknown>,
+    headers: { "x-mohra-client": "2" },
   });
   if (error) {
     let message = "সার্ভার সংযোগ হয়নি। ইন্টারনেট ও লগইন যাচাই করুন।";
     try {
       const json = await error.context?.json();
       if (json?.error) message = json.error;
+      if (json?.code === "ACCESS_REVOKED") void supabase.auth.signOut({ scope: "local" });
     } catch {}
     throw new Error(message);
   }
@@ -46,10 +48,15 @@ export const applyCloudAction = ({
 
 export const getStoreAccess = () => invoke<{ canSetup: boolean }>({ op: "access" });
 export const listStoreStaff = (shopId: string) =>
-  invoke<{ id: string; name: string; email: string; role: Role }[]>({ op: "staff", shopId });
+  invoke<{ id: string; name: string; email: string; role: Role; active: boolean }[]>({
+    op: "staff",
+    shopId,
+  });
 export const addStoreStaff = (data: {
   shopId: string;
   name: string;
   email: string;
   password?: string;
 }) => invoke<{ ok: boolean }>({ op: "addStaff", ...data });
+
+export const bootstrapStore = () => invoke<{ shopId: string }>({ op: "bootstrap" });

@@ -1,3 +1,4 @@
+import { assertStaffRemoval } from "./staff-policy";
 import { validApprovalArgs } from "./approval-args";
 import type { StateCreator } from "zustand";
 import type { CartLine, Role, ShopStore, Txn } from "./store";
@@ -57,6 +58,7 @@ export interface Approval {
   decision?: string | undefined;
 }
 export interface Operations {
+  disabledStaff?: string[] | undefined;
   policy: { cashierDueLimit: number; cashierDiscountPercent: number };
   creditLimits: Record<string, number>;
   shifts: Shift[];
@@ -71,6 +73,7 @@ export const emptyOperations = (): Operations => ({
   returns: [],
 });
 export interface OperationsActions {
+  setStaffAccess: (userId: string, enabled: boolean) => void;
   openShift: (counted: number) => void;
   closeShift: (counted: number, reason?: string) => void;
   setCashierPolicy: (dueLimit: number, discountPercent: number) => void;
@@ -144,6 +147,29 @@ export function operationsActions({ set, get, uid, now, post, run }: Context): O
   };
   const owner = () => check(get().role === "owner", "এই কাজ শুধু মালিকের জন্য");
   return {
+    setStaffAccess(userId, enabled) {
+      owner();
+      const a = actor();
+      if (typeof enabled !== "boolean" || !/^[0-9a-f-]{36}$/i.test(userId))
+        throw new Error("কর্মীর পরিচয় সঠিক নয়");
+      if (!enabled) assertStaffRemoval(a.userId, userId, get());
+      else if (userId === a.userId) throw new Error("নিজের ভূমিকা পরিবর্তন করা যাবে না");
+      const disabled = op().disabledStaff ?? [];
+      update({
+        disabledStaff: enabled
+          ? disabled.filter((id) => id !== userId)
+          : [...new Set([...disabled, userId])],
+      });
+      post({
+        type: "staff_access",
+        title: enabled ? "ক্যাশিয়ারের প্রবেশাধিকার চালু" : "ক্যাশিয়ারের প্রবেশাধিকার বন্ধ",
+        ref: userId,
+        amount: 0,
+        profit: 0,
+        cat: "none",
+        moves: [],
+      });
+    },
     openShift(counted) {
       const a = actor();
       const value = money(counted);

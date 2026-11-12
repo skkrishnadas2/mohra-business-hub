@@ -21,7 +21,13 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import { appendOutbox, readOutbox } from "@/lib/cloud-outbox";
-import { disconnectCloud, flushCloudOutbox, openCloudShop, createOnlineShop, useCloud } from "@/lib/cloud-sync";
+import {
+  disconnectCloud,
+  flushCloudOutbox,
+  openCloudShop,
+  createOnlineShop,
+  useCloud,
+} from "@/lib/cloud-sync";
 import { shopSnapshot, useStore, type CartLine, type State } from "@/lib/store";
 
 const shopId = "11111111-1111-4111-8111-111111111111";
@@ -31,7 +37,9 @@ function resetShop() {
   useStore.setState({ role: "owner" });
   useStore.getState().resetAll();
   useStore.getState().completeSetup({
-    shopName: "Test shop", ownerPin: "1111", cashierPin: "2222",
+    shopName: "Test shop",
+    ownerPin: "1111",
+    cashierPin: "2222",
     balances: { cash: 10000, dbbl: 5000 },
   });
 }
@@ -45,8 +53,15 @@ beforeEach(() => {
   vi.clearAllMocks();
   resetShop();
   useCloud.setState({
-    status: "connected", shopId, shopName: "Test shop", role: "owner",
-    version: 1, joinCode: null, pending: 0, error: null, notice: null,
+    status: "connected",
+    shopId,
+    shopName: "Test shop",
+    role: "owner",
+    version: 1,
+    joinCode: null,
+    pending: 0,
+    error: null,
+    notice: null,
   });
 });
 
@@ -55,13 +70,26 @@ describe("Cloud conflict recovery", () => {
     const authoritative = shopSnapshot(useStore.getState());
     let resolveOld: ((value: ReturnType<typeof cloudShop>) => void) | undefined;
     let resolveNew: ((value: ReturnType<typeof cloudShop>) => void) | undefined;
-    mocks.get.mockImplementationOnce(() => new Promise(done => { resolveOld = done; }))
-      .mockImplementationOnce(() => new Promise(done => { resolveNew = done; }));
+    mocks.get
+      .mockImplementationOnce(
+        () =>
+          new Promise((done) => {
+            resolveOld = done;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((done) => {
+            resolveNew = done;
+          }),
+      );
     const oldRequest = openCloudShop(shopId);
     const secondId = "22222222-2222-4222-8222-222222222222";
     const newRequest = openCloudShop(secondId);
     expect(() => useStore.getState().serviceSlip("Print", 500, "cash")).toThrow();
-    expect(useStore.getState().accounts.find(account => account.id === "cash")?.balance).toBe(10000);
+    expect(useStore.getState().accounts.find((account) => account.id === "cash")?.balance).toBe(
+      10000,
+    );
     resolveNew?.({ ...cloudShop(authoritative, 3), shopId: secondId });
     await newRequest;
     resolveOld?.(cloudShop(authoritative, 1));
@@ -79,7 +107,12 @@ describe("Cloud conflict recovery", () => {
   it("does not let an older version 1 response overwrite version 2", async () => {
     const authoritative = shopSnapshot(useStore.getState());
     let resolve: ((value: ReturnType<typeof cloudShop>) => void) | undefined;
-    mocks.get.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    mocks.get.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
     const opening = openCloudShop(shopId);
     useCloud.setState({ version: 2 });
     resolve?.(cloudShop(authoritative, 1));
@@ -88,7 +121,12 @@ describe("Cloud conflict recovery", () => {
   });
   it("does not reconnect after disconnecting a pending create", async () => {
     let resolve: ((value: { shopId: string }) => void) | undefined;
-    mocks.create.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    mocks.create.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
     mocks.get.mockResolvedValue(cloudShop(shopSnapshot(useStore.getState()), 1));
     const creating = createOnlineShop();
     disconnectCloud();
@@ -101,16 +139,23 @@ describe("Cloud conflict recovery", () => {
     const authoritative = shopSnapshot(useStore.getState());
     const product = authoritative.products[1]!;
     const line: CartLine = {
-      productId: product.id, name: product.name, qty: 1, price: product.price, cost: product.cost,
+      productId: product.id,
+      name: product.name,
+      qty: 1,
+      price: product.price,
+      cost: product.cost,
     };
     useStore.getState().checkout([line], [{ accountId: "cash", amount: product.price }]);
     appendOutbox(shopId, {
-      id: actionId, name: "checkout",
+      id: actionId,
+      name: "checkout",
       args: [[line], [{ accountId: "cash", amount: product.price }]],
     });
     mocks.apply.mockResolvedValue({
-      status: "rejected", message: `${product.name} এর স্টকে 0টি আছে`,
-      version: 2, state: authoritative,
+      status: "rejected",
+      message: `${product.name} এর স্টকে 0টি আছে`,
+      version: 2,
+      state: authoritative,
     });
     mocks.get.mockResolvedValue(cloudShop(authoritative, 2));
 
@@ -126,7 +171,9 @@ describe("Cloud conflict recovery", () => {
   it("retries the same action ID on the latest version after another device commits first", async () => {
     const authoritative = shopSnapshot(useStore.getState());
     appendOutbox(shopId, {
-      id: actionId, name: "transfer", args: ["dbbl", "cash", 100, "Test transfer"],
+      id: actionId,
+      name: "transfer",
+      args: ["dbbl", "cash", 100, "Test transfer"],
     });
     mocks.apply
       .mockResolvedValueOnce({ status: "conflict", version: 2, state: authoritative })
@@ -137,21 +184,32 @@ describe("Cloud conflict recovery", () => {
 
     expect(mocks.apply).toHaveBeenCalledTimes(2);
     expect(mocks.apply.mock.calls.map((call) => call[0].data.baseVersion)).toEqual([1, 2]);
-    expect(mocks.apply.mock.calls.map((call) => call[0].data.action.id)).toEqual([actionId, actionId]);
+    expect(mocks.apply.mock.calls.map((call) => call[0].data.action.id)).toEqual([
+      actionId,
+      actionId,
+    ]);
     expect(readOutbox(shopId)).toEqual([]);
   });
 
   it("continues with the next queued action after a final business-rule rejection", async () => {
     const authoritative = shopSnapshot(useStore.getState());
     appendOutbox(shopId, {
-      id: actionId, name: "deleteSale", args: ["missing-sale"],
+      id: actionId,
+      name: "deleteSale",
+      args: ["missing-sale"],
     });
     appendOutbox(shopId, {
       id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-      name: "transfer", args: ["dbbl", "cash", 100, "Test transfer"],
+      name: "transfer",
+      args: ["dbbl", "cash", 100, "Test transfer"],
     });
     mocks.apply
-      .mockResolvedValueOnce({ status: "rejected", message: "বিক্রির মেমোটি পাওয়া যায়নি", version: 1, state: authoritative })
+      .mockResolvedValueOnce({
+        status: "rejected",
+        message: "বিক্রির মেমোটি পাওয়া যায়নি",
+        version: 1,
+        state: authoritative,
+      })
       .mockResolvedValueOnce({ status: "ok", version: 2 });
     mocks.get.mockResolvedValue(cloudShop(authoritative, 2));
 
@@ -164,7 +222,9 @@ describe("Cloud conflict recovery", () => {
 
   it("keeps an action queued when the failure is a network error", async () => {
     appendOutbox(shopId, {
-      id: actionId, name: "transfer", args: ["dbbl", "cash", 100, "Test transfer"],
+      id: actionId,
+      name: "transfer",
+      args: ["dbbl", "cash", 100, "Test transfer"],
     });
     mocks.apply.mockRejectedValue(new Error("Network unavailable"));
 
@@ -173,5 +233,70 @@ describe("Cloud conflict recovery", () => {
     expect(readOutbox(shopId)).toHaveLength(1);
     expect(mocks.get).not.toHaveBeenCalled();
     expect(useCloud.getState().status).toBe("error");
+  });
+});
+
+describe("existing device history at first single-store connection", () => {
+  it("uploads real local history before adopting an untouched prepared shop", async () => {
+    const local = shopSnapshot(useStore.getState());
+    const { initialShopState } = await import("@/lib/initial-shop");
+    useCloud.setState({ shopId: null, role: null, version: 0 });
+    mocks.get
+      .mockResolvedValueOnce(cloudShop(initialShopState("1928", "6574"), 1))
+      .mockResolvedValueOnce(cloudShop(local, 2));
+    mocks.apply.mockResolvedValue({ status: "ok", version: 2 });
+    await openCloudShop(shopId);
+    expect(mocks.apply.mock.calls[0]![0].data.action.name).toBe("restoreBackup");
+    expect(useStore.getState().accounts.find((a) => a.id === "cash")!.balance).toBe(10000);
+    expect(
+      JSON.parse(localStorage.getItem(`mohra-before-cloud:${shopId}`)!).state.accounts,
+    ).toEqual(local.accounts);
+  });
+  it("keeps device data when migration is refused or cannot reach the server", async () => {
+    const local = shopSnapshot(useStore.getState());
+    const { initialShopState } = await import("@/lib/initial-shop");
+    useCloud.setState({ shopId: null, role: null, version: 0 });
+    mocks.get.mockResolvedValue(cloudShop(initialShopState("1928", "6574"), 1));
+    mocks.apply.mockRejectedValue(new Error("Network"));
+    await expect(openCloudShop(shopId)).rejects.toThrow("Network");
+    expect(shopSnapshot(useStore.getState())).toEqual(local);
+    expect(localStorage.getItem(`mohra-before-cloud:${shopId}`)).not.toBeNull();
+    const first = mocks.apply.mock.calls[0]![0].data.action.id;
+    mocks.apply.mockRejectedValue(new Error("Network"));
+    await expect(openCloudShop(shopId)).rejects.toThrow("Network");
+    expect(mocks.apply.mock.calls[1]![0].data.action.id).toBe(first);
+  });
+  it("does not upload a previous owners device cache through a cashier session", async () => {
+    const { initialShopState } = await import("@/lib/initial-shop");
+    useCloud.setState({ shopId: null, role: null, version: 0 });
+    mocks.get.mockResolvedValue({
+      ...cloudShop(initialShopState("1928", "6574"), 1),
+      role: "cashier",
+    });
+    await openCloudShop(shopId);
+    expect(mocks.apply).not.toHaveBeenCalled();
+  });
+});
+
+describe("first-connection backup boundaries", () => {
+  it("keeps local history as a backup without replacing an established online ledger", async () => {
+    const local = shopSnapshot(useStore.getState());
+    useCloud.setState({ shopId: null, role: null, version: 0 });
+    mocks.get.mockResolvedValue(cloudShop({ ...local, txns: local.txns.slice() }, 5));
+    await openCloudShop(shopId);
+    expect(mocks.apply).not.toHaveBeenCalled();
+    expect(
+      JSON.parse(localStorage.getItem(`mohra-before-cloud:${shopId}`)!).state.accounts,
+    ).toEqual(local.accounts);
+  });
+  it("does not manufacture a recovery voucher when both shops are pristine", async () => {
+    const { initialShopState } = await import("@/lib/initial-shop");
+    const pristine = initialShopState("1928", "6574");
+    useStore.setState(pristine);
+    useCloud.setState({ shopId: null, role: null, version: 0 });
+    mocks.get.mockResolvedValue(cloudShop(pristine, 1));
+    await openCloudShop(shopId);
+    expect(mocks.apply).not.toHaveBeenCalled();
+    expect(useStore.getState().txns).toEqual([]);
   });
 });

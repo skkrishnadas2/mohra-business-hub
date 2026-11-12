@@ -282,7 +282,7 @@ interface Actions extends BusinessActions, OperationsActions {
   setPerm: (k: keyof Perms, v: boolean) => void;
   setPins: (owner: string, cashier: string) => void;
   addAccount: (a: Omit<Account, "id">) => void;
-  setBalance: (id: string, value: number, pin: string) => boolean;
+  setBalance: (id: string, value: number, pin: string, reason?: string) => boolean;
   transfer: (fromId: string, toId: string, amount: number, title: string, ref?: string) => void;
   upsertProduct: (p: Omit<Product, "id"> & { id?: string | undefined }) => void;
   deleteProduct: (id: string) => void;
@@ -617,9 +617,11 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
             moves: [{ accountId: account.id, delta: opening }],
           });
       },
-      setBalance: (id, value, pin) => {
+      setBalance: (id, value, pin, reason) => {
         own();
-        if (pin !== get().ownerPin) return false;
+        if (get().actor) {
+          if (!reason?.trim()) fail("ব্যালেন্স সমন্বয়ের কারণ দিন");
+        } else if (pin !== get().ownerPin) return false;
         const a = acc(id);
         if (!a) return false;
         const next = nonNegative(value, "ব্যালেন্স");
@@ -627,7 +629,7 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
         if (delta !== 0)
           post({
             type: "adjust",
-            title: `ব্যালেন্স সমন্বয় · ${a.name}`,
+            title: `ব্যালেন্স সমন্বয় · ${a.name}${reason?.trim() ? " · " + reason.trim() : ""}`,
             amount: delta,
             profit: 0,
             cat: "none",
@@ -1248,6 +1250,8 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
         return closing;
       },
       resetAll: () => {
+        if (get().actor)
+          fail("অনলাইন হিসাবের ইতিহাস রিসেট করা যাবে না। ভুল লেনদেন ফেরত বা সমন্বয় করুন।");
         if (get().setupDone) own();
         set({ ...initial });
       },
@@ -1270,6 +1274,7 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
 export const shopStoreCreator = createShopStoreCreator();
 
 export const CLOUD_ACTIONS = [
+  "setStaffAccess",
   "openShift",
   "closeShift",
   "setCashierPolicy",

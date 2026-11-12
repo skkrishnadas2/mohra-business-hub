@@ -34,7 +34,7 @@ const PERMS: { k: keyof Perms; l: string; d: string }[] = [
 ];
 
 function Settings() {
-  const { role, perms, setPerm, setPins, ownerPin, cashierPin, resetAll } = useStore();
+  const { role, perms, setPerm, setPins, ownerPin, cashierPin, resetAll, actor } = useStore();
   const [op, setOp] = useState(ownerPin);
   const [cp, setCp] = useState(cashierPin);
   const [sample, setSample] = useState("150");
@@ -58,31 +58,36 @@ function Settings() {
                 <div className="font-medium">{p.l}</div>
                 <div className="text-xs text-muted-foreground">{p.d}</div>
               </div>
-              <Switch checked={perms[p.k]} onCheckedChange={async (v) => await act(() => setPerm(p.k, v))} />
+              <Switch
+                checked={perms[p.k]}
+                onCheckedChange={async (v) => await act(() => setPerm(p.k, v))}
+              />
             </label>
           ))}
         </div>
         <div className="space-y-4">
-          <div className="space-y-3 rounded-xl border bg-card p-4 shadow-soft sm:p-5">
-            <div className="border-b pb-3 text-base font-semibold">PIN পরিবর্তন</div>
-            <div>
-              <Label>মালিক PIN</Label>
-              <NumInput value={op} onChange={(v) => setOp(v.slice(0, 4))} />
+          {!actor && (
+            <div className="space-y-3 rounded-xl border bg-card p-4 shadow-soft sm:p-5">
+              <div className="border-b pb-3 text-base font-semibold">PIN পরিবর্তন</div>
+              <div>
+                <Label>মালিক PIN</Label>
+                <NumInput value={op} onChange={(v) => setOp(v.slice(0, 4))} />
+              </div>
+              <div>
+                <Label>ক্যাশিয়ার PIN</Label>
+                <NumInput value={cp} onChange={(v) => setCp(v.slice(0, 4))} />
+              </div>
+              <BigButton
+                disabled={op.length !== 4 || cp.length !== 4 || op === cp}
+                onClick={async () => {
+                  await confirmed(() => setPins(op, cp));
+                  toast.success("PIN আপডেট হয়েছে");
+                }}
+              >
+                সেভ
+              </BigButton>
             </div>
-            <div>
-              <Label>ক্যাশিয়ার PIN</Label>
-              <NumInput value={cp} onChange={(v) => setCp(v.slice(0, 4))} />
-            </div>
-            <BigButton
-              disabled={op.length !== 4 || cp.length !== 4 || op === cp}
-              onClick={async () => {
-                await confirmed(() => setPins(op, cp));
-                toast.success("PIN আপডেট হয়েছে");
-              }}
-            >
-              সেভ
-            </BigButton>
-          </div>
+          )}
           <div className="space-y-2 rounded-2xl border bg-card p-4 shadow-soft">
             <div className="font-medium">সিক্রেট রেট কোড (DHAKACITY)</div>
             <p className="text-xs text-muted-foreground">১=D ২=H ৩=A ৪=K ৫=A ৬=C ৭=I ৮=T ৯=Y ০=X</p>
@@ -97,14 +102,16 @@ function Settings() {
           </div>
           <CashierPolicy />
           <BackupRestore />
-          <BigButton
-            onClick={() => {
-              if (confirm("সব ডেটা মুছে নতুন করে শুরু করবেন?")) resetAll();
-            }}
-            className="border border-destructive/30 bg-card text-destructive hover:enabled:bg-destructive/10"
-          >
-            সব ডেটা রিসেট
-          </BigButton>
+          {!actor && (
+            <BigButton
+              onClick={() => {
+                if (confirm("সব ডেটা মুছে নতুন করে শুরু করবেন?")) resetAll();
+              }}
+              className="border border-destructive/30 bg-card text-destructive hover:enabled:bg-destructive/10"
+            >
+              সব ডেটা রিসেট
+            </BigButton>
+          )}
         </div>
       </div>
     </Page>

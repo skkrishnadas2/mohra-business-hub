@@ -1,3 +1,6 @@
+import { DeviceCheck } from "@/components/DeviceCheck";
+import { downloadFile } from "@/lib/export";
+import { confirmed } from "@/lib/confirmed-write";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { LogOut, RefreshCw, Users, ShieldCheck, CheckCircle2 } from "lucide-react";
@@ -17,10 +20,11 @@ export const Route = createFileRoute("/cloud")({
 function StoreTeam() {
   const cloud = useCloud();
   const role = useStore((s) => s.role);
-  const [staff, setStaff] = useState<{ id: string; name: string; email: string; role: string }[]>(
-    [],
-  );
+  const [staff, setStaff] = useState<
+    { id: string; name: string; email: string; role: string; active: boolean }[]
+  >([]);
   const [draft, setDraft] = useState({ name: "", email: "", password: "" });
+  const [target, setTarget] = useState<{ id: string; active: boolean; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const refresh = async () => {
@@ -62,8 +66,32 @@ function StoreTeam() {
           <ShieldCheck size={14} /> দোকানের নিজস্ব কর্মক্ষেত্র
         </div>
       </div>
+      <div className="mb-5"><DeviceCheck/></div>
       <div className="grid items-start gap-5 lg:grid-cols-2">
         <Panel title="সংযোগের অবস্থা">
+          {role === "owner" &&
+            cloud.shopId &&
+            typeof window !== "undefined" &&
+            localStorage.getItem(`mohra-before-cloud:${cloud.shopId}`) && (
+              <button
+                className="min-h-11 rounded-lg border px-3 text-sm"
+                onClick={() => {
+                  const saved = JSON.parse(
+                    localStorage.getItem(`mohra-before-cloud:${cloud.shopId}`)!,
+                  );
+                  downloadFile(
+                    "mohra-device-recovery.json",
+                    JSON.stringify(
+                      { format: "mohra-business-backup", version: 2, state: saved.state },
+                      null,
+                      2,
+                    ),
+                  );
+                }}
+              >
+                পুরোনো ডিভাইসের সংরক্ষিত ব্যাকআপ
+              </button>
+            )}
           <div className="flex items-center gap-3">
             <CheckCircle2 className="text-primary" size={22} />
             <div>
@@ -116,11 +144,53 @@ function StoreTeam() {
                     <p className="truncate text-xs text-muted-foreground">{p.email}</p>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {p.role === "owner" ? "মালিক" : "ক্যাশিয়ার"}
+                    {p.role === "owner" ? "মালিক" : p.active ? "ক্যাশিয়ার" : "বন্ধ"}
                   </span>
+                  {p.role === "cashier" && (
+                    <button
+                      className="min-h-11 rounded-lg border px-3 text-xs"
+                      onClick={() => setTarget(p)}
+                    >
+                      {p.active ? "বন্ধ করুন" : "চালু করুন"}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
+            {target && (
+              <div className="space-y-3 rounded-xl border p-4">
+                <p className="text-sm">
+                  {target.name}-এর প্রবেশাধিকার {target.active ? "বন্ধ" : "চালু"} করবেন?
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  হিসাবের পুরোনো ইতিহাস থাকবে। বন্ধ করতে হলে আগে চালু শিফট ও অপেক্ষমাণ অনুরোধ
+                  নিষ্পত্তি করুন।
+                </p>
+                <BigButton
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      await confirmed(() =>
+                        useStore.getState().setStaffAccess(target.id, !target.active),
+                      );
+                      await refresh();
+                      setTarget(null);
+                      toast.success("প্রবেশাধিকার আপডেট হয়েছে");
+                    } catch (e) {
+                      setError(actionError(e));
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  নিশ্চিত করুন
+                </BigButton>
+                <button className="min-h-11 w-full text-sm" onClick={() => setTarget(null)}>
+                  ফিরে যান
+                </button>
+              </div>
+            )}
             <details className="border-t pt-4">
               <summary className="cursor-pointer text-sm font-medium text-primary">
                 ক্যাশিয়ার অ্যাকাউন্ট যোগ করুন

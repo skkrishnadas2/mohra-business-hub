@@ -12,6 +12,7 @@ const audit = {
   requestedBy: actor.optional(),
 };
 export const operationsSchema = z.object({
+  disabledStaff: z.array(z.string().uuid()).optional(),
   policy: z.object({ cashierDueLimit: amount, cashierDiscountPercent: amount.max(100) }),
   creditLimits: z.record(amount),
   shifts: z.array(

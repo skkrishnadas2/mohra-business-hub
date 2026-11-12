@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { activeShift } from "@/lib/operations";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
@@ -65,6 +66,21 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.scrollTo(0, 0);
   }, [loc.pathname, setupDone, role]);
 
+  const lock = async () => {
+    if (cloud.pending) {
+      toast.error("আগে অপেক্ষমাণ কাজ সিঙ্ক করুন");
+      return;
+    }
+    if (useStore.getState().actor) {
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) {
+        toast.error("সাইন আউট হয়নি। আবার চেষ্টা করুন।");
+        return;
+      }
+      disconnectCloud();
+    }
+    logout();
+  };
   if (!hydrated || authenticated === null)
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">
@@ -105,7 +121,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-background md:flex">
       <CloudSync />
-      {!activeShift(useStore.getState()) && loc.pathname!=="/closing" && <Link to="/closing" className="fixed bottom-20 left-1/2 z-40 -translate-x-1/2 rounded-xl border bg-card px-4 py-3 text-sm shadow-lg md:bottom-5">লেনদেনের আগে শিফট শুরু করুন →</Link>}
+      {!activeShift(useStore.getState()) && loc.pathname !== "/closing" && (
+        <Link
+          to="/closing"
+          className="fixed bottom-20 left-1/2 z-40 -translate-x-1/2 rounded-xl border bg-card px-4 py-3 text-sm shadow-lg md:bottom-5"
+        >
+          লেনদেনের আগে শিফট শুরু করুন →
+        </Link>
+      )}
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar p-3 md:flex lg:w-64">
         <div className="mb-4 border-b px-2 pb-5 pt-3">
           <StoreBrand compact />
@@ -165,13 +188,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mt-3 border-t pt-3">
           <button
             type="button"
-            onClick={logout}
+            onClick={() => void lock()}
             className={cn(
               "flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               focusClass,
             )}
           >
-            <LogOut aria-hidden="true" className="h-4 w-4" /> লক করুন
+            <LogOut aria-hidden="true" className="h-4 w-4" /> সাইন আউট
           </button>
         </div>
       </aside>
@@ -298,14 +321,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => {
                 setMore(false);
-                logout();
+                void lock();
               }}
               className={cn(
                 "flex min-h-12 w-full items-center justify-center gap-2 rounded-lg text-sm text-muted-foreground hover:bg-secondary",
                 focusClass,
               )}
             >
-              <LogOut aria-hidden="true" className="h-4 w-4" /> লক করুন
+              <LogOut aria-hidden="true" className="h-4 w-4" /> সাইন আউট
             </button>
           </div>
         </SheetContent>

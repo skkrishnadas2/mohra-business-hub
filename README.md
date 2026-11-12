@@ -32,7 +32,7 @@ This deployment is exclusively MOHRA IT CARE & TELECOM CENTER, proprietor Sankar
 
 ## Daily operation
 
-1. Sign in with the proprietor’s existing email; the one assigned store opens automatically, or the proprietor completes its first setup. Real UI setup starts with an empty product catalog.
+1. Sign in with the proprietor’s existing email; the one assigned store opens automatically, and a blank store is prepared automatically when necessary. Existing device history is preserved and imported only into an untouched empty Cloud ledger.
 2. Add bank, personal/agent MFS and recharge accounts. Add parties once, using customer/supplier/SR roles as appropriate. Cashiers sign in with accounts provisioned by the proprietor.
 3. Create products or physical SIM stock. Existing barcodes can be scanned; unbranded products receive internal barcodes and A4/thermal labels.
 4. Scan into the POS cart, then use one-tap cash checkout. Other payment, split and due options remain in a separate drawer. Every new sale defaults to cash. Draft/held carts stay on the current device.
@@ -41,6 +41,14 @@ This deployment is exclusively MOHRA IT CARE & TELECOM CENTER, proprietor Sankar
 7. Purchase stock through the supplier flow for weighted-average cost and payable tracking. Full purchase returns reconcile outstanding debt and refunds.
 8. Repair advances are liabilities until delivery; consumed parts and direct costs reduce repair profit. Historical repair entries keep their legacy recognition convention.
 9. Open a counted cash shift before posting transactions; only one drawer shift can be active. Cashiers work in their own shift; owners can reconcile or close it. Cash variances need a reason and owner approval. Export statements/stock/journals as CSV, print reports or save them as PDF, and download a full JSON backup.
+
+## Ready-to-use controls
+
+The proprietor signs in with the existing authenticated account; there is no additional online setup/PIN wizard. The empty ledger starts without fabricated balances or stock. Enter actual opening values through owner-only Accounts adjustments with a mandatory audit reason, then add products/SIM stock and start a counted shift. Online history cannot be erased with Reset All. Legacy PINs remain only for old local snapshots; online sign-out requires account authentication on return.
+
+Store & Team supports audited cashier access suspension/reactivation. Pending approvals and the employee's open shift must be resolved before suspension. A blocked employee is rejected by the API and signed out locally when access is checked. Protocol revision 2 protects the new preparation flow from older browser clients; refresh the page if asked.
+
+Device diagnostics in Store & Team print test labels/receipts and check camera decoding without creating sales or stock movements. Manual barcode entry is not counted as camera verification.
 
 ## Recovery and verification limits
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 import { supabase, isCloudConfigured } from "@/integrations/supabase/client";
-import { getStoreAccess, listCloudShops } from "@/lib/cloud.functions";
+import { bootstrapStore, getStoreAccess, listCloudShops } from "@/lib/cloud.functions";
 import { createOnlineShop, openCloudShop } from "@/lib/cloud-sync";
 import { actionError, useStore } from "@/lib/store";
 import { STORE_BRAND } from "@/lib/store-brand";
@@ -35,7 +35,8 @@ export function AccountGate() {
           await createOnlineShop();
           return;
         }
-        setPhase("setup");
+        const ready = await bootstrapStore();
+        await openCloudShop(ready.shopId);
         return;
       }
       throw new Error("এই দোকানে আপনার প্রবেশাধিকার নেই। মালিকের সঙ্গে যোগাযোগ করুন।");

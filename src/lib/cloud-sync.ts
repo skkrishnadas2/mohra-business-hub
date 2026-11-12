@@ -1,3 +1,4 @@
+import { isPristineShop } from "./initial-shop";
 import { emptyOperations } from "./operations";
 import { create } from "zustand";
 import { toast } from "sonner";
@@ -116,8 +117,47 @@ export async function openCloudShop(shopId: string) {
     error: null,
   });
   try {
-    const shop = await getCloudShop({ data: { shopId } });
+    let shop = await getCloudShop({ data: { shopId } });
     if (epoch !== connectionEpoch) return;
+    // Preserve device history before a provisioned empty ledger can replace the cache.
+    if (
+      switching &&
+      shop.role === "owner" &&
+      useStore.getState().setupDone &&
+      !isPristineShop(useStore.getState()) &&
+      (!savedShopId() || savedShopId() === shopId)
+    ) {
+      const key = `mohra-before-cloud:${shopId}`;
+      const saved = window.localStorage.getItem(key);
+      const recovery = saved
+        ? JSON.parse(saved)
+        : { id: crypto.randomUUID(), at: Date.now(), state: shopSnapshot(useStore.getState()) };
+      window.localStorage.setItem(key, JSON.stringify(recovery));
+      if (epoch !== connectionEpoch) return;
+      if (shop.version === 1 && isPristineShop(shop.state)) {
+        const result = await applyCloudAction({
+          data: {
+            shopId,
+            baseVersion: shop.version,
+            action: {
+              id: recovery.id,
+              at: recovery.at,
+              name: "restoreBackup",
+              args: [recovery.state],
+            },
+          },
+        });
+        if (epoch !== connectionEpoch) return;
+        if (result.status !== "ok")
+          throw new Error(
+            result.status === "rejected"
+              ? result.message
+              : "সার্ভারের হিসাব বদলেছে। ডিভাইসের ব্যাকআপ রাখা হয়েছে; আবার সংযোগ যাচাই করুন।",
+          );
+        shop = await getCloudShop({ data: { shopId } });
+        if (epoch !== connectionEpoch) return;
+      }
+    }
     adopt(shop);
     return shop;
   } catch (error) {

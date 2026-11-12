@@ -6,7 +6,7 @@ import {useSubmission} from '@/lib/confirmed-write';
 import {ApprovalWorkspace,CashierPolicy,SaleReturns} from '@/components/OperationsWorkspace';
 const owner={userId:'owner',name:'Sankar',role:'owner' as const};
 const cashier={userId:'cashier',name:'Employee',role:'cashier' as const};
-beforeEach(()=>{cleanup();localStorage.clear();useCloud.setState({shopId:null,pending:0});useSubmission.setState({busy:false});useStore.setState({role:'owner'});useStore.getState().resetAll();useStore.getState().completeSetup({shopName:'Shop',ownerPin:'1111',cashierPin:'2222',balances:{cash:1000},emptyCatalog:true});useStore.setState({actor:owner,role:'owner'});useStore.getState().openShift(1000);});
+beforeEach(()=>{cleanup();localStorage.clear();useCloud.setState({shopId:null,pending:0});useSubmission.setState({busy:false});useStore.setState({role:'owner',actor:undefined});useStore.getState().resetAll();useStore.getState().completeSetup({shopName:'Shop',ownerPin:'1111',cashierPin:'2222',balances:{cash:1000},emptyCatalog:true});useStore.setState({actor:owner,role:'owner'});useStore.getState().openShift(1000);});
 describe('operator-facing controls',()=>{
  it('saves cashier limits through the visible form',async()=>{
   render(<CashierPolicy/>);const inputs=screen.getAllByRole('textbox');fireEvent.change(inputs[0]!,{target:{value:'500'}});fireEvent.change(inputs[1]!,{target:{value:'5'}});

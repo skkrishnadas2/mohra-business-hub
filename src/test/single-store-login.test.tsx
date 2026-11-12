@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   open: vi.fn(),
   create: vi.fn(),
   reset: vi.fn(),
+  bootstrap: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({
   isCloudConfigured: true,
@@ -24,6 +25,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("@/lib/cloud.functions", () => ({
   getStoreAccess: mocks.access,
+  bootstrapStore: mocks.bootstrap,
   listCloudShops: mocks.list,
 }));
 vi.mock("@/lib/cloud-sync", () => ({ createOnlineShop: mocks.create, openCloudShop: mocks.open }));
@@ -40,6 +42,7 @@ beforeEach(() => {
   mocks.access.mockResolvedValue({ canSetup: false });
   mocks.open.mockResolvedValue({});
   mocks.create.mockResolvedValue({});
+  mocks.bootstrap.mockResolvedValue({ shopId: "ready-shop" });
 });
 describe("single-store branded login", () => {
   it("shows the store and proprietor with a single sign-in flow", async () => {
@@ -70,6 +73,14 @@ describe("single-store branded login", () => {
     render(<AccountGate />);
     await waitFor(() => expect(mocks.open).toHaveBeenCalledWith("store-1"));
     expect(mocks.access).not.toHaveBeenCalled();
+  });
+  it("provisions an empty store automatically after the proprietor authenticates", async () => {
+    mocks.access.mockResolvedValue({ canSetup: true });
+    mocks.getSession.mockResolvedValue({ data: { session: { user: { id: STORE_OWNER_ID } } } });
+    render(<AccountGate />);
+    await waitFor(() => expect(mocks.bootstrap).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.open).toHaveBeenCalledWith("ready-shop"));
+    expect(screen.queryByText("STORE INITIALIZATION")).toBeNull();
   });
   it("reserves first-time setup for the verified existing proprietor", () => {
     expect(canInitializeStore(STORE_OWNER_ID)).toBe(true);

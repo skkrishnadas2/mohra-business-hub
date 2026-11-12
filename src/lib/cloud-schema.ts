@@ -52,6 +52,7 @@ export const snapshotSchema = z.object({
 export const cloudRequestSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("list") }),
   z.object({ op: z.literal("access") }),
+  z.object({ op: z.literal("bootstrap") }),
   z.object({ op: z.literal("staff"), shopId: z.string().uuid() }),
   z.object({
     op: z.literal("addStaff"),

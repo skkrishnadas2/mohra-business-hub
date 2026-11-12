@@ -38,7 +38,7 @@ const KIND_LABEL: Record<Account["kind"], string> = {
 };
 
 function Accounts() {
-  const { accounts, can, transfer, setBalance, addAccount, role } = useStore();
+  const { accounts, can, transfer, setBalance, addAccount, role, actor } = useStore();
   const [tab, setTab] = useState("accounts");
   const banks = accounts.filter((a) => a.kind === "bank");
   const [dir, setDir] = useState<"dep" | "wd">("dep");
@@ -47,6 +47,7 @@ function Accounts() {
   const [ref, setRef] = useState("");
   const [adj, setAdj] = useState<Account | null>(null);
   const [adjVal, setAdjVal] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
   const [pin, setPin] = useState("");
   const [nw, setNw] = useState<{ name: string; kind: Account["kind"]; provider: string } | null>(
     null,
@@ -153,7 +154,8 @@ function Accounts() {
               onClick={async () => {
                 try {
                   const a = Number(amt);
-                  if (dir === "dep") await confirmed(() => transfer("cash", bank, a, "ব্যাংকে জমা", ref));
+                  if (dir === "dep")
+                    await confirmed(() => transfer("cash", bank, a, "ব্যাংকে জমা", ref));
                   else await confirmed(() => transfer(bank, "cash", a, "ব্যাংক থেকে উত্তোলন", ref));
                   toast.success("সম্পন্ন");
                   setAmt("");
@@ -183,20 +185,39 @@ function Accounts() {
               <NumInput value={adjVal} onChange={setAdjVal} />
             </div>
             <div>
-              <Label>মালিকের PIN</Label>
-              <TextInput
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-              />
+              {actor ? (
+                <>
+                  <Label>সমন্বয়ের কারণ</Label>
+                  <TextInput
+                    value={adjustReason}
+                    onChange={(e) => setAdjustReason(e.target.value)}
+                    placeholder="শুরুর আসল ব্যালেন্স / সমন্বয়ের বিবরণ"
+                  />
+                </>
+              ) : (
+                <>
+                  <Label>মালিকের PIN</Label>
+                  <TextInput
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                  />
+                </>
+              )}
             </div>
             <BigButton
               onClick={async () => {
                 try {
-                  if (adj && await confirmed(() => setBalance(adj.id, Number(adjVal) || 0, pin))) {
+                  if (
+                    adj &&
+                    (await confirmed(() =>
+                      setBalance(adj.id, Number(adjVal) || 0, pin, adjustReason),
+                    ))
+                  ) {
                     toast.success("সমন্বয় হয়েছে");
+                    setAdjustReason("");
                     setAdj(null);
                   } else toast.error("ভুল PIN");
                 } catch (error) {
@@ -264,12 +285,14 @@ function Accounts() {
                 }
                 onClick={async () => {
                   try {
-                    await confirmed(() => addAccount({
-                      name: nw.name,
-                      kind: nw.kind,
-                      provider: nw.provider || undefined,
-                      balance: 0,
-                    }));
+                    await confirmed(() =>
+                      addAccount({
+                        name: nw.name,
+                        kind: nw.kind,
+                        provider: nw.provider || undefined,
+                        balance: 0,
+                      }),
+                    );
                     setNw(null);
                   } catch (error) {
                     toast.error(actionError(error));
