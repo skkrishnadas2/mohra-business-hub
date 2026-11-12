@@ -11,50 +11,40 @@ import {
 import { usePwa, startPwa, requestAppInstall, installPlatform } from "@/lib/pwa";
 import { STORE_BRAND } from "@/lib/store-brand";
 import { StoreBrand, Proprietor } from "./StoreBrand";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "./ui/dialog";
 export function PwaLifecycle() {
   useEffect(startPwa, []);
   return null;
 }
-export function InstallLink() {
+/** A deliberate tap opens installation in place; no navigation or automatic popup. */
+export function InstallButton() {
   const installed = usePwa((s) => s.installed);
   return installed ? null : (
-    <a
-      href="/install"
-      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-secondary"
-    >
-      <Download size={17} />
-      ফোনে অ্যাপ নিন
-    </a>
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-4 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Download size={15} aria-hidden="true" /> অ্যাপ নিন
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm gap-5 overflow-y-auto rounded-3xl p-6 sm:rounded-3xl">
+        <div className="flex items-center gap-3 pr-6">
+          <img src="/mohra-icon-192.png" alt="" width={48} height={48} className="rounded-2xl" />
+          <div>
+            <DialogTitle className="leading-snug">ফোনেই থাকুক MOHRA</DialogTitle>
+            <DialogDescription className="mt-1 text-xs leading-relaxed">
+              দোকানের অ্যাপ, হোমস্ক্রিনে এক ট্যাপে।
+            </DialogDescription>
+          </div>
+        </div>
+        <InstallControls inlineGuide />
+      </DialogContent>
+    </Dialog>
   );
 }
 export function InstallPage() {
-  const { prompt, installed, busy } = usePwa();
-  const [platform, setPlatform] = useState<"android" | "ios" | "other">("other");
-  const [guide, setGuide] = useState(false);
-  const [notice, setNotice] = useState("");
-  useEffect(() => {
-    setPlatform(installPlatform(navigator.userAgent, navigator.maxTouchPoints));
-  }, []);
-  const install = async () => {
-    setNotice("");
-    if (!prompt) {
-      setGuide(true);
-      return;
-    }
-    try {
-      const result = await requestAppInstall();
-      if (result === "accepted")
-        setNotice("ইনস্টলের অনুরোধ গ্রহণ হয়েছে। ফোনে দেখানো নির্দেশনা অনুসরণ করুন।");
-      else if (result === "dismissed")
-        setNotice("ইনস্টল বাতিল করেছেন। চাইলে পরে আবার করতে পারবেন।");
-      else setGuide(true);
-    } catch {
-      setGuide(true);
-      setNotice("ব্রাউজারের মেনু থেকেও অ্যাপটি যোগ করতে পারবেন।");
-    }
-  };
-  const url = STORE_BRAND.url + "/install";
-  const chrome = `intent://${url.replace(/^https:\/\//, "")}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(url)};end`;
   return (
     <main className="min-h-dvh bg-background px-4 py-6 sm:py-12">
       <div className="mx-auto max-w-2xl">
@@ -103,77 +93,7 @@ export function InstallPage() {
                 );
               })}
             </div>
-            {installed ? (
-              <div
-                role="status"
-                className="flex items-center justify-center gap-2 rounded-xl bg-accent p-4 text-sm text-primary"
-              >
-                <CheckCircle2 size={20} />
-                MOHRA অ্যাপ ইনস্টল করা আছে
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={() => void install()}
-                  disabled={busy}
-                  className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-base font-semibold text-primary-foreground disabled:opacity-60"
-                >
-                  <Download size={20} />
-                  {busy
-                    ? "ফোনের নির্দেশনা দেখুন…"
-                    : prompt
-                      ? "অ্যাপ ইনস্টল করুন"
-                      : "ইনস্টলের নিয়ম দেখুন"}
-                </button>
-                <p className="text-center text-xs text-muted-foreground">
-                  MOHRA নাম ও দোকানের নিজস্ব লোগোসহ হোমস্ক্রিনে যোগ হবে।
-                </p>
-              </>
-            )}
-            {notice && (
-              <p role="status" className="rounded-xl bg-secondary p-3 text-sm">
-                {notice}
-              </p>
-            )}
-            {!installed && guide && (
-              <div className="space-y-3 rounded-2xl border p-4">
-                <h2 className="flex items-center gap-2 text-sm font-semibold">
-                  <Smartphone size={18} />
-                  ইনস্টলের সহজ নিয়ম
-                </h2>
-                {platform === "ios" ? (
-                  <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
-                    <li>লিংকটি Safari-তে খুলুন।</li>
-                    <li>Share চাপুন → Add to Home Screen।</li>
-                    <li>নাম MOHRA রেখে Add চাপুন।</li>
-                  </ol>
-                ) : (
-                  <>
-                    <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
-                      <li>লিংকটি ফোনের Chrome-এ খুলুন।</li>
-                      <li>উপরের ইনস্টল বাটন চাপুন; অথবা ⋮ মেনু খুলুন।</li>
-                      <li>Install app / Add to Home screen → Install চাপুন।</li>
-                    </ol>
-                    {platform === "android" && (
-                      <a
-                        href={chrome}
-                        className="inline-flex min-h-11 items-center justify-center rounded-lg border px-4 py-2 text-sm font-medium text-primary"
-                      >
-                        Chrome-এ খুলুন
-                        <ArrowRight size={16} className="ml-2" />
-                      </a>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      চ্যাটের ভেতরের ব্রাউজারে ইনস্টল অপশন না এলে Chrome-এ খুলুন। আগে ইনস্টল করে
-                      থাকলে হোমস্ক্রিনে MOHRA খুঁজুন।
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
-            <div className="border-t pt-4 text-xs leading-relaxed text-muted-foreground">
-              হিসাব ও লেনদেনের জন্য ইন্টারনেট এবং অনুমোদিত অ্যাকাউন্টে লগইন প্রয়োজন।
-            </div>
+            <InstallControls />
             <p className="text-center text-xs text-muted-foreground">
               <Proprietor />
             </p>
@@ -181,5 +101,112 @@ export function InstallPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function InstallControls({ inlineGuide = false }: { inlineGuide?: boolean }) {
+  const { prompt, installed, busy } = usePwa();
+  const [platform, setPlatform] = useState<"android" | "ios" | "other">("other");
+  const [guide, setGuide] = useState(false);
+  const [notice, setNotice] = useState("");
+  useEffect(() => {
+    setPlatform(installPlatform(navigator.userAgent, navigator.maxTouchPoints));
+  }, []);
+  const install = async () => {
+    setNotice("");
+    if (!prompt) {
+      setGuide(true);
+      return;
+    }
+    try {
+      const result = await requestAppInstall();
+      if (result === "accepted")
+        setNotice("ইনস্টলের অনুরোধ গ্রহণ হয়েছে। ফোনে দেখানো নির্দেশনা অনুসরণ করুন।");
+      else if (result === "dismissed")
+        setNotice("ইনস্টল বাতিল করেছেন। চাইলে পরে আবার করতে পারবেন।");
+      else setGuide(true);
+    } catch {
+      setGuide(true);
+      setNotice("ব্রাউজারের মেনু থেকেও অ্যাপটি যোগ করতে পারবেন।");
+    }
+  };
+  const url = STORE_BRAND.url + (inlineGuide ? "/" : "/install");
+  const chrome = `intent://${url.replace(/^https:\/\//, "")}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(url)};end`;
+  return (
+    <div className="space-y-4">
+      {installed ? (
+        <div
+          role="status"
+          className="flex items-center justify-center gap-2 rounded-xl bg-accent p-4 text-sm text-primary"
+        >
+          <CheckCircle2 size={20} />
+          MOHRA অ্যাপ ইনস্টল করা আছে
+        </div>
+      ) : (
+        <>
+          {(!inlineGuide || prompt || busy) && (
+            <button
+              onClick={() => void install()}
+              disabled={busy}
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-base font-semibold text-primary-foreground disabled:opacity-60"
+            >
+              <Download size={20} />
+              {busy
+                ? "ফোনের নির্দেশনা দেখুন…"
+                : prompt
+                  ? "অ্যাপ ইনস্টল করুন"
+                  : "ইনস্টলের নিয়ম দেখুন"}
+            </button>
+          )}
+          <p className="text-center text-xs text-muted-foreground">
+            MOHRA নাম ও দোকানের নিজস্ব লোগোসহ হোমস্ক্রিনে যোগ হবে।
+          </p>
+        </>
+      )}
+      {notice && (
+        <p role="status" className="rounded-xl bg-secondary p-3 text-sm">
+          {notice}
+        </p>
+      )}
+      {!installed && (guide || (inlineGuide && !prompt)) && (
+        <div className="space-y-3 rounded-2xl border p-4">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <Smartphone size={18} />
+            ইনস্টলের সহজ নিয়ম
+          </h2>
+          {platform === "ios" ? (
+            <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
+              <li>লিংকটি Safari-তে খুলুন।</li>
+              <li>Share চাপুন → Add to Home Screen।</li>
+              <li>নাম MOHRA রেখে Add চাপুন।</li>
+            </ol>
+          ) : (
+            <>
+              <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
+                <li>লিংকটি ফোনের Chrome-এ খুলুন।</li>
+                <li>Chrome-এর ⋮ মেনু খুলুন।</li>
+                <li>Install app / Add to Home screen → Install চাপুন।</li>
+              </ol>
+              {platform === "android" && (
+                <a
+                  href={chrome}
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg border px-4 py-2 text-sm font-medium text-primary"
+                >
+                  Chrome-এ খুলুন
+                  <ArrowRight size={16} className="ml-2" />
+                </a>
+              )}
+              <p className="text-xs text-muted-foreground">
+                চ্যাটের ভেতরের ব্রাউজারে ইনস্টল অপশন না এলে Chrome-এ খুলুন। আগে ইনস্টল করে থাকলে
+                হোমস্ক্রিনে MOHRA খুঁজুন।
+              </p>
+            </>
+          )}
+        </div>
+      )}
+      <div className="border-t pt-4 text-xs leading-relaxed text-muted-foreground">
+        হিসাব ও লেনদেনের জন্য ইন্টারনেট এবং অনুমোদিত অ্যাকাউন্টে লগইন প্রয়োজন।
+      </div>
+    </div>
   );
 }

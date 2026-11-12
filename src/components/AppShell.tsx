@@ -1,3 +1,4 @@
+import { InstallButton } from "./PwaInstall";
 import { toast } from "sonner";
 import { activeShift } from "@/lib/operations";
 import { useEffect, useState, type ReactNode } from "react";
@@ -187,6 +188,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </details>
         <div className="mt-3 border-t pt-3">
+          <div className="mb-2 px-3">
+            <InstallButton />
+          </div>
           <button
             type="button"
             onClick={() => void lock()}
@@ -208,9 +212,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Proprietor />
             </p>
           </div>
-          <span className="rounded-full bg-secondary px-3 py-1.5 text-[10px] text-muted-foreground">
-            {roleLabel}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <InstallButton />
+            <span className="rounded-full bg-secondary px-3 py-1.5 text-[10px] text-muted-foreground">
+              {roleLabel}
+            </span>
+          </div>
         </header>
         {["/pos", "/recharge", "/mfs", "/services"].includes(loc.pathname) && (
           <div className="mx-auto flex w-full max-w-6xl gap-2 overflow-x-auto px-4 pt-4 md:px-8">

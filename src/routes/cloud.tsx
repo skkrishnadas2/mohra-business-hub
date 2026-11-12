@@ -1,4 +1,4 @@
-import { InstallLink } from "@/components/PwaInstall";
+import { InstallButton } from "@/components/PwaInstall";
 import { DeviceCheck } from "@/components/DeviceCheck";
 import { downloadFile } from "@/lib/export";
 import { confirmed } from "@/lib/confirmed-write";
@@ -68,7 +68,7 @@ function StoreTeam() {
         </div>
       </div>
       <div className="mb-5">
-        <InstallLink />
+        <InstallButton />
       </div>
       <div className="mb-5">
         <DeviceCheck />

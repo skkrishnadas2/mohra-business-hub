@@ -7,7 +7,7 @@ import {
   installPlatform,
   type InstallPrompt,
 } from "@/lib/pwa";
-import { InstallPage } from "@/components/PwaInstall";
+import { InstallPage, InstallButton } from "@/components/PwaInstall";
 let stop: (() => void) | undefined;
 beforeEach(() => {
   usePwa.setState({ prompt: null, installed: false, busy: false });
@@ -90,5 +90,53 @@ describe("phone installation", () => {
     render(<InstallPage />);
     expect(screen.getByRole("status").textContent).toContain("ইনস্টল করা আছে");
     expect(screen.queryByRole("button", { name: "অ্যাপ ইনস্টল করুন" })).toBeNull();
+  });
+});
+
+describe("in-place install popup", () => {
+  it("opens only on a tap and dismisses without navigating or losing form data", () => {
+    render(
+      <>
+        <input aria-label="চলমান কাজ" defaultValue="invoice draft" />
+        <InstallButton />
+      </>,
+    );
+    const trigger = screen.getByRole("button", { name: "অ্যাপ নিন" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(trigger.tagName).toBe("BUTTON");
+    const previous = window.location.href;
+    fireEvent.click(trigger);
+    expect(screen.getByRole("dialog", { name: "ফোনেই থাকুক MOHRA" })).toBeDefined();
+    expect(screen.getByText("ইনস্টলের সহজ নিয়ম")).toBeDefined();
+    expect(screen.queryByRole("button", { name: "ইনস্টলের নিয়ম দেখুন" })).toBeNull();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(window.location.href).toBe(previous);
+    expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("invoice draft");
+  });
+  it("uses the real install prompt from inside the popup", async () => {
+    const prompt = event("accepted");
+    usePwa.setState({ prompt });
+    render(<InstallButton />);
+    fireEvent.click(screen.getByRole("button", { name: "অ্যাপ নিন" }));
+    expect(screen.queryByText("ইনস্টলের সহজ নিয়ম")).toBeNull();
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "অ্যাপ ইনস্টল করুন" })),
+    );
+    expect(prompt.prompt).toHaveBeenCalledOnce();
+    expect(usePwa.getState().installed).toBe(false);
+  });
+  it("opens Android Chrome on the main store URL without copying private query data", () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Android; wv Chrome");
+    render(<InstallButton />);
+    fireEvent.click(screen.getByRole("button", { name: "অ্যাপ নিন" }));
+    expect(screen.getByRole("link", { name: "Chrome-এ খুলুন" }).getAttribute("href")).toMatch(
+      /^intent:\/\/mohara-it-care\..*\/#Intent/,
+    );
+  });
+  it("hides the trigger when already installed", () => {
+    usePwa.setState({ installed: true });
+    render(<InstallButton />);
+    expect(screen.queryByRole("button", { name: "অ্যাপ নিন" })).toBeNull();
   });
 });
