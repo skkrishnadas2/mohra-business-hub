@@ -26,10 +26,14 @@ Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in the ignored
 - Deploy **both** the Edge Function and frontend when changing business rules. The function entrypoint and generated engine are in `supabase/functions/business-api/`.
 - Worker deployment uses the generated `.output/server/wrangler.json`; its one-file Nitro bundle must remain unsplit.
 
+## Single-store identity
+
+This deployment is exclusively MOHRA IT CARE & TELECOM CENTER, proprietor Sankar Das. The verified existing proprietor account alone can initialize the store. Bootstrap is guarded by an owner-profile compare-and-swap lock, and later requests reuse the existing store. Login has no public registration, shop selector, joining-code form or standalone-device entry. Owner and cashier roles are resolved from server membership. Owners provision cashier accounts from Store & Team; credentials are never saved in business snapshots. Existing device business data is uploaded only after the proprietor authenticates. Password recovery is available through Supabase Auth and depends on its configured mail delivery/redirect settings.
+
 ## Daily operation
 
-1. Sign in with an owner email, load an existing shop or create a fresh setup. Real UI setup starts with an empty product catalog.
-2. Add bank, personal/agent MFS and recharge accounts. Add parties once, using customer/supplier/SR roles as appropriate.
+1. Sign in with the proprietor’s existing email; the one assigned store opens automatically, or the proprietor completes its first setup. Real UI setup starts with an empty product catalog.
+2. Add bank, personal/agent MFS and recharge accounts. Add parties once, using customer/supplier/SR roles as appropriate. Cashiers sign in with accounts provisioned by the proprietor.
 3. Create products or physical SIM stock. Existing barcodes can be scanned; unbranded products receive internal barcodes and A4/thermal labels.
 4. Scan into the POS cart, then use one-tap cash checkout. Other payment, split and due options remain in a separate drawer. Every new sale defaults to cash. Draft/held carts stay on the current device.
 5. Use Accounts for bank transfers, SR advances/partial receipts, expenses, capital/drawings, account settings and deferred commissions.

@@ -41,3 +41,13 @@ export const applyCloudAction = ({
 }: {
   data: { shopId: string; baseVersion: number; action: CloudAction };
 }) => invoke<ApplyResult>({ op: "apply", ...data });
+
+export const getStoreAccess = () => invoke<{ canSetup: boolean }>({ op: "access" });
+export const listStoreStaff = (shopId: string) =>
+  invoke<{ id: string; name: string; email: string; role: Role }[]>({ op: "staff", shopId });
+export const addStoreStaff = (data: {
+  shopId: string;
+  name: string;
+  email: string;
+  password?: string;
+}) => invoke<{ ok: boolean }>({ op: "addStaff", ...data });

@@ -1,3 +1,7 @@
+# 2026-11-12 — Single-store branding and access
+
+MOHRA IT CARE & TELECOM CENTER / Proprietor: Sankar Das. Replaced the generic multi-shop/standalone login with a branded responsive login and recovery flow. Server limits initialization to the verified existing proprietor, reuses the assigned store and guards simultaneous setup. Owners manage cashier accounts in Store & Team. Existing local business data is retained until authenticated upload. Updated app headers, setup, receipt identity, favicon and install manifest. 150 tests, TypeScript and production build pass. No database schema or owner credentials were changed.
+
 # 2026-11-12 — Business workflow completion
 
 Implemented: six primary navigation groups; two-sided party ledger and shared customer identity; supplier purchases/weighted cost/full returns; pending and partial bank/cash–SR settlements; account names/numbers/deactivation and commission settings; deferred commission collection; expenses/capital/drawings; repair final bills, parts, costs and cancellation; report/CSV/journal/backup export and validated empty-shop recovery; cross-browser camera scanner; A4/thermal/batch labels; default cash POS with acknowledged completion and local draft/hold carts. Privileged Cloud operations now run in an authenticated Supabase Edge Function.

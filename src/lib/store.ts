@@ -1,3 +1,4 @@
+import { STORE_BRAND } from "./store-brand";
 import { create, type StateCreator } from "zustand";
 import { journalFor, type JournalLine } from "./journal";
 import { persist } from "zustand/middleware";
@@ -309,7 +310,7 @@ interface Actions extends BusinessActions {
 const initial: State = {
   business: emptyBusiness(),
   setupDone: false,
-  shopName: "মোহরা আইটি কেয়ার এন্ড টেলিকম সেন্টার",
+  shopName: STORE_BRAND.fullName,
   ownerPin: "1234",
   cashierPin: "0000",
   cipherKey: DEFAULT_CIPHER_KEY,

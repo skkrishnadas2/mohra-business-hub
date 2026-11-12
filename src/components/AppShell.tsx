@@ -17,8 +17,10 @@ import {
   Cloud,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
+import { StoreBrand, Proprietor } from "./StoreBrand";
 import { AccountGate } from "./AccountGate";
-import { useCloud } from "@/lib/cloud-sync";
+import { disconnectCloud, useCloud } from "@/lib/cloud-sync";
 import { CloudSync } from "./CloudSync";
 import { BigButton, PinPad } from "./kit";
 import { cn } from "@/lib/utils";
@@ -33,7 +35,7 @@ const NAV: NavItem[] = [
   { to: "/products", label: "স্টক ও ক্রয়", icon: Package },
   { to: "/reports", label: "রিপোর্ট", icon: Activity, owner: true },
   { to: "/closing", label: "শিফট / দিন শেষ", icon: MoonStar },
-  { to: "/cloud", label: "দোকান ও সংযোগ", icon: Cloud },
+  { to: "/cloud", label: "দোকান ও টিম", icon: Cloud },
   { to: "/monitor", label: "লাইভ মনিটর", icon: Activity, owner: true },
   { to: "/settings", label: "সেটিংস", icon: Settings, owner: true },
 ];
@@ -48,27 +50,36 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [more, setMore] = useState(false);
   const loc = useLocation();
   const cloud = useCloud();
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data }) => setAuthenticated(!!data.session));
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      setAuthenticated(!!session);
+      if (event === "SIGNED_OUT") disconnectCloud();
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [loc.pathname, setupDone, role]);
 
-  if (!hydrated)
+  if (!hydrated || authenticated === null)
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">
         লোড হচ্ছে…
       </div>
     );
-  if (!setupDone) return <AccountGate />;
+  if (!setupDone || !authenticated || !cloud.shopId) return <AccountGate />;
   if (!role)
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 py-10">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-primary-foreground">
-            ম
-          </div>
-          <div className="font-semibold">{shopName}</div>
-          <p className="mt-1 text-sm text-muted-foreground">আপনার কাজ শুরু করতে PIN দিন</p>
+          <StoreBrand />
+          <p className="mt-4 text-xs text-muted-foreground">
+            <Proprietor />
+          </p>
+          <p className="mt-3 text-sm text-muted-foreground">আপনার কাজ শুরু করতে PIN দিন</p>
         </div>
         <PinPad
           title="PIN দিয়ে প্রবেশ করুন"
@@ -94,17 +105,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh bg-background md:flex">
       <CloudSync />
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar p-3 md:flex lg:w-64">
-        <div className="mb-4 flex items-center gap-3 border-b px-2 pb-5 pt-3">
-          <div
-            aria-hidden="true"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground"
-          >
-            ম
-          </div>
-          <div className="min-w-0">
-            <div className="break-words text-sm font-semibold leading-snug">{shopName}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{roleLabel} হিসেবে কাজ করছেন</div>
-          </div>
+        <div className="mb-4 border-b px-2 pb-5 pt-3">
+          <StoreBrand compact />
+          <p className="mt-3 text-[10px] text-muted-foreground">
+            <Proprietor />
+          </p>
+          <div className="mt-2 text-xs text-muted-foreground">{roleLabel} হিসেবে কাজ করছেন</div>
         </div>
         <div className="mb-2 px-3 text-xs font-medium text-muted-foreground">কাজের মেনু</div>
         <nav aria-label="প্রধান নেভিগেশন" className="min-h-0 flex-1 space-y-1 overflow-y-auto">
@@ -169,17 +175,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="min-w-0 flex-1">
-        <header className="flex items-center gap-3 border-b bg-card px-4 py-3 md:hidden">
-          <div
-            aria-hidden="true"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground"
-          >
-            ম
+        <header className="flex items-center justify-between gap-3 border-b bg-card px-4 py-3 md:hidden">
+          <div>
+            <StoreBrand compact />
+            <p className="mt-2 text-[9px] text-muted-foreground">
+              <Proprietor />
+            </p>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="break-words text-sm font-semibold">{shopName}</div>
-            <div className="text-xs text-muted-foreground">{roleLabel} হিসেবে কাজ করছেন</div>
-          </div>
+          <span className="rounded-full bg-secondary px-3 py-1.5 text-[10px] text-muted-foreground">
+            {roleLabel}
+          </span>
         </header>
         {["/pos", "/recharge", "/mfs", "/services"].includes(loc.pathname) && (
           <div className="mx-auto flex w-full max-w-6xl gap-2 overflow-x-auto px-4 pt-4 md:px-8">

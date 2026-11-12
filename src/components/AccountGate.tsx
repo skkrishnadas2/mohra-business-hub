@@ -1,117 +1,283 @@
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { isCloudConfigured, supabase } from "@/integrations/supabase/client";
-import { listCloudShops } from "@/lib/cloud.functions";
-import { createOnlineShop, joinOnlineShop, openCloudShop } from "@/lib/cloud-sync";
-import { actionError } from "@/lib/store";
-import { BigButton, Label, TextInput } from "./kit";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
+import { supabase, isCloudConfigured } from "@/integrations/supabase/client";
+import { getStoreAccess, listCloudShops } from "@/lib/cloud.functions";
+import { createOnlineShop, openCloudShop } from "@/lib/cloud-sync";
+import { actionError, useStore } from "@/lib/store";
+import { STORE_BRAND } from "@/lib/store-brand";
+import { StoreBrand, Proprietor } from "./StoreBrand";
 import { Setup } from "./Setup";
 
-type Phase = "checking" | "signin" | "loading-shop" | "setup";
-
-/** Before any local setup: sign the owner in and load an existing online shop instead of a new setup. */
+type Phase = "checking" | "signin" | "setup" | "loading" | "recover" | "reset";
 export function AccountGate() {
-  const [phase, setPhase] = useState<Phase>(isCloudConfigured ? "checking" : "setup");
-  const [online, setOnline] = useState(isCloudConfigured);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [phase, setPhase] = useState<Phase>("checking");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [join, setJoin] = useState({ shopId: "", joinCode: "" });
-  const [showJoin, setShowJoin] = useState(false);
-
-  const loadShop = async () => {
-    setPhase("loading-shop");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const recovering = useRef(false);
+  const loadStore = async () => {
+    if (recovering.current) return;
+    setPhase("loading");
     try {
-      const shops = await listCloudShops();
-      const shop = shops.find((s) => s.role === "owner") ?? shops[0];
-      if (shop) { await openCloudShop(shop.shopId); return; }
-      setPhase("setup");
-    } catch (error) {
-      toast.error(actionError(error));
+      const stores = await listCloudShops();
+      const shop = stores[0];
+      if (shop) {
+        await openCloudShop(shop.shopId);
+        return;
+      }
+      const access = await getStoreAccess();
+      if (access.canSetup) {
+        if (useStore.getState().setupDone) {
+          await createOnlineShop();
+          return;
+        }
+        setPhase("setup");
+        return;
+      }
+      throw new Error("এই দোকানে আপনার প্রবেশাধিকার নেই। মালিকের সঙ্গে যোগাযোগ করুন।");
+    } catch (e) {
+      setError(actionError(e));
       setPhase("signin");
     }
   };
-
   useEffect(() => {
-    if (!isCloudConfigured) return;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (data.session) void loadShop(); else setPhase("signin");
+    if (!isCloudConfigured) {
+      setError("দোকানের সার্ভার সংযোগ প্রস্তুত নেই। অনুগ্রহ করে পরে চেষ্টা করুন।");
+      setPhase("signin");
+      return;
+    }
+    recovering.current = window.location.hash.includes("type=recovery");
+    if (recovering.current) setPhase("reset");
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        recovering.current = true;
+        setPhase("reset");
+      }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void supabase.auth.getSession().then(({ data }) => {
+      if (recovering.current) return;
+      if (data.session) void loadStore();
+      else setPhase("signin");
+    });
+    return () => data.subscription.unsubscribe();
   }, []);
-
-  const authenticate = async () => {
+  const submit = async () => {
+    if (busy || !isCloudConfigured) return;
     setBusy(true);
+    setError("");
+    setNotice("");
     try {
-      if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(), password, options: { emailRedirectTo: window.location.origin },
+      if (phase === "recover") {
+        if (!email.includes("@")) throw new Error("প্রথমে আপনার ইমেইল লিখুন।");
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: STORE_BRAND.url + "/",
         });
         if (error) throw error;
-        if (!data.session) { toast.success("ইমেইলে একটি লিংক পাঠানো হয়েছে। লিংকে ক্লিক করে ফিরে এসে সাইন ইন করুন।"); setMode("signin"); return; }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-        if (error) throw new Error("ইমেইল বা পাসওয়ার্ড সঠিক নয়");
+        setNotice("অ্যাকাউন্টটি থাকলে পাসওয়ার্ড পুনরুদ্ধারের নির্দেশনা ইমেইলে পাবেন।");
+        return;
       }
+      if (phase === "reset") {
+        if (password.length < 8 || password !== confirm)
+          throw new Error("কমপক্ষে ৮ অক্ষরের একই পাসওয়ার্ড দুবার লিখুন।");
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        recovering.current = false;
+        setPassword("");
+        setConfirm("");
+        setNotice("পাসওয়ার্ড সংরক্ষিত হয়েছে।");
+        await loadStore();
+        return;
+      }
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) throw new Error("ইমেইল বা পাসওয়ার্ড সঠিক নয়।");
       setPassword("");
-      await loadShop();
-    } catch (error) { toast.error(actionError(error)); }
-    finally { setBusy(false); }
+      await loadStore();
+    } catch (e) {
+      setError(actionError(e));
+    } finally {
+      setBusy(false);
+    }
   };
-
-  const joinShop = async () => {
-    setBusy(true);
-    try { await joinOnlineShop(join.shopId, join.joinCode); }
-    catch (error) { toast.error(actionError(error)); }
-    finally { setBusy(false); }
-  };
-
   const afterSetup = () => {
-    if (!online) return;
-    void createOnlineShop()
-      .then(() => toast.success("দোকান অনলাইনে সেভ হয়েছে — যেকোনো ডিভাইসে সাইন ইন করলেই পাবেন"))
-      .catch(() => toast.error("অনলাইনে সেভ হয়নি। Cloud সিঙ্ক পাতা থেকে আবার চেষ্টা করুন।"));
+    setPhase("loading");
+    void createOnlineShop().catch((e) => {
+      setError(actionError(e));
+      setPhase("signin");
+    });
   };
-
   if (phase === "setup") return <Setup onComplete={afterSetup} />;
-  if (phase !== "signin") return <div className="flex min-h-screen items-center justify-center text-muted-foreground">দোকান খোলা হচ্ছে…</div>;
-
+  const loading = phase === "checking" || phase === "loading";
+  const recovery = phase === "recover";
+  const reset = phase === "reset";
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-primary-foreground">ম</div>
-          <h1 className="text-xl font-semibold">মালিকের অ্যাকাউন্ট</h1>
-          <p className="mt-1 text-sm text-muted-foreground">একবার সেটআপ করুন — PC বা মোবাইল, যেকোনো ডিভাইসে এই ইমেইলে ঢুকলেই একই দোকান পাবেন।</p>
-        </div>
-        <div className="space-y-3 rounded-lg border bg-card p-4 shadow-soft sm:p-5">
-          <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
-            <button type="button" onClick={() => setMode("signin")} className={`min-h-10 rounded-md text-sm ${mode === "signin" ? "bg-card font-semibold" : "text-muted-foreground"}`}>সাইন ইন</button>
-            <button type="button" onClick={() => setMode("signup")} className={`min-h-10 rounded-md text-sm ${mode === "signup" ? "bg-card font-semibold" : "text-muted-foreground"}`}>নতুন অ্যাকাউন্ট</button>
+    <div className="store-auth">
+      <section className="store-auth-story" aria-label="দোকানের পরিচয়">
+        <StoreBrand />
+        <div className="store-auth-message">
+          <span className="store-eyebrow">YOUR EVERYDAY BUSINESS, CONNECTED</span>
+          <h1>
+            প্রতিটি হিসাবেই
+            <br />
+            <span>স্বচ্ছতা।</span>
+          </h1>
+          <p>
+            বিক্রি, ব্যালেন্স আর খাতা—
+            <br />
+            দোকানের সব কাজ এক জায়গায়।
+          </p>
+          <div className="store-auth-pills">
+            <span>রিটেইল ও POS</span>
+            <span>টেলিকম ও MFS</span>
+            <span>হিসাব ও স্টক</span>
           </div>
-          <div><Label htmlFor="gate-email">ইমেইল</Label><TextInput id="gate-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></div>
-          <div><Label htmlFor="gate-password">পাসওয়ার্ড</Label><TextInput id="gate-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === "signup" ? "new-password" : "current-password"} /></div>
-          <BigButton disabled={busy || !email.includes("@") || password.length < 6} onClick={() => void authenticate()}>
-            {busy ? "অপেক্ষা করুন…" : mode === "signup" ? "অ্যাকাউন্ট তৈরি করুন" : "সাইন ইন করুন"}
-          </BigButton>
-          <p className="text-xs text-muted-foreground">পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের দিন।</p>
         </div>
-        <div className="mt-4 rounded-lg border bg-card p-4">
-          <button type="button" onClick={() => setShowJoin((v) => !v)} className="text-sm font-medium text-primary">ক্যাশিয়ার? দোকানে যোগ দিন</button>
-          {showJoin && (
-            <div className="mt-3 space-y-3">
-              <p className="text-xs text-muted-foreground">আগে নিজের ইমেইলে সাইন ইন করুন, তারপর মালিকের দেওয়া দোকানের ID ও কোড দিন।</p>
-              <div><Label htmlFor="gate-shop">দোকানের ID</Label><TextInput id="gate-shop" value={join.shopId} onChange={(e) => setJoin({ ...join, shopId: e.target.value.trim() })} /></div>
-              <div><Label htmlFor="gate-code">যোগ দেওয়ার কোড</Label><TextInput id="gate-code" value={join.joinCode} onChange={(e) => setJoin({ ...join, joinCode: e.target.value.trim() })} /></div>
-              <BigButton disabled={busy || !join.shopId || !join.joinCode} onClick={() => void joinShop()}>যোগ দিন</BigButton>
+        <div className="store-proprietor">
+          <span className="store-proprietor-label">PROPRIETOR</span>
+          <div>{STORE_BRAND.proprietor}</div>
+          <span className="store-proprietor-rule" />
+        </div>
+        <span className="store-auth-orbit" aria-hidden="true" />
+      </section>
+      <main className="store-auth-main">
+        <div className="store-auth-form">
+          <div className="store-auth-badge">
+            <LockKeyhole size={16} /> দোকানের নিজস্ব কর্মক্ষেত্র
+          </div>
+          <h2>
+            {loading
+              ? "দোকান খোলা হচ্ছে"
+              : reset
+                ? "নতুন পাসওয়ার্ড"
+                : recovery
+                  ? "পাসওয়ার্ড পুনরুদ্ধার"
+                  : "স্বাগতম।"}
+          </h2>
+          <p className="store-auth-sub">
+            {loading
+              ? "আপনার পরিচয় ও অনুমতি যাচাই করছি।"
+              : reset
+                ? "আপনার অ্যাকাউন্টের জন্য একটি নতুন পাসওয়ার্ড দিন।"
+                : recovery
+                  ? "আপনার অ্যাকাউন্টের ইমেইল লিখুন।"
+                  : "আপনার অ্যাকাউন্টে প্রবেশ করুন।"}
+          </p>
+          {loading ? (
+            <div className="store-auth-loading" role="status">
+              <span /> সংযোগ হচ্ছে…
             </div>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void submit();
+              }}
+              className="store-login-fields"
+            >
+              {!reset && (
+                <label htmlFor="store-email">
+                  ইমেইল
+                  <input
+                    id="store-email"
+                    type="email"
+                    autoComplete="username"
+                    placeholder="আপনার ইমেইল"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={busy}
+                  />
+                </label>
+              )}
+              {!recovery && (
+                <>
+                  <label htmlFor="store-password">
+                    {reset ? "নতুন পাসওয়ার্ড" : "পাসওয়ার্ড"}
+                    <span className="store-password-field">
+                      <input
+                        id="store-password"
+                        type={show ? "text" : "password"}
+                        autoComplete={reset ? "new-password" : "current-password"}
+                        placeholder="আপনার পাসওয়ার্ড"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        disabled={busy}
+                      />
+                      <button
+                        type="button"
+                        aria-label={show ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"}
+                        onClick={() => setShow(!show)}
+                      >
+                        {show ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </span>
+                  </label>
+                  {reset && (
+                    <label htmlFor="store-password-confirm">
+                      পাসওয়ার্ড আবার লিখুন
+                      <input
+                        id="store-password-confirm"
+                        type="password"
+                        autoComplete="new-password"
+                        value={confirm}
+                        onChange={(e) => setConfirm(e.target.value)}
+                        required
+                      />
+                    </label>
+                  )}
+                </>
+              )}
+              {error && (
+                <p role="alert" className="store-auth-error">
+                  {error}
+                </p>
+              )}
+              {notice && (
+                <p role="status" className="store-auth-notice">
+                  {notice}
+                </p>
+              )}
+              <button className="store-login-submit" disabled={busy || !isCloudConfigured}>
+                {busy
+                  ? "অপেক্ষা করুন…"
+                  : reset
+                    ? "পাসওয়ার্ড সংরক্ষণ"
+                    : recovery
+                      ? "নির্দেশনা পাঠান"
+                      : "প্রবেশ করুন"}
+                {!busy && <ArrowRight size={19} />}
+              </button>
+              {!reset && (
+                <button
+                  type="button"
+                  className="store-forgot"
+                  onClick={() => {
+                    setPhase(recovery ? "signin" : "recover");
+                    setError("");
+                    setNotice("");
+                  }}
+                >
+                  {recovery ? "লগইনে ফিরে যান" : "পাসওয়ার্ড ভুলে গেছেন?"}
+                </button>
+              )}
+            </form>
           )}
+          <div className="store-auth-trust">
+            <ShieldCheck size={15} />
+            <span>মালিক ও অনুমোদিত কর্মীদের জন্য সংরক্ষিত</span>
+          </div>
         </div>
-        <button type="button" onClick={() => { setOnline(false); setPhase("setup"); }} className="mt-4 w-full text-center text-xs text-muted-foreground underline">
-          ইন্টারনেট ছাড়া শুধু এই ডিভাইসে চালান
-        </button>
-      </div>
+        <footer className="store-auth-footer">
+          <span>
+            © {new Date().getFullYear()} {STORE_BRAND.name}
+          </span>
+          <Proprietor />
+        </footer>
+      </main>
     </div>
   );
 }

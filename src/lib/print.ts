@@ -1,3 +1,4 @@
+import { STORE_BRAND } from "./store-brand";
 import JsBarcode from "jsbarcode";
 import type { Sale } from "./store";
 import { cipherEncode, taka } from "./rules";
@@ -33,7 +34,7 @@ export function printReceipt(
     )
     .join("");
   openPrint(
-    `<div class="c b" style="font-size:14px">${escapeHtml(shop)}</div><div class="c">${new Date(sale.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" })}</div><div class="c">মেমো #${escapeHtml(sale.id.slice(0, 8).toUpperCase())}${sale.voidedAt ? " — বাতিল" : ""}</div><hr>${lines}<hr><div class="r b"><span>মোট</span><span>${taka(sale.total)}</span></div>${pays}<hr><div class="c">ধন্যবাদ, আবার আসবেন!</div>`,
+    `<div class="c b" style="font-size:14px">${escapeHtml(STORE_BRAND.fullName)}</div><div class="c" style="font-size:10px;margin:4px 0">Proprietor · ${STORE_BRAND.proprietor}</div><div class="c">${new Date(sale.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" })}</div><div class="c">মেমো #${escapeHtml(sale.id.slice(0, 8).toUpperCase())}${sale.voidedAt ? " — বাতিল" : ""}</div><hr>${lines}<hr><div class="r b"><span>মোট</span><span>${taka(sale.total)}</span></div>${pays}<hr><div class="c">ধন্যবাদ, আবার আসবেন!</div>`,
     widthMm,
   );
 }
