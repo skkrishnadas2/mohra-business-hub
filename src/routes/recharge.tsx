@@ -203,7 +203,7 @@ export function Recharge() {
                     আগে অ্যাকাউন্টস থেকে রিচার্জ সিম যোগ করুন।
                   </p>
                 )}
-                {savedSim && !sim && (
+                {savedSim && !sims.some((s) => s.id === savedSim) && (
                   <p role="alert" className="mt-2 text-sm text-destructive">
                     আগের সিমটি এখন ব্যবহারযোগ্য নয়। একটি সিম বেছে নিন।
                   </p>
@@ -274,6 +274,19 @@ export function Recharge() {
                     </select>
                   ) : null}
                 </div>
+              )}
+              {amt.trim() && !Number.isFinite(amount) && (
+                <p role="alert" className="text-sm text-destructive">
+                  সঠিক টাকার পরিমাণ লিখুন—সর্বোচ্চ দুই ঘর দশমিক।
+                </p>
+              )}
+              {pending > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  আগের এন্ট্রির নিশ্চিতকরণ বাকি।{" "}
+                  <a href="/cloud" className="text-primary underline">
+                    সংযোগের অবস্থা দেখুন
+                  </a>
+                </p>
               )}
               {selected && amount > selected.balance && (
                 <p role="alert" className="text-sm text-destructive">

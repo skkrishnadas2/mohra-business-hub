@@ -14,7 +14,9 @@ export function captureRecovery() {
   let saved = 0;
   try {
     saved = Number(sessionStorage.getItem(KEY));
-  } catch {}
+  } catch {
+    /* Recovery remains in memory when session storage is unavailable. */
+  }
   if (recovery || invalid || (saved > 0 && Date.now() - saved < MAX_AGE)) beginRecovery(invalid);
 }
 export function beginRecovery(invalid = false) {
@@ -22,14 +24,18 @@ export function beginRecovery(invalid = false) {
   if (typeof window !== "undefined")
     try {
       sessionStorage.setItem(KEY, String(Date.now()));
-    } catch {}
+    } catch {
+      /* Recovery remains in memory when session storage is unavailable. */
+    }
 }
 export function finishRecovery() {
   useRecovery.setState({ active: false, invalid: false });
   if (typeof window !== "undefined")
     try {
       sessionStorage.removeItem(KEY);
-    } catch {}
+    } catch {
+      /* Recovery remains in memory when session storage is unavailable. */
+    }
 }
 export function authMessage(error: unknown) {
   const message =
@@ -38,6 +44,12 @@ export function authMessage(error: unknown) {
       : typeof error === "object" && error && "message" in error
         ? String(error.message)
         : "";
+  if (/invalid.login.credentials|invalid_credentials/i.test(message))
+    return "ইমেইল বা পাসওয়ার্ড সঠিক নয়।";
+  if (/rate.limit|too.many.requests|over.*rate/i.test(message))
+    return "অল্প সময়ে অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।";
+  if (/email.not.confirmed/i.test(message))
+    return "এই ইমেইলের যাচাই সম্পন্ন হয়নি। ইমেইলের নির্দেশনা দেখুন।";
   if (/fetch|network|abort|timeout|সময়/i.test(message))
     return "সার্ভারে সংযোগ হয়নি। ইন্টারনেট চালু রেখে আবার চেষ্টা করুন।";
   if (/expired|invalid.*token|session.*missing/i.test(message))

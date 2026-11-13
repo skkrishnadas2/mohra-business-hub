@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { printLabelBatch, type LabelLayout } from "@/lib/print";
-import { Panel, act } from "./BusinessWorkspace";
+import { toast } from "sonner";
+import { actionError } from "@/lib/store";
+import { Panel } from "./BusinessWorkspace";
 import { BigButton, NumInput } from "./kit";
 export function BulkLabels() {
   const s = useStore();
@@ -44,26 +46,27 @@ export function BulkLabels() {
         ))}
         <BigButton
           disabled={!selected.length}
-          onClick={() =>
-            act(
-              () =>
-                printLabelBatch(
-                  selected.map((p) => ({
-                    name: p.name,
-                    price: p.price,
-                    cost: 0,
-                    code: p.barcodes[0] ?? "",
-                    count: Number(counts[p.id]),
-                  })),
-                  false,
-                  s.shopName,
-                  s.cipherKey,
-                  layout,
-                  price,
-                ),
-              "প্রিন্ট ডায়ালগ খুলেছে",
-            )
-          }
+          onClick={() => {
+            try {
+              printLabelBatch(
+                selected.map((p) => ({
+                  name: p.name,
+                  price: p.price,
+                  cost: 0,
+                  code: p.barcodes[0] ?? "",
+                  count: Number(counts[p.id]),
+                })),
+                false,
+                s.shopName,
+                s.cipherKey,
+                layout,
+                price,
+              );
+              toast.success("প্রিন্ট ডায়ালগ খুলেছে");
+            } catch (error) {
+              toast.error(actionError(error));
+            }
+          }}
         >
           নির্বাচিত লেবেল প্রিন্ট / PDF
         </BigButton>

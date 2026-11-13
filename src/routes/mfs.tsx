@@ -198,6 +198,29 @@ export function Mfs() {
                   </div>
                 )}
               </div>
+              {!cash && (
+                <p role="alert" className="text-sm text-destructive">
+                  ক্যাশ অ্যাকাউন্ট ব্যবহারযোগ্য নয়। মালিককে জানান।
+                </p>
+              )}
+              {amt.trim() && !Number.isFinite(amount) && (
+                <p role="alert" className="text-sm text-destructive">
+                  সঠিক টাকার পরিমাণ লিখুন—সর্বোচ্চ দুই ঘর দশমিক।
+                </p>
+              )}
+              {personal && fee.trim() && !Number.isFinite(charge) && (
+                <p role="alert" className="text-sm text-destructive">
+                  সার্ভিস চার্জের সঠিক পরিমাণ লিখুন—সর্বোচ্চ দুই ঘর দশমিক।
+                </p>
+              )}
+              {pending > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  আগের এন্ট্রির নিশ্চিতকরণ বাকি।{" "}
+                  <a href="/cloud" className="text-primary underline">
+                    সংযোগের অবস্থা দেখুন
+                  </a>
+                </p>
+              )}
               {walletDebit && (
                 <p role="alert" className="text-sm text-destructive">
                   নির্বাচিত ওয়ালেটে পর্যাপ্ত ব্যালেন্স নেই।

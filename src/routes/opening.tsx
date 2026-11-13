@@ -3,7 +3,7 @@ import { useStore } from "@/lib/store";
 import { financialParties } from "@/lib/business";
 import { Page } from "@/components/kit";
 export const Route = createFileRoute("/opening")({ component: Opening });
-function Opening() {
+export function Opening() {
   const s = useStore();
   if (s.role !== "owner")
     return (
@@ -17,7 +17,7 @@ function Opening() {
       title: "কোথায় কত টাকা আছে",
       to: "/accounts" as const,
       button: "অ্যাকাউন্ট ও টাকা বসান",
-      text: "ক্যাশ, প্রতিটি ব্যাংক, বিকাশ/নগদ পার্সোনাল বা এজেন্ট এবং রিচার্জ সিম আলাদা করে যোগ করুন। তারপর অ্যাকাউন্ট খুলে ‘শুরুর ব্যালেন্স / সমন্বয়’-এ এখনকার আসল টাকা বসান।",
+      text: "ক্যাশে এখন কত টাকা আছে লিখুন। প্রতিটি ব্যাংক, বিকাশ/নগদের অ্যাকাউন্ট ও রিচার্জ সিম আলাদা করে যোগ করুন। নতুন অ্যাকাউন্টে শুরুতেই টাকা বসাতে পারবেন; আগে যোগ করা থাকলে সেটি খুলে ‘শুরুর ব্যালেন্স / সমন্বয়’ ব্যবহার করুন।",
       status: `${s.accounts.filter((a) => !a.inactive).length}টি চালু অ্যাকাউন্ট`,
     },
     {
@@ -42,7 +42,7 @@ function Opening() {
       to: "/closing" as const,
       button: "শিফট শুরু করুন",
       text: "অ্যাকাউন্টগুলোর টাকা ও পণ্যের সংখ্যা আরেকবার মিলিয়ে নিন। তারপর শিফট খুলে কাউন্টারে বিক্রি, MFS ও রিচার্জ এন্ট্রি দিন।",
-      status: "দৈনিক কাজের প্রস্তুতি",
+      status: "বিক্রি ও টাকার লেনদেনের আগে",
     },
   ];
   return (

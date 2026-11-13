@@ -194,7 +194,7 @@ describe("repair and closing", () => {
     useStore.getState().addRepair({ customer: "Rahim", phone: "", device: "Phone", problem: "Display", estimate: 1000, advance: 200 });
     const repair = useStore.getState().repairs[0]!;
     useStore.getState().setRepairStatus(repair.id, "delivered");
-    useStore.getState().setRepairStatus(repair.id, "ready");
+    expect(() => useStore.getState().setRepairStatus(repair.id, "ready")).toThrow("ডেলিভারি সম্পন্ন");
     useStore.getState().setRepairStatus(repair.id, "delivered");
     expect(bal("cash")).toBe(11000);
     expect(useStore.getState().txns.filter((t) => t.type === "repair_bill")).toHaveLength(1);

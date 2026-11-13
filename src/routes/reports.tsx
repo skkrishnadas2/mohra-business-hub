@@ -1,15 +1,16 @@
+import { transactionLabel } from "@/lib/transaction-label";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStore, shopSnapshot } from "@/lib/store";
 import { Page, Money } from "@/components/kit";
 import { Panel } from "@/components/BusinessWorkspace";
 import { downloadFile, exportCsv } from "@/lib/export";
-import { allParties, partyBalance } from "@/lib/business";
+import { financialParties, partyBalance } from "@/lib/business";
 export const Route = createFileRoute("/reports")({
   head: () => ({ meta: [{ title: "রিপোর্ট — মোহরা" }] }),
   component: Reports,
 });
-function Reports() {
+export function Reports() {
   const s = useStore();
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" });
   const [from, setFrom] = useState(today);
@@ -22,9 +23,11 @@ function Reports() {
         <p>শুধু মালিকের জন্য।</p>
       </Page>
     );
+  const dateError = !!from && !!to && from > to;
   const rows = s.txns.filter((t) => {
     const day = new Date(t.at).toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" });
     return (
+      !dateError &&
       (!from || day >= from) &&
       (!to || day <= to) &&
       (!account || t.moves.some((m) => m.accountId === account)) &&
@@ -34,7 +37,7 @@ function Reports() {
   const profit = rows.reduce((n, t) => n + t.profit, 0);
   const expense = rows.filter((t) => t.type === "expense").reduce((n, t) => n + t.amount, 0);
   const stock = s.products.reduce((n, p) => n + p.stock * p.cost, 0);
-  const parties = allParties(s);
+  const parties = financialParties(s);
   const balances = parties.map((p) => ({ ...p, ...partyBalance(s, p.id) }));
   return (
     <Page
@@ -78,26 +81,34 @@ function Reports() {
         ))}
       </div>
       <Panel title="লেনদেনের স্টেটমেন্ট">
-        <button
-          className="rounded-lg border px-4 py-2 text-sm"
-          onClick={() =>
-            exportCsv(
-              "mohra-journal",
-              ["ভাউচার", "তারিখ", "হিসাব", "ডেবিট", "ক্রেডিট"],
-              rows.flatMap((t) =>
-                (t.journal ?? []).map((l) => [
-                  t.id,
-                  new Date(t.at).toLocaleDateString("bn-BD"),
-                  l.account,
-                  l.debit,
-                  l.credit,
-                ]),
-              ),
-            )
-          }
-        >
-          ডেবিট–ক্রেডিট জার্নাল CSV
-        </button>
+        <details>
+          <summary className="cursor-pointer text-sm text-muted-foreground">
+            বিস্তারিত হিসাবের এক্সপোর্ট
+          </summary>
+          <div className="mt-3">
+            {" "}
+            <button
+              className="rounded-lg border px-4 py-2 text-sm"
+              onClick={() =>
+                exportCsv(
+                  "mohra-journal",
+                  ["ভাউচার", "তারিখ", "হিসাব", "ডেবিট", "ক্রেডিট"],
+                  rows.flatMap((t) =>
+                    (t.journal ?? []).map((l) => [
+                      t.id,
+                      new Date(t.at).toLocaleDateString("bn-BD", { timeZone: "Asia/Dhaka" }),
+                      l.account,
+                      l.debit,
+                      l.credit,
+                    ]),
+                  ),
+                )
+              }
+            >
+              ডেবিট–ক্রেডিট জার্নাল CSV
+            </button>
+          </div>
+        </details>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className="text-xs text-muted-foreground">
             শুরু
@@ -140,7 +151,9 @@ function Reports() {
           >
             <option value="">সব লেনদেন</option>
             {[...new Set(s.txns.map((t) => t.type))].map((t) => (
-              <option key={t}>{t}</option>
+              <option key={t} value={t}>
+                {transactionLabel(t)}
+              </option>
             ))}
           </select>
         </div>
@@ -149,20 +162,42 @@ function Reports() {
           onClick={() =>
             exportCsv(
               "mohra-transactions",
-              ["ভাউচার", "তারিখ", "ধরন", "বিবরণ", "পরিমাণ", "লাভ", "কর্মী", "কর্মী ID", "শিফট", "অনুমোদন", "অনুরোধকারী"],
+              [
+                "ভাউচার",
+                "তারিখ",
+                "ধরন",
+                "বিবরণ",
+                "পরিমাণ",
+                "লাভ",
+                "কর্মী",
+                "কর্মী ID",
+                "শিফট",
+                "অনুমোদন",
+                "অনুরোধকারী",
+              ],
               rows.map((t) => [
                 t.id,
                 new Date(t.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" }),
-                t.type,
+                transactionLabel(t.type),
                 t.title,
                 t.amount,
-                t.profit, t.actor?.name??"পুরনো রেকর্ড", t.actor?.userId??"", t.shiftId??"", t.approvalId??"", t.requestedBy?.name??"",
+                t.profit,
+                t.actor?.name ?? "পুরনো রেকর্ড",
+                t.actor?.userId ?? "",
+                t.shiftId ?? "",
+                t.approvalId ?? "",
+                t.requestedBy?.name ?? "",
               ]),
             )
           }
         >
           CSV ডাউনলোড
         </button>
+        {dateError && (
+          <p role="alert" className="text-sm text-destructive">
+            শুরুর তারিখ শেষের তারিখের পরে হতে পারে না। তারিখ ঠিক করুন।
+          </p>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
@@ -183,7 +218,8 @@ function Reports() {
                   <td className="py-3 pr-3">
                     {t.title}
                     <div className="text-xs text-muted-foreground">
-                      {t.type} · {t.actor?.name ?? (t.by === "owner" ? "মালিক" : "ক্যাশিয়ার")}
+                      {transactionLabel(t.type)} ·{" "}
+                      {t.actor?.name ?? (t.by === "owner" ? "মালিক" : "ক্যাশিয়ার")}
                       {t.shiftId && <span> · শিফট {t.shiftId.slice(-8)}</span>}
                       {t.requestedBy && <span> · অনুরোধ: {t.requestedBy.name}</span>}
                     </div>
@@ -198,7 +234,7 @@ function Reports() {
               ))}
             </tbody>
           </table>
-          {!rows.length && (
+          {!rows.length && !dateError && (
             <p className="py-8 text-center text-sm text-muted-foreground">
               এই সময়ে কোনো লেনদেন নেই।
             </p>

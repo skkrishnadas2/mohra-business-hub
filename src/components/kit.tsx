@@ -146,7 +146,8 @@ export function NumInput({
         onChange(
           e.target.value
             .replace(/[০-৯]/g, (d) => String("০১২৩৪৫৬৭৮৯".indexOf(d)))
-            .replace(/[^\d.]/g, ""),
+            .replace(/−/g, "-")
+            .replace(/[^\d.-]/g, ""),
         )
       }
       className={cn(

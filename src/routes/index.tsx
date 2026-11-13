@@ -1,3 +1,4 @@
+import { activeShift } from "@/lib/operations";
 import { storePreviewMeta } from "@/lib/brand-preview";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -35,8 +36,41 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-function Dashboard() {
-  const { accounts, txns, sales, products, can, repairs, role, operations } = useStore();
+export function Dashboard() {
+  const state = useStore();
+  const { products, can, repairs, role, operations } = state;
+  const accounts = state.accounts.filter((a) => role === "owner" || a.cashierAllowed !== false);
+  const ids = new Set(accounts.map((a) => a.id));
+  const showBank = can("viewBank"),
+    showProfit = can("viewProfit");
+  const txns = state.txns.filter(
+    (t) =>
+      t.moves.every((m) => ids.has(m.accountId)) &&
+      (showBank ||
+        !t.moves.some((m) => accounts.some((a) => a.id === m.accountId && a.kind === "bank"))),
+  );
+  const sales = state.sales.filter((s) =>
+    s.payments.every((p) => p.accountId === "due" || ids.has(p.accountId)),
+  );
+  const businessTxns = txns.filter(
+    (t) =>
+      t.amount !== 0 &&
+      ![
+        "opening",
+        "adjust",
+        "stock_adjust",
+        "party_opening",
+        "party_offset",
+        "account_settings",
+        "backup_restored",
+        "staff_access",
+        "shift_closed",
+        "shift_variance",
+        "close_adjust",
+        "repair_update",
+      ].includes(t.type),
+  );
+  const shiftOpen = !!activeShift(state);
   const sum = (k: string) =>
     accounts.filter((a) => a.kind === k).reduce((s, a) => s + a.balance, 0);
   const cash = sum("cash"),
@@ -44,10 +78,8 @@ function Dashboard() {
     mfs = sum("mfs_agent") + sum("mfs_personal"),
     rc = sum("recharge");
   const p = todayProfit(txns);
-  const showBank = can("viewBank"),
-    showProfit = can("viewProfit");
   const low = products.filter((x) => x.stock <= x.lowStock);
-  const todays = txns.filter((t) => sinceToday(t.at));
+  const todays = businessTxns.filter((t) => sinceToday(t.at));
   const todaySales = sales.filter((s) => !s.voidedAt && sinceToday(s.at));
   const salesTotal = todaySales.reduce((sum, sale) => sum + sale.total, 0);
   const openRepairs = repairs.filter(
@@ -55,18 +87,24 @@ function Dashboard() {
   ).length;
   const visibleFund = cash + (showBank ? bank : 0) + mfs + rc;
 
+  const dhakaNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
+  const dayStart =
+    Date.UTC(dhakaNow.getUTCFullYear(), dhakaNow.getUTCMonth(), dhakaNow.getUTCDate()) -
+    6 * 60 * 60 * 1000;
   const week = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() - (6 - index));
-    const start = date.getTime();
+    const start = dayStart - (6 - index) * 86_400_000;
+    const date = new Date(start);
     const end = start + 86_400_000;
-    const total = txns
-      .filter((t) => t.at >= start && t.at < end)
-      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    const total = sales
+      .filter((sale) => !sale.voidedAt && sale.at >= start && sale.at < end)
+      .reduce((sum, sale) => sum + sale.total, 0);
     return {
-      label: date.toLocaleDateString("bn-BD", { weekday: "short" }),
-      fullDate: date.toLocaleDateString("bn-BD", { day: "numeric", month: "short" }),
+      label: date.toLocaleDateString("bn-BD", { weekday: "short", timeZone: "Asia/Dhaka" }),
+      fullDate: date.toLocaleDateString("bn-BD", {
+        day: "numeric",
+        month: "short",
+        timeZone: "Asia/Dhaka",
+      }),
       total,
       today: index === 6,
     };
@@ -92,15 +130,20 @@ function Dashboard() {
       icon: Banknote,
       money: true,
       hidden: false,
-      note: showBank ? "সব হিসাব মিলিয়ে" : "ব্যাংক বাদ দিয়ে",
+      note:
+        role !== "owner"
+          ? "আপনার অনুমতিপ্রাপ্ত হিসাব"
+          : showBank
+            ? "সব হিসাব মিলিয়ে"
+            : "ব্যাংক বাদ দিয়ে",
     },
     {
-      label: "আজকের বিক্রি",
+      label: "আজ পণ্য বিক্রি",
       value: salesTotal,
       icon: ReceiptText,
       money: true,
       hidden: false,
-      note: `${bn(todaySales.length)}টি মেমো`,
+      note: `${bn(todaySales.length)}টি মেমো · ফেরতের আগে`,
     },
     {
       label: "আজকের নেট লাভ",
@@ -108,7 +151,7 @@ function Dashboard() {
       icon: TrendingUp,
       money: true,
       hidden: !showProfit,
-      note: "সব আয়ের উৎস",
+      note: "আয় ও খরচ মিলিয়ে",
       accent: true,
     },
     {
@@ -117,7 +160,7 @@ function Dashboard() {
       icon: Activity,
       money: false,
       hidden: false,
-      note: "সব সেবা মিলিয়ে",
+      note: "টাকা ও সেবার এন্ট্রি",
     },
   ];
 
@@ -125,6 +168,7 @@ function Dashboard() {
     <Page
       title="আজকের হিসাব"
       sub={new Date().toLocaleDateString("bn-BD", {
+        timeZone: "Asia/Dhaka",
         weekday: "long",
         day: "numeric",
         month: "long",
@@ -134,31 +178,34 @@ function Dashboard() {
           to="/closing"
           className="inline-flex min-h-11 items-center gap-2 rounded-lg border bg-card px-3 text-sm font-medium transition-colors hover:bg-secondary"
         >
-          <MoonStar className="h-4 w-4" /> দিন শেষ
+          <MoonStar className="h-4 w-4" /> {shiftOpen ? "দিন শেষ" : "দিন শুরু"}
         </Link>
       }
     >
       <div className="space-y-5">
-        {role === "owner" && !txns.length && !products.length && !operations?.shifts.length && (
-          <section className="rounded-xl border bg-card p-4 text-sm">
-            <h2 className="font-semibold">আপনার দোকানের কর্মক্ষেত্র প্রস্তুত</h2>
-            <p className="mt-2 text-muted-foreground">
-              হিসাব এখন খালি। প্রথমে আসল ক্যাশ, ব্যাংক ও ওয়ালেট ব্যালেন্স এবং বর্তমান পণ্য/সিমের
-              স্টক যোগ করুন; তারপর শিফট শুরু করুন।
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Link
-                to="/opening"
-                className="rounded-lg bg-primary px-4 py-3 text-primary-foreground"
-              >
-                ধাপে ধাপে হিসাব বসান
-              </Link>
-              <Link to="/products" className="rounded-lg border px-4 py-3">
-                পণ্য ও সিমের স্টক
-              </Link>
-            </div>
-          </section>
-        )}
+        {role === "owner" &&
+          !businessTxns.length &&
+          !products.length &&
+          !operations?.shifts.length && (
+            <section className="rounded-xl border bg-card p-4 text-sm">
+              <h2 className="font-semibold">আপনার দোকানের কর্মক্ষেত্র প্রস্তুত</h2>
+              <p className="mt-2 text-muted-foreground">
+                হিসাব এখন খালি। প্রথমে আসল ক্যাশ, ব্যাংক ও ওয়ালেট ব্যালেন্স এবং বর্তমান পণ্য/সিমের
+                স্টক যোগ করুন; তারপর শিফট শুরু করুন।
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link
+                  to="/opening"
+                  className="rounded-lg bg-primary px-4 py-3 text-primary-foreground"
+                >
+                  ধাপে ধাপে হিসাব বসান
+                </Link>
+                <Link to="/products" className="rounded-lg border px-4 py-3">
+                  পণ্য ও সিমের স্টক
+                </Link>
+              </div>
+            </section>
+          )}
         <section
           aria-label="আজকের গুরুত্বপূর্ণ সংখ্যা"
           className="grid grid-cols-2 gap-3 lg:grid-cols-4"
@@ -203,8 +250,8 @@ function Dashboard() {
               {
                 to: "/services",
                 icon: Wrench,
-                label: "রিপেয়ার",
-                detail: `${bn(openRepairs)}টি চলমান`,
+                label: "সার্ভিস ও রিপেয়ার",
+                detail: `দ্রুত সেবা · ${bn(openRepairs)}টি রিপেয়ার`,
               },
             ].map((q) => (
               <Link
@@ -234,8 +281,10 @@ function Dashboard() {
           <Tile className="min-w-0 p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold">গত ৭ দিনের লেনদেন</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">দৈনিক লেনদেনের পরিমাণ</p>
+                <h2 className="text-sm font-semibold">গত ৭ দিনের পণ্য বিক্রি</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  ফেরতের আগের মোট বিল · বাংলাদেশ সময় অনুযায়ী
+                </p>
               </div>
               <div className="text-right">
                 <Money v={weekTotal} className="text-sm font-semibold" />
@@ -245,7 +294,7 @@ function Dashboard() {
             <div
               className="mt-5 flex h-36 items-end gap-2 border-b sm:gap-3"
               role="img"
-              aria-label="গত সাত দিনের লেনদেনের বার চার্ট"
+              aria-label="গত সাত দিনের পণ্য বিক্রির বার চার্ট"
             >
               {week.map((day) => (
                 <div
@@ -374,6 +423,7 @@ function Dashboard() {
                       <div className="truncate font-medium">{t.title}</div>
                       <div className="mt-0.5 text-[11px] text-muted-foreground">
                         {new Date(t.at).toLocaleTimeString("bn-BD", {
+                          timeZone: "Asia/Dhaka",
                           hour: "numeric",
                           minute: "2-digit",
                         })}{" "}

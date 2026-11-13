@@ -34,10 +34,10 @@ type NavItem = { to: string; label: string; icon: typeof LayoutGrid; owner?: boo
 const NAV: NavItem[] = [
   { to: "/", label: "হোম", icon: LayoutGrid },
   { to: "/pos", label: "কাউন্টার", icon: ScanBarcode },
-  { to: "/b2b", label: "B2B / SR", icon: Wallet },
+  { to: "/accounts", label: "আমার অ্যাকাউন্টস", icon: Landmark },
   { to: "/khata", label: "পার্টি ও খাতা", icon: BookUser },
   { to: "/products", label: "স্টক ও ক্রয়", icon: Package },
-  { to: "/accounts", label: "আমার অ্যাকাউন্টস", icon: Landmark },
+  { to: "/b2b", label: "SR-এর লেনদেন", icon: Wallet },
   { to: "/reports", label: "রিপোর্ট", icon: Activity, owner: true },
   { to: "/closing", label: "শিফট ও অনুমোদন", icon: MoonStar },
   { to: "/cloud", label: "দোকান ও টিম", icon: Cloud },
@@ -128,14 +128,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-background md:flex">
       <CloudSync />
-      {!activeShift(useStore.getState()) && loc.pathname !== "/closing" && (
-        <Link
-          to="/closing"
-          className="fixed bottom-20 left-1/2 z-40 -translate-x-1/2 rounded-xl border bg-card px-4 py-3 text-sm shadow-lg md:bottom-5"
-        >
-          লেনদেনের আগে শিফট শুরু করুন →
-        </Link>
-      )}
+      {!activeShift(useStore.getState()) &&
+        ["/pos", "/recharge", "/mfs", "/services", "/b2b", "/khata"].includes(loc.pathname) && (
+          <Link
+            to="/closing"
+            className="fixed bottom-20 left-1/2 z-40 -translate-x-1/2 rounded-xl border bg-card px-4 py-3 text-sm shadow-lg md:bottom-5"
+          >
+            লেনদেনের আগে শিফট শুরু করুন →
+          </Link>
+        )}
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar p-3 md:flex lg:w-64">
         <div className="mb-4 border-b px-2 pb-5 pt-3">
           <StoreBrand compact />
@@ -165,7 +166,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
         </nav>
-        <details className="mt-3 border-t pt-3">
+        <details
+          key={loc.pathname}
+          open={items.some(
+            (n) =>
+              !["/", "/pos", "/b2b", "/khata", "/products", "/accounts"].includes(n.to) &&
+              active(n.to),
+          )}
+          className="mt-3 border-t pt-3"
+        >
           <summary className="cursor-pointer rounded-lg px-3 py-2 text-sm text-muted-foreground">
             পরিচালনা ও সেটিংস
           </summary>

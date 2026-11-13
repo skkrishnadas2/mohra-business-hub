@@ -62,6 +62,16 @@ describe("single-store branded login", () => {
     expect(screen.queryByText("ইন্টারনেট ছাড়া শুধু এই ডিভাইসে চালান")).toBeNull();
     expect(screen.getByRole("button", { name: "পাসওয়ার্ড ভুলে গেছেন?" })).toBeDefined();
   });
+  it("does not misreport a network outage as a wrong password", async () => {
+    mocks.signIn.mockResolvedValue({ error: new TypeError("Failed to fetch") });
+    render(<AccountGate />);
+    await screen.findByRole("button", { name: "প্রবেশ করুন" });
+    fireEvent.change(screen.getByLabelText("ইমেইল"), { target: { value: "owner@example.com" } });
+    fireEvent.change(screen.getByLabelText("পাসওয়ার্ড"), { target: { value: "test-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "প্রবেশ করুন" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("সার্ভারে সংযোগ হয়নি");
+    expect(mocks.list).not.toHaveBeenCalled();
+  });
   it("does not allow an authenticated non-member to initialize another shop", async () => {
     render(<AccountGate />);
     await screen.findByRole("button", { name: "প্রবেশ করুন" });

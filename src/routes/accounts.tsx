@@ -1,5 +1,5 @@
 import { taka } from "@/lib/rules";
-import { confirmed } from "@/lib/confirmed-write";
+import { confirmed, useSubmission } from "@/lib/confirmed-write";
 import { FinanceWorkspace, GeneralTransfer } from "@/components/BusinessWorkspace";
 import { AccountSettings } from "@/components/AccountSettings";
 import { createFileRoute } from "@tanstack/react-router";
@@ -7,7 +7,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { actionError, useStore, type Account } from "@/lib/store";
 import { Page, Money, BigButton, Chips, NumInput, TextInput, Label } from "@/components/kit";
-import { accountActivity, visibleAccounts } from "@/lib/account-activity";
+import { counterMoney } from "@/lib/counter-preferences";
+import {
+  accountActivity,
+  visibleAccounts,
+  visibleAccountTransactions,
+} from "@/lib/account-activity";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/accounts")({
@@ -38,15 +43,17 @@ const KIND_LABEL: Record<Account["kind"], string> = {
 export function Accounts() {
   const { accounts, txns, can, transfer, setBalance, addAccount, role, actor } = useStore();
   const [tab, setTab] = useState("accounts");
+  const busy = useSubmission((s) => s.busy);
   const allowedAccounts = visibleAccounts(accounts, role);
+  const historyTxns = visibleAccountTransactions(accounts, txns, role);
   const banks = allowedAccounts.filter((a) => a.kind === "bank" && !a.inactive);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = allowedAccounts.find(
     (a) => a.id === selectedId && (a.kind !== "bank" || can("viewBank")),
   );
-  const activity = selected ? accountActivity(selected, txns) : null;
+  const activity = selected ? accountActivity(selected, historyTxns) : null;
   const [dir, setDir] = useState<"dep" | "wd">("dep");
-  const [bank, setBank] = useState(banks[0]?.id ?? "");
+  const [bank, setBank] = useState(banks.length === 1 ? banks[0]!.id : "");
   const [amt, setAmt] = useState("");
   const [ref, setRef] = useState("");
   const [adj, setAdj] = useState<Account | null>(null);
@@ -57,6 +64,27 @@ export function Accounts() {
     null,
   );
   const showBank = can("viewBank");
+  const bankAccount = banks.find((a) => a.id === bank);
+  const cashAccount = allowedAccounts.find((a) => a.id === "cash" && !a.inactive);
+  const transferAmount = counterMoney(amt);
+  const debitAccount = dir === "dep" ? cashAccount : bankAccount;
+  const transferReady =
+    can("b2b") &&
+    !!bankAccount &&
+    !!cashAccount &&
+    transferAmount > 0 &&
+    Number.isFinite(transferAmount) &&
+    !!debitAccount &&
+    transferAmount <= debitAccount.balance &&
+    showBank;
+  const adjustment = counterMoney(adjVal);
+  const adjustmentChanged = !!adj && accounts.find((a) => a.id === adj.id)?.balance !== adj.balance;
+  const adjustmentReady =
+    !adjustmentChanged &&
+    adjVal.trim() !== "" &&
+    Number.isFinite(adjustment) &&
+    adjustment >= 0 &&
+    (actor ? !!adjustReason.trim() : pin.length === 4);
 
   return (
     <Page
@@ -65,6 +93,7 @@ export function Accounts() {
       action={
         role === "owner" && (
           <button
+            disabled={busy}
             onClick={() => setNw({ name: "", kind: "bank", provider: "" })}
             className="h-11 rounded-xl border px-4 text-sm"
           >
@@ -73,145 +102,169 @@ export function Accounts() {
         )
       }
     >
-      <div className="mb-5 flex flex-wrap gap-2">
-        {[
-          ["accounts", "অ্যাকাউন্টস"],
-          ["transfer", "টাকা সরান"],
-          ["finance", "খরচ ও মূলধন"],
-          ["settings", "অ্যাকাউন্ট সেটিং"],
-        ]
-          .filter(([v]) => role === "owner" || v !== "settings")
-          .map(([v, l]) => (
-            <button
-              key={v}
-              onClick={() => setTab(v!)}
-              className={`rounded-xl border px-4 py-3 text-sm ${tab === v ? "bg-primary text-primary-foreground" : "bg-card"}`}
-            >
-              {l}
-            </button>
-          ))}
-      </div>
-      {tab === "finance" ? (
-        <FinanceWorkspace />
-      ) : tab === "settings" ? (
-        <div className="space-y-5">
-          <AccountSettings />
+      <fieldset disabled={busy} className="min-w-0">
+        <div className="mb-5 flex flex-wrap gap-2">
+          {[
+            ["accounts", "অ্যাকাউন্টস"],
+            ["transfer", "টাকা সরান"],
+            ["finance", "খরচ ও মূলধন"],
+            ["settings", "অ্যাকাউন্ট সেটিং"],
+          ]
+            .filter(([v]) => v === "accounts" || (v === "transfer" ? can("b2b") : role === "owner"))
+            .map(([v, l]) => (
+              <button
+                key={v}
+                onClick={() => setTab(v!)}
+                className={`rounded-xl border px-4 py-3 text-sm ${tab === v ? "bg-primary text-primary-foreground" : "bg-card"}`}
+              >
+                {l}
+              </button>
+            ))}
         </div>
-      ) : tab === "accounts" ? (
-        <div>
+        {tab === "finance" ? (
+          <FinanceWorkspace />
+        ) : tab === "settings" ? (
           <div className="space-y-5">
-            {(Object.keys(KIND_LABEL) as Account["kind"][])
-              .filter((kind) => allowedAccounts.some((account) => account.kind === kind))
-              .map((k) => (
-                <div key={k}>
-                  <div className="mb-2 text-sm font-semibold text-muted-foreground">
-                    {KIND_LABEL[k]}
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {allowedAccounts
-                      .filter((a) => a.kind === k)
-                      .map((a) => (
-                        <button
-                          key={a.id}
-                          disabled={k === "bank" && !showBank}
-                          onClick={() => setSelectedId(a.id)}
-                          className="min-h-36 rounded-2xl border bg-card p-4 text-left text-sm shadow-soft transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
-                        >
-                          <div className="mb-2 flex items-center justify-between gap-2">
-                            <span className="font-medium">{a.name}</span>
-                            {a.inactive && (
-                              <span className="text-xs text-muted-foreground">বন্ধ</span>
+            <AccountSettings />
+          </div>
+        ) : tab === "accounts" ? (
+          <div>
+            <div className="space-y-5">
+              {(Object.keys(KIND_LABEL) as Account["kind"][])
+                .filter((kind) => allowedAccounts.some((account) => account.kind === kind))
+                .map((k) => (
+                  <div key={k}>
+                    <div className="mb-2 text-sm font-semibold text-muted-foreground">
+                      {KIND_LABEL[k]}
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {allowedAccounts
+                        .filter((a) => a.kind === k)
+                        .map((a) => (
+                          <button
+                            key={a.id}
+                            disabled={k === "bank" && !showBank}
+                            onClick={() => setSelectedId(a.id)}
+                            className="min-h-36 rounded-2xl border bg-card p-4 text-left text-sm shadow-soft transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+                          >
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <span className="font-medium">{a.name}</span>
+                              {a.inactive && (
+                                <span className="text-xs text-muted-foreground">বন্ধ</span>
+                              )}
+                            </div>
+                            <Money
+                              v={a.balance}
+                              hidden={k === "bank" && !showBank}
+                              className="block text-2xl font-semibold"
+                            />
+                            {k === "bank" && !showBank ? (
+                              <p className="mt-3 text-xs text-muted-foreground">
+                                ব্যালেন্স দেখার অনুমতি নেই
+                              </p>
+                            ) : (
+                              (() => {
+                                const today = accountActivity(a, historyTxns);
+                                return (
+                                  <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs">
+                                    <div className="text-muted-foreground">
+                                      আজ ঢুকেছে · রেকর্ড
+                                      <Money
+                                        v={today.inflow}
+                                        className="mt-1 block font-medium text-emerald-700"
+                                      />
+                                    </div>
+                                    <div className="text-muted-foreground">
+                                      আজ বেরিয়েছে · রেকর্ড
+                                      <Money
+                                        v={today.outflow}
+                                        className="mt-1 block font-medium text-foreground"
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })()
                             )}
-                          </div>
-                          <Money
-                            v={a.balance}
-                            hidden={k === "bank" && !showBank}
-                            className="block text-2xl font-semibold"
-                          />
-                          {k === "bank" && !showBank ? (
-                            <p className="mt-3 text-xs text-muted-foreground">
-                              ব্যালেন্স দেখার অনুমতি নেই
-                            </p>
-                          ) : (
-                            (() => {
-                              const today = accountActivity(a, txns);
-                              return (
-                                <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs">
-                                  <div className="text-muted-foreground">
-                                    আজ ঢুকেছে · রেকর্ড
-                                    <Money
-                                      v={today.inflow}
-                                      className="mt-1 block font-medium text-emerald-700"
-                                    />
-                                  </div>
-                                  <div className="text-muted-foreground">
-                                    আজ বেরিয়েছে · রেকর্ড
-                                    <Money
-                                      v={today.outflow}
-                                      className="mt-1 block font-medium text-foreground"
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            })()
-                          )}
-                        </button>
-                      ))}
+                          </button>
+                        ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-2">
-          <div className="space-y-4 rounded-xl border bg-card p-4 shadow-soft sm:p-5">
-            <div className="border-b pb-3 text-base font-semibold">ব্যাংক লেনদেন</div>
-            <Chips
-              value={dir}
-              onChange={setDir}
-              options={[
-                { value: "dep", label: "ক্যাশ → ব্যাংক জমা" },
-                { value: "wd", label: "ব্যাংক → ক্যাশ উত্তোলন" },
-              ]}
-            />
-            <Chips
-              value={bank}
-              onChange={setBank}
-              options={banks.map((b) => ({
-                value: b.id,
-                label: showBank ? `${b.name} · ${taka(b.balance)}` : b.name,
-              }))}
-            />
-            <div>
-              <Label>পরিমাণ</Label>
-              <NumInput value={amt} onChange={setAmt} />
+                ))}
             </div>
-            <div>
-              <Label>রেফারেন্স / স্লিপ নং</Label>
-              <TextInput value={ref} onChange={(e) => setRef(e.target.value)} />
-            </div>
-            <BigButton
-              disabled={!Number(amt) || !bank}
-              onClick={async () => {
-                try {
-                  const a = Number(amt);
-                  if (dir === "dep")
-                    await confirmed(() => transfer("cash", bank, a, "ব্যাংকে জমা", ref));
-                  else await confirmed(() => transfer(bank, "cash", a, "ব্যাংক থেকে উত্তোলন", ref));
-                  toast.success("সম্পন্ন");
-                  setAmt("");
-                  setRef("");
-                } catch (error) {
-                  toast.error(actionError(error));
-                }
-              }}
-            >
-              নিশ্চিত করুন
-            </BigButton>
           </div>
-          <GeneralTransfer />
-        </div>
-      )}
+        ) : (
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            <div className="space-y-4 rounded-xl border bg-card p-4 shadow-soft sm:p-5">
+              <div className="border-b pb-3 text-base font-semibold">ক্যাশ ও ব্যাংকে টাকা সরান</div>
+              <p className="text-xs text-muted-foreground">
+                নিজের টাকার জায়গা বদলাবে; লাভ বা পার্টির পাওনা–দেনা হবে না।
+              </p>
+              <Chips
+                value={dir}
+                onChange={setDir}
+                options={[
+                  { value: "dep", label: "ক্যাশ → ব্যাংক জমা" },
+                  { value: "wd", label: "ব্যাংক → ক্যাশ উত্তোলন" },
+                ]}
+              />
+              {!showBank && (
+                <p className="text-sm text-muted-foreground">
+                  ব্যাংক লেনদেনের জন্য ব্যাংক দেখার অনুমতি লাগবে।
+                </p>
+              )}
+              <Chips
+                value={bank}
+                onChange={setBank}
+                options={banks.map((b) => ({
+                  value: b.id,
+                  label: showBank ? `${b.name} · ${taka(b.balance)}` : b.name,
+                }))}
+              />
+              <div>
+                <Label htmlFor="account-transfer-amount">পরিমাণ</Label>
+                <NumInput id="account-transfer-amount" value={amt} onChange={setAmt} />
+              </div>
+              <div>
+                <Label>রেফারেন্স / স্লিপ নং</Label>
+                <TextInput value={ref} onChange={(e) => setRef(e.target.value)} />
+              </div>
+              {showBank &&
+                bankAccount &&
+                cashAccount &&
+                transferAmount > 0 &&
+                Number.isFinite(transferAmount) && (
+                  <p className="rounded-xl bg-secondary p-3 text-sm">
+                    {dir === "dep"
+                      ? `${cashAccount.name} কমবে, ${bankAccount.name} বাড়বে`
+                      : `${bankAccount.name} কমবে, ${cashAccount.name} বাড়বে`}{" "}
+                    · {taka(transferAmount)}
+                  </p>
+                )}
+              <BigButton
+                disabled={!transferReady}
+                onClick={async () => {
+                  try {
+                    if (!transferReady || busy) return;
+                    const a = transferAmount;
+                    if (dir === "dep")
+                      await confirmed(() => transfer("cash", bank, a, "ব্যাংকে জমা", ref));
+                    else
+                      await confirmed(() => transfer(bank, "cash", a, "ব্যাংক থেকে উত্তোলন", ref));
+                    toast.success("সম্পন্ন");
+                    setAmt("");
+                    setRef("");
+                  } catch (error) {
+                    toast.error(actionError(error));
+                  }
+                }}
+              >
+                নিশ্চিত করুন
+              </BigButton>
+            </div>
+            <GeneralTransfer />
+          </div>
+        )}
+      </fieldset>
 
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelectedId(null)}>
         <SheetContent
@@ -291,7 +344,7 @@ export function Accounts() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={!!adj} onOpenChange={(v) => !v && setAdj(null)}>
+      <Sheet open={!!adj} onOpenChange={(v) => !v && !busy && setAdj(null)}>
         <SheetContent
           side="bottom"
           className="max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]"
@@ -299,10 +352,14 @@ export function Accounts() {
           <SheetHeader>
             <SheetTitle>ব্যালেন্স সমন্বয় · {adj?.name}</SheetTitle>
           </SheetHeader>
-          <div className="space-y-3 p-4 pt-0">
+          <fieldset disabled={busy} className="space-y-3 p-4 pt-0">
             <div>
-              <Label>সঠিক ব্যালেন্স</Label>
-              <NumInput value={adjVal} onChange={setAdjVal} />
+              <p className="mb-3 text-xs text-muted-foreground">
+                এখানে টাকা যোগ/বিয়োগের পরিমাণ নয়—এই অ্যাকাউন্টে মোট কত টাকা আছে তা লিখুন। জমা বা
+                উত্তোলনের জন্য ‘টাকা সরান’ ব্যবহার করুন।
+              </p>
+              <Label htmlFor="account-adjust-balance">এখন মোট কত টাকা আছে</Label>
+              <NumInput id="account-adjust-balance" value={adjVal} onChange={setAdjVal} />
             </div>
             <div>
               {actor ? (
@@ -327,13 +384,27 @@ export function Accounts() {
                 </>
               )}
             </div>
+            {adjustmentChanged && (
+              <p role="alert" className="text-sm text-destructive">
+                এদিকে এই অ্যাকাউন্টের ব্যালেন্স বদলেছে। পাতাটি বন্ধ করে নতুন ব্যালেন্স দেখে আবার
+                সমন্বয় করুন।
+              </p>
+            )}
+            {adj && Number.isFinite(adjustment) && adjVal.trim() !== "" && (
+              <p className="rounded-xl bg-secondary p-3 text-sm">
+                বর্তমান {taka(adj.balance)} → হবে {taka(adjustment)}
+              </p>
+            )}
             <BigButton
+              disabled={!adjustmentReady}
               onClick={async () => {
                 try {
                   if (
                     adj &&
+                    adjustmentReady &&
+                    !busy &&
                     (await confirmed(() =>
-                      setBalance(adj.id, Number(adjVal) || 0, pin, adjustReason),
+                      setBalance(adj.id, adjustment, pin, adjustReason, adj.balance),
                     ))
                   ) {
                     toast.success("সমন্বয় হয়েছে");
@@ -347,11 +418,11 @@ export function Accounts() {
             >
               সেভ করুন
             </BigButton>
-          </div>
+          </fieldset>
         </SheetContent>
       </Sheet>
 
-      <Sheet open={!!nw} onOpenChange={(v) => !v && setNw(null)}>
+      <Sheet open={!!nw} onOpenChange={(v) => !v && !busy && setNw(null)}>
         <SheetContent
           side="bottom"
           className="max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]"
@@ -360,7 +431,7 @@ export function Accounts() {
             <SheetTitle>নতুন হিসাব</SheetTitle>
           </SheetHeader>
           {nw && (
-            <div className="space-y-3 p-4 pt-0">
+            <fieldset disabled={busy} className="space-y-3 p-4 pt-0">
               <Chips
                 value={nw.kind}
                 onChange={(kind) => setNw({ ...nw, kind, provider: "" })}
@@ -414,6 +485,8 @@ export function Accounts() {
                       }),
                     );
                     setNw(null);
+                    setTab("accounts");
+                    toast.success("হিসাব যোগ হয়েছে। ব্যালেন্স বসাতে হিসাবটি খুলুন।");
                   } catch (error) {
                     toast.error(actionError(error));
                   }
@@ -421,7 +494,7 @@ export function Accounts() {
               >
                 যোগ করুন
               </BigButton>
-            </div>
+            </fieldset>
           )}
         </SheetContent>
       </Sheet>

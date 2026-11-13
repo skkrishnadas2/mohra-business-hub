@@ -6,6 +6,17 @@ export function visibleAccounts(accounts: Account[], role: Role | null) {
   return accounts.filter((account) => role === "owner" || account.cashierAllowed !== false);
 }
 
+/** Shared caches may retain vouchers that involve a cashier-blocked account. Hide the entire voucher. */
+export function visibleAccountTransactions(accounts: Account[], txns: Txn[], role: Role | null) {
+  if (role === "owner") return txns;
+  const visible = new Set(visibleAccounts(accounts, role).map((a) => a.id));
+  return txns.filter(
+    (t) =>
+      t.moves.every((m) => visible.has(m.accountId)) &&
+      !(t.type === "account_settings" && t.ref && !visible.has(t.ref)),
+  );
+}
+
 /** Derive balances only across recorded movements, anchored on the current balance. */
 export function accountActivity(account: Account, txns: Txn[], now = Date.now()) {
   const day = (at: number) => new Date(at).toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" });

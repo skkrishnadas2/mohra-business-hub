@@ -1,3 +1,4 @@
+import { useSubmission } from "@/lib/confirmed-write";
 import { useState } from "react";
 import { useStore, type Repair } from "@/lib/store";
 import { act, AccountSelect, Field } from "./BusinessWorkspace";
@@ -5,6 +6,7 @@ import { BigButton, NumInput, TextInput } from "./kit";
 import { taka } from "@/lib/rules";
 export function RepairDetails({ repair: r }: { repair: Repair }) {
   const s = useStore();
+  const busy = useSubmission((s) => s.busy);
   const [open, setOpen] = useState(false);
   const [bill, setBill] = useState(String(r.finalBill ?? r.estimate));
   const [condition, setCondition] = useState(r.condition ?? "");
@@ -20,19 +22,21 @@ export function RepairDetails({ repair: r }: { repair: Repair }) {
         {open ? "বিস্তারিত বন্ধ" : "বিল, কন্ডিশন ও পার্টস"}
       </button>
       {open && (
-        <div className="mt-3 space-y-3 rounded-xl bg-secondary/50 p-3">
+        <fieldset disabled={busy} className="mt-3 min-w-0 space-y-3 rounded-xl bg-secondary/50 p-3">
           <div className="grid grid-cols-2 gap-3">
             <Field title="চূড়ান্ত বিল">
-              <NumInput value={bill} onChange={setBill} />
+              <NumInput disabled={!active} value={bill} onChange={setBill} />
             </Field>
             <div className="self-end pb-3 text-sm">অগ্রিম {taka(r.advance)}</div>
           </div>
           <TextInput
+            disabled={!active}
             placeholder="গ্রহণের সময় কন্ডিশন"
             value={condition}
             onChange={(e) => setCondition(e.target.value)}
           />
           <TextInput
+            disabled={!active}
             placeholder="সঙ্গে জমা জিনিসপত্র"
             value={accessories}
             onChange={(e) => setAccessories(e.target.value)}
@@ -60,17 +64,29 @@ export function RepairDetails({ repair: r }: { repair: Repair }) {
                 onChange={(e) => setProduct(e.target.value)}
               >
                 <option value="">স্টক থেকে পার্টস</option>
-                {s.products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} · স্টক {p.stock}
-                  </option>
-                ))}
+                {s.products
+                  .filter((p) => !p.serialTracking && !p.serials?.length && p.stock > 0)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} · স্টক {p.stock}
+                    </option>
+                  ))}
               </select>
+              <p className="text-xs text-muted-foreground">
+                শুধু স্টকে থাকা সাধারণ পার্টস বেছে নিন। সিরিয়ালযুক্ত পণ্য এখানে ব্যবহার করা যাবে
+                না।
+              </p>
               <div className="flex gap-2">
                 <NumInput value={qty} onChange={setQty} />
                 <button
                   className="shrink-0 rounded-lg border px-3 text-sm"
-                  onClick={() => act(() => s.repairPart(r.id, product, Number(qty)))}
+                  disabled={!product || !Number.isInteger(Number(qty)) || Number(qty) <= 0}
+                  onClick={async () => {
+                    if (await act(() => s.repairPart(r.id, product, Number(qty)))) {
+                      setProduct("");
+                      setQty("1");
+                    }
+                  }}
                 >
                   পার্টস ব্যবহার
                 </button>
@@ -98,7 +114,7 @@ export function RepairDetails({ repair: r }: { repair: Repair }) {
               </button>
             </>
           )}
-        </div>
+        </fieldset>
       )}
     </div>
   );

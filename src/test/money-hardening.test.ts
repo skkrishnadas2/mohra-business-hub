@@ -67,7 +67,7 @@ describe("money-flow validation", () => {
     store.setState({
       repairs: store.getState().repairs.map(({ deliveryCollected: _marker, ...saved }) => saved),
     });
-    store.getState().setRepairStatus(repair.id, "ready");
+    expect(() => store.getState().setRepairStatus(repair.id, "ready")).toThrow("ডেলিভারি সম্পন্ন");
     store.getState().setRepairStatus(repair.id, "delivered");
     expect(balance("cash")).toBe(11000);
     expect(store.getState().txns.filter((txn) => txn.type === "repair_bill")).toHaveLength(1);

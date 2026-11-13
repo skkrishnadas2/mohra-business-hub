@@ -132,6 +132,17 @@ export function PurchaseWorkspace() {
   const busy = useSubmission((s) => s.busy);
   const [accountId, setAccount] = useState("cash");
   const [ref, setRef] = useState("");
+  const total = Number(qty) * Number(cost);
+  const payment = paymentMode === "full" ? total : paymentMode === "due" ? 0 : Number(paid);
+  const valid =
+    !!partyId &&
+    !!productId &&
+    !!cost.trim() &&
+    Number.isInteger(Number(qty)) &&
+    Number(qty) > 0 &&
+    Number.isFinite(total) &&
+    total >= 0 &&
+    (paymentMode !== "partial" || (!!paid.trim() && payment > 0 && payment < total));
   if (state.role !== "owner")
     return <p className="p-4 text-sm">ক্রয় ও খরচের হিসাব শুধু মালিকের জন্য।</p>;
   return (
@@ -203,13 +214,14 @@ export function PurchaseWorkspace() {
             )}
           </p>
           <AccountSelect value={accountId} onChange={setAccount} />
+          <p className="text-xs text-muted-foreground">ইনভয়েস না থাকলে মেমো নম্বর অটো তৈরি হবে।</p>
           <TextInput
             placeholder="ইনভয়েস / রেফারেন্স"
             value={ref}
             onChange={(e) => setRef(e.target.value)}
           />
           <BigButton
-            disabled={!partyId || !productId || !ref.trim()}
+            disabled={!valid}
             onClick={async () => {
               if (
                 await act(() =>
@@ -229,12 +241,14 @@ export function PurchaseWorkspace() {
                           ? 0
                           : Number(paid),
                     accountId,
-                    ref,
+                    ref: ref.trim() || `PUR-${crypto.randomUUID()}`,
                   }),
                 )
               ) {
                 setSerialText("");
                 setPaid("");
+                setPaymentMode("full");
+                setQty("1");
                 setRef("");
               }
             }}
@@ -287,6 +301,7 @@ export function PurchaseWorkspace() {
 export function FinanceWorkspace() {
   const s = useStore();
   const b = s.business ?? emptyBusiness();
+  const busy = useSubmission((s) => s.busy);
   const [mode, setMode] = useState("expense");
   const [account, setAccount] = useState("cash");
   const [amount, setAmount] = useState("");
@@ -296,50 +311,54 @@ export function FinanceWorkspace() {
   return (
     <div className="grid items-start gap-5 lg:grid-cols-2">
       <Panel title="খরচ ও মালিকের মূলধন">
-        <select
-          className={selectClass}
-          value={mode}
-          onChange={(e) => setMode(e.target.value)}
-          aria-label="টাকার ধরন"
-        >
-          <option value="expense">দোকানের খরচ</option>
-          <option value="in">মূলধন জমা</option>
-          <option value="out">মালিকের উত্তোলন</option>
-        </select>
-        <AccountSelect value={account} onChange={setAccount} />
-        {mode === "expense" && (
+        <fieldset disabled={busy} className="min-w-0 space-y-4">
           <select
             className={selectClass}
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            aria-label="খরচের বিভাগ"
+            value={mode}
+            onChange={(e) => setMode(e.target.value)}
+            aria-label="টাকার ধরন"
           >
-            {["দোকানভাড়া", "বিদ্যুৎ", "ইন্টারনেট", "বেতন", "ব্যাংক চার্জ", "অন্যান্য"].map((c) => (
-              <option key={c}>{c}</option>
-            ))}
+            <option value="expense">দোকানের খরচ</option>
+            <option value="in">মূলধন জমা</option>
+            <option value="out">মালিকের উত্তোলন</option>
           </select>
-        )}
-        <Field title="পরিমাণ">
-          <NumInput value={amount} onChange={setAmount} />
-        </Field>
-        <TextInput placeholder="বিবরণ" value={note} onChange={(e) => setNote(e.target.value)} />
-        <BigButton
-          disabled={!Number(amount) || !note.trim()}
-          onClick={async () => {
-            if (
-              await act(() =>
-                mode === "expense"
-                  ? s.expense(account, Number(amount), category, note)
-                  : s.capital(account, Number(amount), mode as "in" | "out", note),
-              )
-            ) {
-              setAmount("");
-              setNote("");
-            }
-          }}
-        >
-          সংরক্ষণ করুন
-        </BigButton>
+          <AccountSelect value={account} onChange={setAccount} />
+          {mode === "expense" && (
+            <select
+              className={selectClass}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              aria-label="খরচের বিভাগ"
+            >
+              {["দোকানভাড়া", "বিদ্যুৎ", "ইন্টারনেট", "বেতন", "ব্যাংক চার্জ", "অন্যান্য"].map(
+                (c) => (
+                  <option key={c}>{c}</option>
+                ),
+              )}
+            </select>
+          )}
+          <Field title="পরিমাণ">
+            <NumInput value={amount} onChange={setAmount} />
+          </Field>
+          <TextInput placeholder="বিবরণ" value={note} onChange={(e) => setNote(e.target.value)} />
+          <BigButton
+            disabled={!Number(amount) || !note.trim()}
+            onClick={async () => {
+              if (
+                await act(() =>
+                  mode === "expense"
+                    ? s.expense(account, Number(amount), category, note)
+                    : s.capital(account, Number(amount), mode as "in" | "out", note),
+                )
+              ) {
+                setAmount("");
+                setNote("");
+              }
+            }}
+          >
+            সংরক্ষণ করুন
+          </BigButton>
+        </fieldset>
       </Panel>
       <Panel title="কমিশন পাওনা">
         {!b.commissions.some((c) => c.received < c.amount) && (

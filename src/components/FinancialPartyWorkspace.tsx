@@ -3,6 +3,8 @@ import { useStore } from "@/lib/store";
 import { financialParties, partyBalance, type Party } from "@/lib/business";
 import { useSubmission } from "@/lib/confirmed-write";
 import { taka } from "@/lib/rules";
+import { counterMoney } from "@/lib/counter-preferences";
+import { visibleAccountTransactions } from "@/lib/account-activity";
 import { exportCsv } from "@/lib/export";
 import { AccountSelect, act, Field, Panel } from "./BusinessWorkspace";
 import { BigButton, Money, NumInput, TextInput } from "./kit";
@@ -20,7 +22,7 @@ export function FinancialPartyWorkspace() {
   const s = useStore();
   const busy = useSubmission((x) => x.busy);
   const owner = s.role === "owner";
-  const [view, setView] = useState("business");
+  const [view, setView] = useState(owner ? "business" : "customer");
   const [search, setSearch] = useState("");
   const [id, setId] = useState("");
   const [name, setName] = useState("");
@@ -36,9 +38,27 @@ export function FinancialPartyWorkspace() {
   const parties = financialParties(s);
   const selected = parties.find((p) => p.id === id);
   const balance = partyBalance(s, id);
-  const account = s.accounts.find((a) => a.id === accountId && !a.inactive);
+  const account = s.accounts.find(
+    (a) =>
+      a.id === accountId &&
+      !a.inactive &&
+      a.kind !== "recharge" &&
+      (owner || (a.cashierAllowed !== false && (a.kind !== "bank" || s.can("viewBank")))),
+  );
   const current = actions.find((a) => a.id === task);
-  const value = Number(amount);
+  const value = counterMoney(amount);
+  const openingValue = counterMoney(openingAmount);
+  const openingEntries = (s.business?.entries ?? []).filter((e) => e.partyId === id);
+  const offsetLimit = Math.min(
+    ...(["receivable", "payable"] as const).map((side) =>
+      openingEntries.filter((e) => e.side === side).reduce((n, e) => n + e.remaining, 0),
+    ),
+  );
+  const openingReady =
+    Number.isFinite(openingValue) &&
+    openingValue > 0 &&
+    !!openingNote.trim() &&
+    (opening !== "offset" || openingValue <= offsetLimit);
   const totals = parties.reduce(
     (t, p) => {
       const b = partyBalance(s, p.id);
@@ -46,7 +66,7 @@ export function FinancialPartyWorkspace() {
     },
     { r: 0, p: 0 },
   );
-  const txns = s.txns
+  const txns = visibleAccountTransactions(s.accounts, s.txns, s.role)
     .filter(
       (t) =>
         t.partyId === id || s.sales.some((sale) => sale.customerId === id && sale.id === t.ref),
@@ -64,13 +84,14 @@ export function FinancialPartyWorkspace() {
   const valid =
     selected &&
     current &&
+    Number.isFinite(value) &&
     value > 0 &&
     account &&
     (!current.out || account.balance >= value) &&
     (task !== "collect" || value <= balance.receivable) &&
     (task !== "pay" || value <= balance.payable);
   async function saveMovement() {
-    if (!valid || !current) return;
+    if (!valid || !current || busy) return;
     const ok = await act(
       () => {
         if (task === "collect" || task === "pay")
@@ -116,6 +137,7 @@ export function FinancialPartyWorkspace() {
                 key={v.id}
                 className={`min-h-11 rounded-xl border px-3 text-sm ${view === v.id ? "bg-primary text-primary-foreground" : "bg-card"}`}
                 onClick={() => {
+                  setSearch("");
                   setView(v.id);
                   choose("");
                 }}
@@ -190,11 +212,18 @@ export function FinancialPartyWorkspace() {
                 <BigButton
                   disabled={!name.trim()}
                   onClick={async () => {
+                    const knownIds = new Set(parties.map((p) => p.id));
                     if (
                       await act(() =>
                         s.saveParty({ name: name.trim(), phone: phone.trim(), roles: [view] }),
                       )
                     ) {
+                      const added = financialParties(useStore.getState()).find(
+                        (p) =>
+                          !knownIds.has(p.id) && p.name === name.trim() && p.roles.includes(view),
+                      );
+                      if (added) choose(added.id);
+                      setSearch("");
                       setName("");
                       setPhone("");
                     }
@@ -231,6 +260,10 @@ export function FinancialPartyWorkspace() {
                     .map((a) => (
                       <button
                         key={a.id}
+                        disabled={
+                          (a.id === "collect" && balance.receivable <= 0) ||
+                          (a.id === "pay" && balance.payable <= 0)
+                        }
                         aria-pressed={task === a.id}
                         className={`min-h-12 rounded-xl border px-3 text-sm font-medium ${task === a.id ? "bg-primary text-primary-foreground" : ""}`}
                         onClick={() => {
@@ -262,6 +295,11 @@ export function FinancialPartyWorkspace() {
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                     />
+                    {!account && (
+                      <p className="text-sm text-muted-foreground">
+                        ব্যবহারযোগ্য ক্যাশ, ব্যাংক বা MFS অ্যাকাউন্ট বেছে নিন।
+                      </p>
+                    )}
                     {account && value > 0 && (
                       <div className="rounded-xl bg-muted p-3 text-sm">
                         <b>{account.name}</b>
@@ -304,23 +342,34 @@ export function FinancialPartyWorkspace() {
                       <option value="payable">আগের দেনা</option>
                       <option value="offset">পাওনা ও দেনা কাটাকাটি</option>
                     </select>
-                    <NumInput value={openingAmount} onChange={setOpeningAmount} />
+                    <NumInput
+                      aria-label="শুরুর হিসাবের পরিমাণ"
+                      value={openingAmount}
+                      onChange={setOpeningAmount}
+                    />
+                    {opening === "offset" && (
+                      <p className="text-xs text-muted-foreground">
+                        সর্বোচ্চ কাটাকাটি করা যাবে {taka(offsetLimit)}। ক্যাশ বা ব্যাংকের টাকা
+                        বদলাবে না।
+                      </p>
+                    )}
                     <TextInput
                       placeholder="কারণ লিখুন"
                       value={openingNote}
                       onChange={(e) => setOpeningNote(e.target.value)}
                     />
                     <BigButton
-                      disabled={!(Number(openingAmount) > 0) || !openingNote.trim()}
+                      disabled={!openingReady}
                       onClick={async () => {
+                        if (!openingReady || busy) return;
                         if (
                           await act(() =>
                             opening === "offset"
-                              ? s.offsetParty(id, Number(openingAmount))
+                              ? s.offsetParty(id, openingValue)
                               : s.partyEntry(
                                   id,
                                   opening as "receivable" | "payable",
-                                  Number(openingAmount),
+                                  openingValue,
                                   openingNote,
                                 ),
                           )
@@ -337,13 +386,22 @@ export function FinancialPartyWorkspace() {
               )}
               {owner && <PartyContactEditor key={selected.id} party={selected} />}
               <Panel title="লেনদেনের স্টেটমেন্ট">
+                {!owner && (
+                  <p className="text-xs text-muted-foreground">
+                    আপনার অ্যাকাউন্ট অনুমতিতে দৃশ্যমান লেনদেন দেখানো হচ্ছে।
+                  </p>
+                )}
                 <button
                   className="min-h-11 rounded-xl border px-3 text-sm"
                   onClick={() =>
                     exportCsv(
                       selected.name + "-statement",
                       ["তারিখ", "বিবরণ", "পরিমাণ"],
-                      txns.map((t) => [new Date(t.at).toLocaleString("bn-BD"), t.title, t.amount]),
+                      txns.map((t) => [
+                        new Date(t.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" }),
+                        t.title,
+                        t.amount,
+                      ]),
                     )
                   }
                 >
@@ -354,7 +412,7 @@ export function FinancialPartyWorkspace() {
                     <div>
                       <p>{t.title}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {new Date(t.at).toLocaleString("bn-BD")}
+                        {new Date(t.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" })}
                       </p>
                     </div>
                     <Money v={t.amount} />

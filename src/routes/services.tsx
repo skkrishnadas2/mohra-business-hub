@@ -1,4 +1,4 @@
-import { confirmed } from "@/lib/confirmed-write";
+import { confirmed, useSubmission } from "@/lib/confirmed-write";
 import { RepairDetails } from "@/components/RepairDetails";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -22,7 +22,14 @@ export const Route = createFileRoute("/services")({
   component: Services,
 });
 
-const QUICK = ["ফটোকপি", "অনলাইন আবেদন", "কম্পোজ / টাইপিং", "বায়োমেট্রিক সিম", "প্রিন্ট", "স্ক্যান"];
+const QUICK = [
+  "ফটোকপি",
+  "অনলাইন আবেদন",
+  "কম্পোজ / টাইপিং",
+  "বায়োমেট্রিক সিম",
+  "প্রিন্ট",
+  "স্ক্যান",
+];
 const STATUS: { value: RepairStatus; label: string }[] = [
   { value: "received", label: "গ্রহণ" },
   { value: "repairing", label: "কাজ চলছে" },
@@ -30,7 +37,8 @@ const STATUS: { value: RepairStatus; label: string }[] = [
   { value: "delivered", label: "ডেলিভারি" },
 ];
 
-function Services() {
+export function Services() {
+  const busy = useSubmission((s) => s.busy);
   const { serviceSlip, addRepair, repairs, setRepairStatus } = useStore();
   const [tab, setTab] = useState<"slip" | "repair">("slip");
   const [svc, setSvc] = useState<string>(QUICK[0] ?? "");
@@ -48,157 +56,199 @@ function Services() {
 
   return (
     <Page title="সার্ভিস ও রিপেয়ার">
-      <div className="mb-4">
-        <Chips
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: "slip", label: "কুইক সার্ভিস" },
-            { value: "repair", label: "রিপেয়ার ট্র্যাকার" },
-          ]}
-        />
-      </div>
-      {tab === "slip" ? (
-        <div className="max-w-xl space-y-4 rounded-xl border bg-card p-4 shadow-soft sm:p-5">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {QUICK.map((q) => (
-              <BigButton
-                key={q}
-                aria-pressed={svc === q}
-                onClick={() => setSvc(q)}
-                className={`min-h-14 rounded-lg border px-3 py-2 text-sm ${svc === q ? "border-primary bg-primary font-semibold text-primary-foreground" : "bg-card text-foreground hover:enabled:bg-secondary"}`}
-              >
-                {q}
-              </BigButton>
-            ))}
-          </div>
-          <div>
-            <Label>বিল</Label>
-            <NumInput value={amt} onChange={setAmt} />
-          </div>
-          <Field title="সরাসরি খরচ (ক্যাশ থেকে)">
-            <NumInput value={directCost} onChange={setDirectCost} />
-          </Field>
-          <AccountSelect value={payment} onChange={setPayment} />
-          <BigButton
-            disabled={!Number(amt)}
-            onClick={async () => {
-              try {
-                await confirmed(() => serviceSlip(svc, Number(amt), payment, Number(directCost)));
-                toast.success(`${svc} · ${taka(Number(amt))}`);
-                setAmt("");
-              } catch (error) {
-                toast.error(actionError(error));
-              }
-            }}
-          >
-            ক্যাশে জমা
-          </BigButton>
+      <fieldset disabled={busy} className="min-w-0">
+        <div className="mb-4">
+          <Chips
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: "slip", label: "কুইক সার্ভিস" },
+              { value: "repair", label: "রিপেয়ার ট্র্যাকার" },
+            ]}
+          />
         </div>
-      ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <div className="space-y-3 rounded-xl border bg-card p-4 shadow-soft sm:p-5 lg:self-start">
-            <div className="border-b pb-3 text-base font-semibold">নতুন ডিভাইস গ্রহণ</div>
-            <TextInput
-              placeholder="কাস্টমারের নাম"
-              value={r.customer}
-              onChange={(e) => setR({ ...r, customer: e.target.value })}
-            />
-            <TextInput
-              placeholder="মোবাইল"
-              inputMode="tel"
-              value={r.phone}
-              onChange={(e) => setR({ ...r, phone: e.target.value })}
-            />
-            <TextInput
-              placeholder="ডিভাইস (যেমন: Samsung A12)"
-              value={r.device}
-              onChange={(e) => setR({ ...r, device: e.target.value })}
-            />
-            <textarea
-              placeholder="সমস্যার বিবরণ"
-              value={r.problem}
-              onChange={(e) => setR({ ...r, problem: e.target.value })}
-              className="min-h-24 w-full rounded-lg border border-input bg-card p-3 outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label>আনুমানিক বিল</Label>
-                <NumInput value={r.estimate} onChange={(v) => setR({ ...r, estimate: v })} />
-              </div>
-              <div>
-                <Label>অগ্রিম</Label>
-                <NumInput value={r.advance} onChange={(v) => setR({ ...r, advance: v })} />
-              </div>
+        {tab === "slip" ? (
+          <div className="max-w-xl space-y-4 rounded-xl border bg-card p-4 shadow-soft sm:p-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {QUICK.map((q) => (
+                <BigButton
+                  key={q}
+                  aria-pressed={svc === q}
+                  onClick={() => setSvc(q)}
+                  className={`min-h-14 rounded-lg border px-3 py-2 text-sm ${svc === q ? "border-primary bg-primary font-semibold text-primary-foreground" : "bg-card text-foreground hover:enabled:bg-secondary"}`}
+                >
+                  {q}
+                </BigButton>
+              ))}
             </div>
+            <div>
+              <Label htmlFor="service-bill">গ্রাহকের কাছ থেকে পাওয়া টাকা</Label>
+              <NumInput id="service-bill" value={amt} onChange={setAmt} />
+            </div>
+            <details className="rounded-xl border p-3">
+              <summary className="cursor-pointer text-sm">এই কাজের খরচ আছে? (ঐচ্ছিক)</summary>
+              <div className="mt-3">
+                <Label htmlFor="service-cost">ক্যাশ থেকে সরাসরি খরচ</Label>
+                <NumInput id="service-cost" value={directCost} onChange={setDirectCost} />
+              </div>
+            </details>
+            <AccountSelect value={payment} onChange={setPayment} />
             <BigButton
-              disabled={!r.customer || !r.device}
+              disabled={!Number(amt)}
               onClick={async () => {
                 try {
-                  await confirmed(() => addRepair({
-                    ...r,
-                    estimate: Number(r.estimate) || 0,
-                    advance: Number(r.advance) || 0,
-                  }));
-                  setR({
-                    customer: "",
-                    phone: "",
-                    device: "",
-                    problem: "",
-                    estimate: "",
-                    advance: "",
-                  });
-                  toast.success("রিপেয়ার এন্ট্রি হয়েছে");
+                  await confirmed(() => serviceSlip(svc, Number(amt), payment, Number(directCost)));
+                  toast.success(`${svc} · ${taka(Number(amt))}`);
+                  setAmt("");
+                  setDirectCost("");
+                  setPayment("cash");
                 } catch (error) {
                   toast.error(actionError(error));
                 }
               }}
             >
-              গ্রহণ করুন
+              সার্ভিসের হিসাব সংরক্ষণ
             </BigButton>
           </div>
-          <div className="space-y-2">
-            {repairs.length === 0 && (
-              <div className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-                কোনো রিপেয়ার নেই
+        ) : (
+          <div className="grid items-start gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+            <div className="space-y-3 rounded-xl border bg-card p-4 shadow-soft sm:p-5 lg:self-start">
+              <div className="border-b pb-3 text-base font-semibold">নতুন ডিভাইস গ্রহণ</div>
+              <TextInput
+                placeholder="কাস্টমারের নাম"
+                value={r.customer}
+                onChange={(e) => setR({ ...r, customer: e.target.value })}
+              />
+              <TextInput
+                placeholder="মোবাইল"
+                inputMode="tel"
+                value={r.phone}
+                onChange={(e) => setR({ ...r, phone: e.target.value })}
+              />
+              <TextInput
+                placeholder="ডিভাইস (যেমন: Samsung A12)"
+                value={r.device}
+                onChange={(e) => setR({ ...r, device: e.target.value })}
+              />
+              <textarea
+                placeholder="সমস্যার বিবরণ"
+                value={r.problem}
+                onChange={(e) => setR({ ...r, problem: e.target.value })}
+                className="min-h-24 w-full rounded-lg border border-input bg-card p-3 outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>আনুমানিক বিল</Label>
+                  <NumInput value={r.estimate} onChange={(v) => setR({ ...r, estimate: v })} />
+                </div>
+                <div>
+                  <Label>অগ্রিম</Label>
+                  <NumInput value={r.advance} onChange={(v) => setR({ ...r, advance: v })} />
+                </div>
               </div>
-            )}
-            {repairs.map((x) => (
-              <div key={x.id} className="rounded-2xl border bg-card p-4 shadow-soft">
-                <div className="flex justify-between gap-2">
-                  <div>
-                    <div className="font-medium">{x.device}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {x.customer} · {x.phone}
+              <BigButton
+                disabled={!r.customer || !r.device}
+                onClick={async () => {
+                  try {
+                    await confirmed(() =>
+                      addRepair({
+                        ...r,
+                        estimate: Number(r.estimate),
+                        advance: Number(r.advance),
+                      }),
+                    );
+                    setR({
+                      customer: "",
+                      phone: "",
+                      device: "",
+                      problem: "",
+                      estimate: "",
+                      advance: "",
+                    });
+                    toast.success("রিপেয়ার এন্ট্রি হয়েছে");
+                  } catch (error) {
+                    toast.error(actionError(error));
+                  }
+                }}
+              >
+                গ্রহণ করুন
+              </BigButton>
+            </div>
+            <div className="space-y-2">
+              {repairs.length === 0 && (
+                <div className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                  কোনো রিপেয়ার নেই
+                </div>
+              )}
+              {repairs.map((x) => (
+                <div key={x.id} className="rounded-2xl border bg-card p-4 shadow-soft">
+                  <div className="flex justify-between gap-2">
+                    <div>
+                      <div className="font-medium">{x.device}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {x.customer} · {x.phone}
+                      </div>
+                    </div>
+                    <div className="text-right text-sm">
+                      <Money v={x.finalBill ?? x.estimate} className="font-semibold" />
+                      <div className="text-xs text-muted-foreground">অগ্রিম {taka(x.advance)}</div>
                     </div>
                   </div>
-                  <div className="text-right text-sm">
-                    <Money v={x.finalBill ?? x.estimate} className="font-semibold" />
-                    <div className="text-xs text-muted-foreground">অগ্রিম {taka(x.advance)}</div>
+                  {x.problem && <p className="mt-2 text-sm text-muted-foreground">{x.problem}</p>}
+                  <div className="mt-3">
+                    {x.status === "delivered" ? (
+                      <p className="text-sm font-medium text-primary">
+                        ডেলিভারি সম্পন্ন · টাকা গ্রহণ করা হয়েছে
+                      </p>
+                    ) : (
+                      <Chips
+                        value={x.status}
+                        onChange={async (s) => {
+                          try {
+                            await confirmed(() => setRepairStatus(x.id, s));
+                          } catch (error) {
+                            toast.error(actionError(error));
+                          }
+                        }}
+                        options={
+                          x.status === "cancelled"
+                            ? [{ value: "cancelled", label: "বাতিল" }]
+                            : STATUS.filter((s) => s.value !== "delivered")
+                        }
+                      />
+                    )}
+                    {x.status !== "delivered" && x.status !== "cancelled" && (
+                      <BigButton
+                        className="mt-3"
+                        onClick={async () => {
+                          const remaining = Math.max(0, (x.finalBill ?? x.estimate) - x.advance);
+                          if (
+                            !confirm(
+                              `${x.customer}-এর কাছ থেকে বাকি ${taka(remaining)} ক্যাশ পেয়েছেন এবং ডিভাইস ফেরত দিয়েছেন? নিশ্চিত করলে হিসাব জমা হবে।`,
+                            )
+                          )
+                            return;
+                          try {
+                            await confirmed(() => setRepairStatus(x.id, "delivered"));
+                            toast.success("ডেলিভারি ও ক্যাশ গ্রহণ সংরক্ষিত");
+                          } catch (error) {
+                            toast.error(actionError(error));
+                          }
+                        }}
+                      >
+                        {Math.max(0, (x.finalBill ?? x.estimate) - x.advance) > 0
+                          ? `বাকি ${taka(Math.max(0, (x.finalBill ?? x.estimate) - x.advance))} নিয়ে ডেলিভারি`
+                          : "ডিভাইস ডেলিভারি নিশ্চিত করুন"}
+                      </BigButton>
+                    )}
                   </div>
+                  <RepairDetails repair={x} />
                 </div>
-                {x.problem && <p className="mt-2 text-sm text-muted-foreground">{x.problem}</p>}
-                <div className="mt-3">
-                  <Chips
-                    value={x.status}
-                    onChange={async (s) => {
-                      try {
-                        await confirmed(() => setRepairStatus(x.id, s));
-                      } catch (error) {
-                        toast.error(actionError(error));
-                      }
-                    }}
-                    options={
-                      x.status === "cancelled" ? [{ value: "cancelled", label: "বাতিল" }] : STATUS
-                    }
-                  />
-                </div>
-                <RepairDetails repair={x} />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </fieldset>
     </Page>
   );
 }

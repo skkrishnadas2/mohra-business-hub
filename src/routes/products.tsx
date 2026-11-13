@@ -1,4 +1,4 @@
-import { confirmed } from "@/lib/confirmed-write";
+import { confirmed, useSubmission } from "@/lib/confirmed-write";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { BulkLabels } from "@/components/BulkLabels";
@@ -44,7 +44,8 @@ type Draft = {
 };
 const empty: Draft = { name: "", barcodes: "", cost: "", price: "", stock: "", lowStock: "3" };
 
-function Products() {
+export function Products() {
+  const busy = useSubmission((s) => s.busy);
   const { products, can, upsertProduct, deleteProduct, cipherKey, shopName } = useStore();
   const { barcode } = Route.useSearch();
   const [d, setD] = useState<Draft | null>(() =>
@@ -71,28 +72,38 @@ function Products() {
       lowStock: String(p.lowStock),
     });
   const save = async () => {
-    if (!d) return;
+    if (!d || busy) return;
+    if (
+      ![d.cost, d.price, d.stock, d.lowStock].every((v) => Number.isFinite(Number(v))) ||
+      !Number.isInteger(Number(d.stock)) ||
+      !Number.isInteger(Number(d.lowStock))
+    ) {
+      toast.error("দাম সঠিক সংখ্যায় এবং স্টক পূর্ণ পিসে লিখুন।");
+      return;
+    }
     try {
       const barcodes = d.barcodes
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
-      await confirmed(() => upsertProduct({
-        category: d.category,
-        kind: d.kind ?? "product",
-        operator: d.operator,
-        serials: d.serials
-          ?.split(",")
-          .map((v) => v.trim())
-          .filter(Boolean),
-        id: d.id,
-        name: d.name,
-        barcodes: barcodes.length ? barcodes : [genBarcode()],
-        cost: Number(d.cost) || 0,
-        price: Number(d.price) || 0,
-        stock: Number(d.stock) || 0,
-        lowStock: Number(d.lowStock) || 0,
-      }));
+      await confirmed(() =>
+        upsertProduct({
+          category: d.category,
+          kind: d.kind ?? "product",
+          operator: d.operator,
+          serials: d.serials
+            ?.split(",")
+            .map((v) => v.trim())
+            .filter(Boolean),
+          id: d.id,
+          name: d.name,
+          barcodes: barcodes.length ? barcodes : [genBarcode()],
+          cost: Number(d.cost),
+          price: Number(d.price),
+          stock: Number(d.stock),
+          lowStock: Number(d.lowStock),
+        }),
+      );
       setD(null);
       toast.success("সেভ হয়েছে");
     } catch (error) {
@@ -107,6 +118,7 @@ function Products() {
       action={
         manage && (
           <button
+            disabled={busy}
             onClick={() => setD(empty)}
             className="flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
           >
@@ -115,7 +127,7 @@ function Products() {
         )
       }
     >
-      <div className="mb-5 flex gap-2">
+      <div className="mb-5 flex flex-wrap gap-2">
         {[
           ["catalog", "পণ্য ও সিম"],
           ["purchase", "ক্রয় ও ফেরত"],
@@ -136,6 +148,13 @@ function Products() {
         <BulkLabels />
       ) : (
         <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {!products.length && (
+            <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">
+              {manage
+                ? "এখনো পণ্য নেই। ‘নতুন’ বাটনে পণ্যের নাম, দাম ও বর্তমান স্টক বসান। নতুন মাল কেনার হিসাব ‘ক্রয় ও ফেরত’-এ দিন।"
+                : "এখনো পণ্য নেই। মালিক পণ্য যোগ করলে এখানে দেখা যাবে।"}
+            </p>
+          )}
           {products.map((p) => (
             <div key={p.id} className="rounded-xl border bg-card p-4 shadow-soft">
               <div className="flex items-start justify-between gap-2">
@@ -182,7 +201,7 @@ function Products() {
         </div>
       )}
 
-      <Sheet open={!!d} onOpenChange={(v) => !v && setD(null)}>
+      <Sheet open={!!d} onOpenChange={(v) => !v && !busy && setD(null)}>
         <SheetContent
           side="bottom"
           className="max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]"
@@ -191,7 +210,7 @@ function Products() {
             <SheetTitle>{d?.id ? "পণ্য এডিট" : "নতুন পণ্য"}</SheetTitle>
           </SheetHeader>
           {d && (
-            <div className="space-y-3 p-4 pt-0">
+            <fieldset disabled={busy} className="min-w-0 space-y-3 p-4 pt-0">
               <div>
                 <Label>নাম</Label>
                 <TextInput value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} />
@@ -268,7 +287,7 @@ function Products() {
                   <NumInput value={d.price} onChange={(v) => setD({ ...d, price: v })} />
                 </div>
                 <div>
-                  <Label>স্টক</Label>
+                  <Label>এখন মোট স্টক (পিস)</Label>
                   <NumInput value={d.stock} onChange={(v) => setD({ ...d, stock: v })} />
                 </div>
                 <div>
@@ -276,13 +295,21 @@ function Products() {
                   <NumInput value={d.lowStock} onChange={(v) => setD({ ...d, lowStock: v })} />
                 </div>
               </div>
-              <BigButton disabled={!d.name} onClick={save}>
+              <p className="text-xs text-muted-foreground">
+                এখানে বর্তমান পণ্য ও স্টক বসান। ক্রয়মূল্য বা স্টক বদলালে মূল্য সমন্বয়ের রেকর্ড
+                হবে। নতুন মাল কিনলে ‘ক্রয় ও ফেরত’ ব্যবহার করুন, যাতে টাকা ও দেনার হিসাবও জমা হয়।
+              </p>
+              <BigButton disabled={!d.name.trim()} onClick={save}>
                 সেভ করুন
               </BigButton>
               {d.id && (
                 <button
                   onClick={async () => {
                     try {
+                      if (
+                        !confirm("এই পণ্য মুছে ফেলবেন? স্টক বা আগের লেনদেন থাকলে মুছতে পারবেন না।")
+                      )
+                        return;
                       await confirmed(() => deleteProduct(d.id!));
                       setD(null);
                       toast.success("পণ্য মুছে ফেলা হয়েছে");
@@ -295,7 +322,7 @@ function Products() {
                   <Trash2 className="h-4 w-4" /> মুছে ফেলুন
                 </button>
               )}
-            </div>
+            </fieldset>
           )}
         </SheetContent>
       </Sheet>
@@ -360,7 +387,7 @@ function StickerSheet({
               <div>{p.name}</div>
               <div ref={ref} className="my-1 flex justify-center [&_svg]:max-w-full" />
               <div className="flex justify-between font-semibold">
-                <Money v={p.price} />
+                {showPrice && <Money v={p.price} />}
                 {withCipher && <span>{cipherEncode(p.cost, cipherKey)}</span>}
               </div>
             </div>

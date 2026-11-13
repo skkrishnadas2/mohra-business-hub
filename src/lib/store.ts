@@ -285,7 +285,13 @@ interface Actions extends BusinessActions, OperationsActions {
   setPerm: (k: keyof Perms, v: boolean) => void;
   setPins: (owner: string, cashier: string) => void;
   addAccount: (a: Omit<Account, "id">) => void;
-  setBalance: (id: string, value: number, pin: string, reason?: string) => boolean;
+  setBalance: (
+    id: string,
+    value: number,
+    pin: string,
+    reason?: string,
+    expectedBalance?: number,
+  ) => boolean;
   transfer: (fromId: string, toId: string, amount: number, title: string, ref?: string) => void;
   upsertProduct: (p: Omit<Product, "id"> & { id?: string | undefined }) => void;
   deleteProduct: (id: string) => void;
@@ -623,13 +629,18 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
             moves: [{ accountId: account.id, delta: opening }],
           });
       },
-      setBalance: (id, value, pin, reason) => {
+      setBalance: (id, value, pin, reason, expectedBalance) => {
         own();
         if (get().actor) {
           if (!reason?.trim()) fail("ব্যালেন্স সমন্বয়ের কারণ দিন");
         } else if (pin !== get().ownerPin) return false;
         const a = acc(id);
         if (!a) return false;
+        if (
+          expectedBalance !== undefined &&
+          (!Number.isFinite(expectedBalance) || round2(expectedBalance) !== a.balance)
+        )
+          fail("এই অ্যাকাউন্টের ব্যালেন্স বদলেছে। নতুন ব্যালেন্স দেখে আবার সমন্বয় করুন");
         const next = nonNegative(value, "ব্যালেন্স");
         const delta = round2(next - a.balance);
         if (delta !== 0)
@@ -667,9 +678,9 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
         const name = required(p.name, "পণ্যের নাম");
         const cost = nonNegative(p.cost, "কেনা দাম");
         const price = positive(p.price, "বিক্রি দাম");
-        if (!Number.isInteger(p.stock) || p.stock < 0)
+        if (!Number.isSafeInteger(p.stock) || p.stock < 0)
           fail("স্টক শূন্য বা তার বেশি পূর্ণ সংখ্যা দিন");
-        if (!Number.isInteger(p.lowStock) || p.lowStock < 0)
+        if (!Number.isSafeInteger(p.lowStock) || p.lowStock < 0)
           fail("কম স্টকের সীমা পূর্ণ সংখ্যা দিন");
         const barcodes = [...new Set(p.barcodes.map((b) => b.trim()).filter(Boolean))];
         if (!barcodes.length) fail("অন্তত একটি বারকোড দিন");
@@ -689,15 +700,45 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
         const previous = p.id ? get().products.find((x) => x.id === p.id) : undefined;
         if (p.id && !previous) fail("পণ্য পাওয়া যায়নি");
         const delta = p.stock - (previous?.stock ?? 0);
-        if (delta)
+        const previousValue = round2((previous?.stock ?? 0) * (previous?.cost ?? 0));
+        const nextValue = round2(p.stock * cost);
+        const valueDelta = round2(nextValue - previousValue);
+        const countValue = round2(delta * (previous?.cost ?? cost));
+        const revaluation = round2(valueDelta - countValue);
+        // Separate physical stock losses from a unit-cost correction: a correction
+        // changes inventory/equity, never cash or the day's trading profit.
+        if (
+          ![previousValue, nextValue, valueDelta, countValue, revaluation].every(
+            (value) => Number.isFinite(value) && Number.isSafeInteger(Math.round(value * 100)),
+          )
+        )
+          fail("স্টকের মূল্য সঠিক সীমার মধ্যে দিন");
+        if (delta || valueDelta)
           post({
             type: "stock_adjust",
-            title: `স্টক সমন্বয় · ${name} · ${delta}`,
-            amount: round2(Math.abs(delta) * cost),
-            profit: delta < 0 ? round2(delta * cost) : 0,
+            title: `স্টক / মূল্য সমন্বয় · ${name} · ${delta}`,
+            amount: Math.abs(valueDelta),
+            profit: delta < 0 ? countValue : 0,
             cat: delta < 0 ? "product" : "none",
             ref: p.id,
             moves: [],
+            journal: [
+              {
+                account: "asset:inventory",
+                debit: Math.max(0, valueDelta),
+                credit: Math.max(0, -valueDelta),
+              },
+              {
+                account: countValue < 0 ? "expense:stock-loss" : "equity:opening-stock",
+                debit: Math.max(0, -countValue),
+                credit: Math.max(0, countValue),
+              },
+              {
+                account: "equity:inventory-revaluation",
+                debit: Math.max(0, -revaluation),
+                credit: Math.max(0, revaluation),
+              },
+            ].filter((line) => line.debit || line.credit),
           });
         set((s) =>
           p.id
@@ -709,9 +750,16 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
       },
       deleteProduct: (id) => {
         permitted("manageProducts");
-        if (!get().products.some((p) => p.id === id)) fail("পণ্যটি পাওয়া যায়নি");
+        const product = get().products.find((p) => p.id === id);
+        if (!product) fail("পণ্যটি পাওয়া যায়নি");
         if (get().sales.some((s) => s.items.some((line) => line.productId === id)))
           fail("বিক্রিত পণ্য মুছে ফেলা যাবে না; স্টক শূন্য করে রাখুন");
+        if (product.stock > 0) fail("স্টক থাকা পণ্য মুছবেন না; আগে স্টক সমন্বয় করুন");
+        if (
+          get().business?.purchases.some((purchase) => purchase.productId === id) ||
+          get().repairs.some((repair) => repair.parts?.some((part) => part.productId === id))
+        )
+          fail("ক্রয় বা রিপেয়ারের ইতিহাস থাকা পণ্য মুছবেন না; স্টক শূন্য করে রাখুন");
         set((s) => ({ products: s.products.filter((p) => p.id !== id) }));
       },
       checkout: (lines, payments, customer, options) => {
@@ -724,7 +772,7 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
           const product =
             get().products.find((p) => p.id === line.productId) ??
             fail("কার্টের একটি পণ্য আর পাওয়া যায়নি");
-          if (!Number.isInteger(line.qty) || line.qty <= 0)
+          if (!Number.isSafeInteger(line.qty) || line.qty <= 0)
             fail(`${product.name} এর পরিমাণ সঠিক নয়`);
           // Product prices and costs are authoritative; a client cannot alter profit by editing cart data.
           const price = product.price;
@@ -1167,9 +1215,11 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
           get().repairs.find((x) => x.id === id) ?? fail("রিপেয়ার এন্ট্রি পাওয়া যায়নি");
         if (repair.status === status) return;
         if (repair.status === "cancelled") fail("বাতিল রিপেয়ার পরিবর্তন করা যাবে না");
+        if (repair.status === "delivered" || repair.deliveryCollected)
+          fail("ডেলিভারি সম্পন্ন রিপেয়ার আগের অবস্থায় ফেরানো যাবে না");
         const bill = repair.finalBill ?? repair.estimate;
         const rest = round2(Math.max(0, bill - repair.advance));
-        const alreadyCollected = repair.deliveryCollected || repair.status === "delivered";
+        const alreadyCollected = !!repair.deliveryCollected;
         const collect = status === "delivered" && !alreadyCollected;
         if (collect && rest > 0)
           validateMoves(get().accounts, [{ accountId: "cash", delta: rest }]);

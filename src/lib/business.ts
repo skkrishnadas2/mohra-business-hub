@@ -269,6 +269,10 @@ export function businessActions({
         p && Number.isSafeInteger(qty) && qty > 0 && qty <= p.stock,
         "সঠিক পণ্য ও পর্যাপ্ত স্টক দিন",
       );
+      check(
+        !p!.serialTracking && !p!.serials?.length,
+        "সিরিয়ালযুক্ত পণ্য রিপেয়ার পার্টস হিসেবে ব্যবহার করা যাবে না",
+      );
       const cost = round2(p!.cost * qty);
       post({
         type: "repair_part",

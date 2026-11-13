@@ -112,7 +112,7 @@ export function AccountGate() {
         return;
       }
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (error) throw new Error("ইমেইল বা পাসওয়ার্ড সঠিক নয়।");
+      if (error) throw error;
       setPassword("");
       await loadStore();
     } catch (e) {
