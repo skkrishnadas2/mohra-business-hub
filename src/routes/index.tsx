@@ -18,6 +18,8 @@ import {
 import { useStore, todayProfit, sinceToday } from "@/lib/store";
 import { Page, Tile, Money } from "@/components/kit";
 import { bn, taka } from "@/lib/rules";
+import { periodSummary, shopDay, isBusinessTransaction } from "@/lib/daily-summary";
+import { financialParties, partyBalance } from "@/lib/business";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -50,26 +52,14 @@ export function Dashboard() {
         !t.moves.some((m) => accounts.some((a) => a.id === m.accountId && a.kind === "bank"))),
   );
   const sales = state.sales.filter((s) =>
-    s.payments.every((p) => p.accountId === "due" || ids.has(p.accountId)),
+    s.payments.every(
+      (p) =>
+        p.accountId === "due" ||
+        (ids.has(p.accountId) &&
+          (showBank || accounts.find((a) => a.id === p.accountId)?.kind !== "bank")),
+    ),
   );
-  const businessTxns = txns.filter(
-    (t) =>
-      t.amount !== 0 &&
-      ![
-        "opening",
-        "adjust",
-        "stock_adjust",
-        "party_opening",
-        "party_offset",
-        "account_settings",
-        "backup_restored",
-        "staff_access",
-        "shift_closed",
-        "shift_variance",
-        "close_adjust",
-        "repair_update",
-      ].includes(t.type),
-  );
+  const businessTxns = txns.filter(isBusinessTransaction);
   const shiftOpen = !!activeShift(state);
   const sum = (k: string) =>
     accounts.filter((a) => a.kind === k).reduce((s, a) => s + a.balance, 0);
@@ -80,8 +70,26 @@ export function Dashboard() {
   const p = todayProfit(txns);
   const low = products.filter((x) => x.stock <= x.lowStock);
   const todays = businessTxns.filter((t) => sinceToday(t.at));
-  const todaySales = sales.filter((s) => !s.voidedAt && sinceToday(s.at));
-  const salesTotal = todaySales.reduce((sum, sale) => sum + sale.total, 0);
+  const day = shopDay(Date.now());
+  const daily = periodSummary(txns, sales, day, day);
+  // Cashier snapshots omit journals and may omit bank legs. Only sale payments
+  // reliably identify credit there; never infer recharge credit from redacted moves.
+  const visibleNewDue =
+    role === "owner"
+      ? daily.newDue
+      : periodSummary(
+          txns.filter((t) => t.type === "sale"),
+          sales,
+          day,
+          day,
+        ).newDue;
+  const outstanding =
+    role === "owner"
+      ? financialParties(state).reduce(
+          (n, party) => n + partyBalance(state, party.id).receivable,
+          0,
+        )
+      : 0;
   const openRepairs = repairs.filter(
     (r) => r.status !== "delivered" && r.status !== "cancelled",
   ).length;
@@ -95,9 +103,7 @@ export function Dashboard() {
     const start = dayStart - (6 - index) * 86_400_000;
     const date = new Date(start);
     const end = start + 86_400_000;
-    const total = sales
-      .filter((sale) => !sale.voidedAt && sale.at >= start && sale.at < end)
-      .reduce((sum, sale) => sum + sale.total, 0);
+    const total = periodSummary(txns, sales, shopDay(start), shopDay(end - 1)).netSales;
     return {
       label: date.toLocaleDateString("bn-BD", { weekday: "short", timeZone: "Asia/Dhaka" }),
       fullDate: date.toLocaleDateString("bn-BD", {
@@ -109,7 +115,7 @@ export function Dashboard() {
       today: index === 6,
     };
   });
-  const maxDay = Math.max(1, ...week.map((d) => d.total));
+  const maxDay = Math.max(1, ...week.map((d) => Math.abs(d.total)));
   const weekTotal = week.reduce((sum, d) => sum + d.total, 0);
 
   const fundRows = [
@@ -139,11 +145,11 @@ export function Dashboard() {
     },
     {
       label: "আজ পণ্য বিক্রি",
-      value: salesTotal,
+      value: daily.netSales,
       icon: ReceiptText,
       money: true,
       hidden: false,
-      note: `${bn(todaySales.length)}টি মেমো · ফেরতের আগে`,
+      note: `${bn(daily.saleCount)}টি মেমো · ফেরত/বাতিল বাদে`,
     },
     {
       label: "আজকের নেট লাভ",
@@ -151,7 +157,7 @@ export function Dashboard() {
       icon: TrendingUp,
       money: true,
       hidden: !showProfit,
-      note: "আয় ও খরচ মিলিয়ে",
+      note: "পণ্য ও সব সেবার লাভ থেকে দোকানের খরচ বাদ",
       accent: true,
     },
     {
@@ -235,6 +241,52 @@ export function Dashboard() {
           ))}
         </section>
 
+        <section
+          aria-label="টাকা ও বাকির সহজ হিসাব"
+          className="rounded-xl border bg-card p-4 sm:p-5"
+        >
+          <h2 className="text-sm font-semibold">টাকা ও বাকির সহজ হিসাব</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            বিক্রি মানে মোট বিল। লাভ মানে খরচ বাদে আয়। বাকি আদায় নতুন বিক্রি বা নতুন লাভ নয়।
+          </p>
+          <dl className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {[
+              ["আজ ক্যাশে ঢুকেছে", daily.cashIn, "আদায়, মূলধন ও অন্য হিসাব থেকে আনা টাকাসহ"],
+              ["আজ ক্যাশ থেকে গেছে", daily.cashOut, "কেনা, খরচ, ফেরত ও অন্য হিসাবে পাঠানোসহ"],
+              [
+                role === "owner" ? "আজ নতুন বিক্রি/রিচার্জের বাকি" : "আজ পণ্য বিক্রির নতুন বাকি",
+                visibleNewDue,
+                role === "owner"
+                  ? "বিলের যে টাকা সঙ্গে সঙ্গে পাওয়া যায়নি"
+                  : "শুধু অনুমতিপ্রাপ্ত পণ্যের বিল; রিচার্জের বাকি মালিক দেখবেন",
+              ],
+              ["আজ বাকি আদায়", daily.collected, "আগের ও আজকের বাকি থেকে পাওয়া টাকা"],
+            ].map(([label, value, note]) => (
+              <div key={String(label)}>
+                <dt className="text-xs text-muted-foreground">{label}</dt>
+                <dd className="mt-1">
+                  <Money v={Number(value)} className="text-lg font-semibold" />
+                </dd>
+                <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-4 text-xs text-muted-foreground">
+            আজ ফেরত/বাতিল: {taka(daily.returns)}
+            {role === "owner" && <> · এতে বাকি কমেছে: {taka(daily.dueReversed)}</>}। ক্যাশের অঙ্কে
+            শুরুর ব্যালেন্স ও হিসাব সংশোধন ধরা হয়নি।
+          </p>
+          {role === "owner" && (
+            <Link
+              to="/khata"
+              className="mt-3 inline-flex min-h-10 items-center gap-2 text-sm font-medium text-primary"
+            >
+              সব দিনের মোট পাওনা <Money v={outstanding} /> · খাতা খুলুন{" "}
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
+        </section>
+
         <section aria-labelledby="quick-actions-heading">
           <div className="mb-2.5 flex items-center justify-between">
             <h2 id="quick-actions-heading" className="text-sm font-semibold">
@@ -283,7 +335,7 @@ export function Dashboard() {
               <div>
                 <h2 className="text-sm font-semibold">গত ৭ দিনের পণ্য বিক্রি</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  ফেরতের আগের মোট বিল · বাংলাদেশ সময় অনুযায়ী
+                  সেদিনের বিক্রি থেকে সেদিনের ফেরত/বাতিল বাদ · বাংলাদেশ সময়
                 </p>
               </div>
               <div className="text-right">
@@ -303,12 +355,12 @@ export function Dashboard() {
                   title={`${day.fullDate}: ${taka(day.total)}`}
                 >
                   <span className="tnum truncate text-[10px] text-muted-foreground">
-                    {day.total > 0 ? taka(day.total) : ""}
+                    {day.total !== 0 ? taka(day.total) : ""}
                   </span>
                   <div
-                    className={`w-full rounded-t-sm ${day.today ? "bg-primary" : "bg-primary/30"}`}
+                    className={`w-full rounded-t-sm ${day.total < 0 ? "bg-destructive/60" : day.today ? "bg-primary" : "bg-primary/30"}`}
                     style={{
-                      height: `${Math.max(day.total > 0 ? 8 : 2, Math.round((day.total / maxDay) * 72))}%`,
+                      height: `${Math.max(day.total !== 0 ? 8 : 2, Math.round((Math.abs(day.total) / maxDay) * 72))}%`,
                     }}
                   />
                   <span

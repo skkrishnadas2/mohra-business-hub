@@ -99,3 +99,7 @@ Recharge and customer MFS counters show permitted account/provider names and ind
 ## PDF reports
 
 Reports, party ledgers, inventory and individual account statements download as device-generated A4 PDFs. The shared MOHRA template includes proprietor identity, selected period/filters, summaries, repeated table headings and page numbers. Licensed Hind Siliguri Bengali and Noto Latin fonts are bundled under public/fonts with OFL licenses; no business data is sent to an external PDF service. The PDF library loads only when requested. Pending financial writes block final PDF export; cashier PDFs use the same filtered records and omit owner-only balance history. Full restore backups remain JSON.
+
+## Accounting and daily-workflow audit
+
+See [the senior audit and roadmap](docs/SENIOR-AUDIT-2026-11-13.md) for corrected daily metrics, inventory returns, durable-write failure handling, cashier field controls, worked acceptance examples and remaining device checks.

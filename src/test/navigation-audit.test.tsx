@@ -118,3 +118,27 @@ it("opening guide directs the cashier to the owner without exposing controls", (
   expect(screen.getByText("এই কাজ মালিক করবেন।")).toBeDefined();
   expect(screen.queryByRole("link", { name: /অ্যাকাউন্ট ও টাকা/ })).toBeNull();
 });
+it("does not infer cashier recharge credit or due reversal from a redacted voucher", () => {
+  useStore.setState((s) => ({
+    role: "cashier",
+    perms: { ...s.perms, viewBank: false },
+    txns: [
+      {
+        id: "redacted-recharge",
+        at: Date.now(),
+        type: "recharge",
+        title: "Recharge paid through hidden bank",
+        amount: 777,
+        profit: 0,
+        cat: "recharge",
+        by: "owner",
+        partyId: "party",
+        moves: [{ accountId: "rc_gp", delta: -777 }],
+      },
+    ],
+  }));
+  render(<Dashboard />);
+  expect(screen.getByText("আজ পণ্য বিক্রির নতুন বাকি")).toBeDefined();
+  expect(screen.queryByText("আজ নতুন বিক্রি/রিচার্জের বাকি")).toBeNull();
+  expect(screen.queryByText(/এতে বাকি কমেছে/)).toBeNull();
+});

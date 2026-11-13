@@ -97,3 +97,13 @@ it("cashier statement exports visible rows without owner before/after balances o
   expect(JSON.stringify(report)).not.toContain("Secret trade");
   expect(JSON.stringify(report)).not.toContain("আগে");
 });
+
+it("blocks final PDF exports when damaged pending work cannot be counted", () => {
+  const shopId = "11111111-1111-4111-8111-111111111111";
+  useCloud.setState({ shopId, pending: 0 });
+  localStorage.setItem(`mohra-cloud-outbox-v1:${shopId}`, "{broken");
+  render(<Reports />);
+  for (const button of screen.getAllByRole("button", { name: /হিসাব যাচাই হলে PDF নিন/ }))
+    expect(button).toBeDisabled();
+  expect(mocks.download).not.toHaveBeenCalled();
+});

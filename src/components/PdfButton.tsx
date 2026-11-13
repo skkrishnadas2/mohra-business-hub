@@ -1,4 +1,5 @@
 import { useCloud } from "@/lib/cloud-sync";
+import { outboxIssue } from "@/lib/cloud-outbox";
 import { useSubmission } from "@/lib/confirmed-write";
 import { useRef, useState } from "react";
 import { Download } from "lucide-react";
@@ -15,14 +16,18 @@ export function PdfButton({
 }) {
   const [busy, setBusy] = useState(false);
   const pending = useCloud((s) => s.pending);
+  const shopId = useCloud((s) => s.shopId);
+  const syncError = useCloud((s) => s.error);
+  const damaged = !!(shopId && outboxIssue(shopId));
   const writing = useSubmission((s) => s.busy);
-  const blocked = disabled || pending > 0 || writing;
+  const blocked = disabled || pending > 0 || writing || damaged;
   const saving = useRef(false);
   return (
     <button
       type="button"
       disabled={blocked || busy}
       aria-busy={busy}
+      title={damaged ? (syncError ?? "অপেক্ষমাণ কাজের তথ্য আগে যাচাই করুন") : undefined}
       className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border bg-card px-4 py-2 text-sm font-medium text-primary transition-colors hover:enabled:bg-accent disabled:opacity-50"
       onClick={async () => {
         if (saving.current || blocked) return;
@@ -47,7 +52,13 @@ export function PdfButton({
       }}
     >
       <Download size={16} />
-      {busy ? "PDF তৈরি হচ্ছে…" : pending > 0 ? "হিসাব সেভ হলে PDF নিন" : label}
+      {busy
+        ? "PDF তৈরি হচ্ছে…"
+        : damaged
+          ? "হিসাব যাচাই হলে PDF নিন"
+          : pending > 0
+            ? "হিসাব সেভ হলে PDF নিন"
+            : label}
     </button>
   );
 }

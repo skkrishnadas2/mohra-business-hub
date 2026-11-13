@@ -10,13 +10,20 @@ import {
   joinCloudShop,
   type CloudShop,
 } from "@/lib/cloud.functions";
-import { acknowledgeOutbox, appendOutbox, readOutbox, type OutboxAction } from "@/lib/cloud-outbox";
+import {
+  acknowledgeOutbox,
+  appendOutbox,
+  readOutbox,
+  outboxIssue,
+  type OutboxAction,
+} from "@/lib/cloud-outbox";
 import {
   CLOUD_ACTION_EVENT,
   actionError,
   shopSnapshot,
   useStore,
   setCloudActionGuard,
+  setCloudActionCommit,
   type CloudAction,
   type Role,
 } from "@/lib/store";
@@ -55,11 +62,26 @@ let switchingShop = false;
 setCloudActionGuard(() => {
   if (switchingShop) throw new Error("দোকান খোলা হচ্ছে—একটু অপেক্ষা করুন");
   const shop = useCloud.getState().shopId ?? savedShopId();
+  const issue = shop && outboxIssue(shop);
+  if (issue) throw new Error(issue);
   if (shop && readOutbox(shop).length)
     throw new Error("আগের অনুরোধ নিশ্চিত হওয়া বাকি। সংযোগ পাতায় অবস্থা দেখুন।");
   if (typeof navigator !== "undefined" && !navigator.onLine && savedShopId())
     throw new Error("ইন্টারনেট নেই—কার্ট খসড়া রাখুন, সংযোগ ফিরলে লেনদেন করুন");
 });
+setCloudActionCommit((action) => {
+  const shopId = useCloud.getState().shopId ?? savedShopId();
+  if (!shopId) return;
+  try {
+    appendOutbox(shopId, { ...action, id: action.id! });
+  } catch {
+    const error =
+      "এই ডিভাইসে লেনদেন নিরাপদে রাখা যায়নি। নতুন কাজ বন্ধ রেখে ব্রাউজারের স্টোরেজ ও সংযোগ যাচাই করুন।";
+    useCloud.setState({ status: "error", error });
+    throw new Error(error);
+  }
+});
+
 function savedShopId() {
   return typeof window === "undefined" ? null : window.localStorage.getItem(SHOP_KEY);
 }
@@ -71,6 +93,8 @@ function saveVersion(version: number) {
   if (typeof window !== "undefined") window.localStorage.setItem(VERSION_KEY, String(version));
 }
 function adopt(shop: CloudShop) {
+  const issue = outboxIssue(shop.shopId);
+  if (issue) throw new Error(issue);
   const current = useCloud.getState();
   if (current.shopId === shop.shopId && shop.version < current.version) return;
   const pending = readOutbox(shop.shopId).length;
@@ -99,6 +123,11 @@ function adopt(shop: CloudShop) {
 
 export async function openCloudShop(shopId: string) {
   const current = useCloud.getState();
+  const issue = outboxIssue(shopId) ?? (current.shopId ? outboxIssue(current.shopId) : null);
+  if (issue) {
+    useCloud.setState({ status: "error", error: issue });
+    throw new Error(issue);
+  }
   const switching = current.shopId !== shopId;
   if (
     switching &&
@@ -266,6 +295,11 @@ async function runFlush() {
   // A new action can arrive while the trailing snapshot request is in flight.
   // Keep ownership of the flush until that successful refresh has been rechecked.
   for (;;) {
+    const issue = outboxIssue(shopId);
+    if (issue) {
+      useCloud.setState({ status: "error", error: issue });
+      return;
+    }
     let synced = false;
 
     while (readOutbox(shopId).length) {
@@ -404,6 +438,8 @@ export async function confirmCloudWrite<T>(
 ): Promise<{ result: T; confirmed: boolean }> {
   const shopId = useCloud.getState().shopId ?? savedShopId();
   if (!shopId) return { result: operation(), confirmed: true };
+  const issue = outboxIssue(shopId);
+  if (issue) throw new Error(issue);
   let actionId: string | undefined;
   let resolve: ((v: { ok: boolean; message?: string }) => void) | undefined;
   const answer = new Promise<{ ok: boolean; message?: string }>((r) => {

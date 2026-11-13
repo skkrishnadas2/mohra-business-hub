@@ -476,9 +476,12 @@ export function operationsActions({ set, get, uid, now, post, run }: Context): O
         products: s.products.map((p) => {
           const ls = clean.filter((l) => sale.items[l.lineIndex]!.productId === p.id);
           if (!ls.length) return p;
+          const restoredQty = ls.reduce((n, l) => n + l.qty, 0);
+          const restoredCost = ls.reduce((n, l) => n + sale.items[l.lineIndex]!.cost * l.qty, 0);
           return {
             ...p,
-            stock: p.stock + ls.reduce((n, l) => n + l.qty, 0),
+            stock: p.stock + restoredQty,
+            cost: round2((p.stock * p.cost + restoredCost) / (p.stock + restoredQty)),
             serials: p.serials ? [...p.serials, ...ls.flatMap((l) => l.serials ?? [])] : p.serials,
           };
         }),

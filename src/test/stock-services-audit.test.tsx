@@ -12,6 +12,7 @@ import { Services } from "@/routes/services";
 import { Products } from "@/routes/products";
 import { BulkLabels } from "@/components/BulkLabels";
 import { PurchaseWorkspace } from "@/components/BusinessWorkspace";
+import { RepairDetails } from "@/components/RepairDetails";
 import { useStore } from "@/lib/store";
 import { useCloud } from "@/lib/cloud-sync";
 import { useSubmission } from "@/lib/confirmed-write";
@@ -49,6 +50,64 @@ const product = () => {
   return useStore.getState().products[0]!;
 };
 describe("stock and services audit corrections", () => {
+  it("does not silently turn a cleared repair bill into a free repair", async () => {
+    useStore
+      .getState()
+      .addRepair({
+        customer: "Rahim",
+        phone: "",
+        device: "Phone",
+        problem: "Screen",
+        estimate: 500,
+        advance: 0,
+      });
+    const repair = useStore.getState().repairs[0]!;
+    render(<RepairDetails repair={repair} />);
+    fireEvent.click(screen.getByRole("button", { name: "বিল, কন্ডিশন ও পার্টস" }));
+    fireEvent.change(screen.getByLabelText("চূড়ান্ত বিল"), { target: { value: "" } });
+    const save = screen.getByRole("button", { name: "বিল ও তথ্য সংরক্ষণ" });
+    expect(save).toBeDisabled();
+    fireEvent.click(save);
+    expect(useStore.getState().repairs[0]!.finalBill).toBe(500);
+    fireEvent.change(screen.getByLabelText("চূড়ান্ত বিল"), { target: { value: "০" } });
+    expect(save).toBeEnabled();
+    await act(async () => fireEvent.click(save));
+    expect(useStore.getState().repairs[0]!.finalBill).toBe(0);
+  });
+  it("shows the repair balance to collect and blocks bills below the received advance", () => {
+    useStore
+      .getState()
+      .addRepair({
+        customer: "Rahim",
+        phone: "",
+        device: "Phone",
+        problem: "Screen",
+        estimate: 500,
+        advance: 100,
+      });
+    render(<RepairDetails repair={useStore.getState().repairs[0]!} />);
+    fireEvent.click(screen.getByRole("button", { name: "বিল, কন্ডিশন ও পার্টস" }));
+    expect(screen.getByRole("status").textContent).toContain("৪০০");
+    fireEvent.change(screen.getByLabelText("চূড়ান্ত বিল"), { target: { value: "50" } });
+    expect(screen.getByRole("button", { name: "বিল ও তথ্য সংরক্ষণ" })).toBeDisabled();
+  });
+  it("prevents invalid service amounts before submission and explains gross receipt versus profit", () => {
+    render(<Services />);
+    fireEvent.change(screen.getByLabelText("গ্রাহকের কাছ থেকে পাওয়া টাকা"), {
+      target: { value: "100.123" },
+    });
+    expect(screen.getByRole("button", { name: "সার্ভিসের হিসাব সংরক্ষণ" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("গ্রাহকের কাছ থেকে পাওয়া টাকা"), {
+      target: { value: "100" },
+    });
+    fireEvent.change(screen.getByLabelText("ক্যাশ থেকে সরাসরি খরচ"), { target: { value: "20" } });
+    expect(screen.getByRole("status").textContent).toContain("এই কাজের লাভ");
+    expect(screen.getByRole("status").textContent).toContain("৮০");
+    fireEvent.change(screen.getByLabelText("ক্যাশ থেকে সরাসরি খরচ"), {
+      target: { value: "20000" },
+    });
+    expect(screen.getByRole("button", { name: "সার্ভিসের হিসাব সংরক্ষণ" })).toBeDisabled();
+  });
   it("clears the previous service cost so the next customer's profit is not reduced again", async () => {
     render(<Services />);
     fireEvent.click(screen.getByText("এই কাজের খরচ আছে? (ঐচ্ছিক)"));

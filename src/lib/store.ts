@@ -965,10 +965,16 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
             const qty = sale.items
               .filter((line) => line.productId === p.id)
               .reduce((sum, line) => sum + line.qty, 0);
+            const restoredCost = sale.items
+              .filter((line) => line.productId === p.id)
+              .reduce((sum, line) => sum + line.qty * line.cost, 0);
             return qty
               ? {
                   ...p,
                   stock: p.stock + qty,
+                  // Returned units retain the original cost, even after a later purchase
+                  // changed the weighted-average cost of the units still on hand.
+                  cost: round2((p.stock * p.cost + restoredCost) / (p.stock + qty)),
                   serials: p.serials
                     ? [
                         ...p.serials,
@@ -1403,11 +1409,21 @@ export interface CloudAction extends ActionIdentity {
 }
 export const CLOUD_ACTION_EVENT = "mohra:cloud-action";
 let cloudActionGuard: (() => void) | undefined;
+let cloudActionCommit: ((action: CloudAction) => void) | undefined;
+/** Persist synchronously: DOM event listener exceptions cannot reject a submitted form. */
+export function setCloudActionCommit(commit: (action: CloudAction) => void) {
+  cloudActionCommit = commit;
+}
 export function setCloudActionGuard(guard: () => void) {
   cloudActionGuard = guard;
 }
 
-function withCloudActions(store: ShopStore, identity: ActionIdentity): ShopStore {
+function withCloudActions(
+  store: ShopStore,
+  identity: ActionIdentity,
+  get: () => ShopStore,
+  restore: (state: ShopStore) => void,
+): ShopStore {
   const wrapped = { ...store };
   const target = wrapped as unknown as Record<string, unknown>;
   const source = store as unknown as Record<string, unknown>;
@@ -1417,16 +1433,26 @@ function withCloudActions(store: ShopStore, identity: ActionIdentity): ShopStore
       cloudActionGuard?.();
       identity.id = crypto.randomUUID();
       identity.at = Date.now();
+      const before = get();
       try {
         const result = original(...args);
         if (result !== false && typeof window !== "undefined") {
+          const action: CloudAction = { name, args, id: identity.id, at: identity.at };
+          cloudActionCommit?.(action);
           window.dispatchEvent(
-            new CustomEvent<CloudAction>(CLOUD_ACTION_EVENT, {
-              detail: { name, args, id: identity.id, at: identity.at },
-            }),
+            new CustomEvent<CloudAction>(CLOUD_ACTION_EVENT, { detail: action }),
           );
         }
         return result;
+      } catch (error) {
+        // State updates are immutable. Restore local data if durable storage failed
+        // before dispatch; no financial request has been sent for this action.
+        try {
+          restore(before);
+        } catch {
+          /* persist can fail again; in-memory rollback already ran */
+        }
+        throw error;
       } finally {
         delete identity.id;
         delete identity.at;
@@ -1463,7 +1489,12 @@ export const useStore = create<ShopStore>()(
   persist(
     (set, get, api) => {
       const identity: ActionIdentity = {};
-      return withCloudActions(createShopStoreCreator(identity)(set, get, api), identity);
+      return withCloudActions(
+        createShopStoreCreator(identity)(set, get, api),
+        identity,
+        get,
+        (state) => set(state),
+      );
     },
     {
       name: "mohra-pos-v1",

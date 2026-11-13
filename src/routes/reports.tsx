@@ -1,3 +1,4 @@
+import { periodSummary } from "@/lib/daily-summary";
 import { PdfButton } from "@/components/PdfButton";
 import { taka } from "@/lib/rules";
 import { transactionLabel } from "@/lib/transaction-label";
@@ -36,7 +37,8 @@ export function Reports() {
       (!type || t.type === type)
     );
   });
-  const profit = rows.reduce((n, t) => n + t.profit, 0);
+  const selected = periodSummary(rows, s.sales, from, to, !account && !type);
+  const profit = selected.profit;
   const expense = rows.filter((t) => t.type === "expense").reduce((n, t) => n + t.amount, 0);
   const stock = s.products.reduce((n, p) => n + p.stock * p.cost, 0);
   const parties = financialParties(s);
@@ -73,6 +75,7 @@ export function Reports() {
     summary: [
       { label: "নেট লাভ", value: taka(profit) },
       { label: "দোকানের খরচ", value: taka(expense) },
+      { label: "ফেরত বাদে পণ্য বিক্রি", value: taka(selected.netSales) },
       { label: "লেনদেন", value: String(rows.length) },
     ],
   });
@@ -123,6 +126,10 @@ export function Reports() {
         {[
           ["নির্বাচিত সময়ের নেট লাভ", profit],
           ["নির্বাচিত সময়ের খরচ", expense],
+          ["নির্বাচিত সময়ের পণ্য বিক্রি (ফেরত বাদে)", selected.netSales],
+          ["নির্বাচিত সময়ে নতুন বিক্রি/রিচার্জের বাকি", selected.newDue],
+          ["নির্বাচিত সময়ে বাকি আদায়", selected.collected],
+          ["বর্তমান মোট দেনা", balances.reduce((n, p) => n + p.payable, 0)],
           ["বর্তমান স্টকের মূল্য", stock],
           ["বর্তমান মোট পাওনা", balances.reduce((n, p) => n + p.receivable, 0)],
         ].map(([label, value]) => (
@@ -131,6 +138,10 @@ export function Reports() {
           </Panel>
         ))}
       </div>
+      <p className="mb-4 text-xs text-muted-foreground">
+        সময়ের অঙ্কে নিচের তারিখ, অ্যাকাউন্ট ও লেনদেনের ফিল্টার প্রযোজ্য। বর্তমান পাওনা–দেনা ও স্টক
+        সব দিনের চলতি হিসাব। বাকি আদায় নতুন লাভ নয়; পরিমাণ কলাম যোগ করলেই মোট আয় হয় না।
+      </p>
       <Panel title="লেনদেনের স্টেটমেন্ট">
         <details>
           <summary className="cursor-pointer text-sm text-muted-foreground">

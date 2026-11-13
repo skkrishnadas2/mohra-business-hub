@@ -670,7 +670,7 @@ export function businessActions({
       const remainingStock = product!.stock - p!.qty;
       const remainingValue = round2(product!.stock * product!.cost - total);
       check(
-        remainingStock === 0 || remainingValue >= 0,
+        remainingStock === 0 ? remainingValue === 0 : remainingValue >= 0,
         "পরের স্টক ব্যবহারের পরে এই ক্রয় পুরো ফেরত দেওয়া যাবে না",
       );
       if (refund) account(p!.accountId, true);

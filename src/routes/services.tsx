@@ -7,6 +7,7 @@ import { actionError, useStore, type RepairStatus } from "@/lib/store";
 import { Page, Money, BigButton, Chips, NumInput, TextInput, Label } from "@/components/kit";
 import { AccountSelect, Field } from "@/components/BusinessWorkspace";
 import { taka } from "@/lib/rules";
+import { counterMoney } from "@/lib/counter-preferences";
 
 export const Route = createFileRoute("/services")({
   head: () => ({
@@ -39,7 +40,7 @@ const STATUS: { value: RepairStatus; label: string }[] = [
 
 export function Services() {
   const busy = useSubmission((s) => s.busy);
-  const { serviceSlip, addRepair, repairs, setRepairStatus } = useStore();
+  const { serviceSlip, addRepair, repairs, setRepairStatus, accounts, role, can } = useStore();
   const [tab, setTab] = useState<"slip" | "repair">("slip");
   const [svc, setSvc] = useState<string>(QUICK[0] ?? "");
   const [amt, setAmt] = useState("");
@@ -53,6 +54,32 @@ export function Services() {
     estimate: "",
     advance: "",
   });
+  const bill = counterMoney(amt);
+  const serviceCost = directCost.trim() ? counterMoney(directCost) : 0;
+  const paymentAccount = accounts.find(
+    (a) =>
+      a.id === payment &&
+      !a.inactive &&
+      a.kind !== "recharge" &&
+      (role === "owner" || (a.cashierAllowed !== false && (a.kind !== "bank" || can("viewBank")))),
+  );
+  const cash = accounts.find((a) => a.id === "cash" && !a.inactive);
+  const serviceReady =
+    Number.isFinite(bill) &&
+    bill > 0 &&
+    Number.isFinite(serviceCost) &&
+    serviceCost >= 0 &&
+    !!paymentAccount &&
+    (serviceCost === 0 || (!!cash && cash.balance >= serviceCost));
+  const estimate = r.estimate.trim() ? counterMoney(r.estimate) : 0;
+  const advance = r.advance.trim() ? counterMoney(r.advance) : 0;
+  const repairReady =
+    !!r.customer.trim() &&
+    !!r.device.trim() &&
+    Number.isFinite(estimate) &&
+    Number.isFinite(advance) &&
+    advance >= 0 &&
+    advance <= estimate;
 
   return (
     <Page title="সার্ভিস ও রিপেয়ার">
@@ -93,12 +120,18 @@ export function Services() {
               </div>
             </details>
             <AccountSelect value={payment} onChange={setPayment} />
+            <p className="text-sm text-muted-foreground" role="status">
+              {serviceReady
+                ? `${paymentAccount!.name}-এ জমা ${taka(bill)}${serviceCost > 0 ? `; ক্যাশ থেকে খরচ ${taka(serviceCost)}` : ""}।${can("viewProfit") ? ` এই কাজের লাভ ${taka(bill - serviceCost)}।` : ""}`
+                : "পাওয়া টাকা ও জমার হিসাব বেছে নিন। খরচ থাকলে আগে ক্যাশে সেই টাকা থাকতে হবে।"}
+            </p>
             <BigButton
-              disabled={!Number(amt)}
+              disabled={!serviceReady}
               onClick={async () => {
+                if (!serviceReady) return;
                 try {
-                  await confirmed(() => serviceSlip(svc, Number(amt), payment, Number(directCost)));
-                  toast.success(`${svc} · ${taka(Number(amt))}`);
+                  await confirmed(() => serviceSlip(svc, bill, payment, serviceCost));
+                  toast.success(`${svc} · ${taka(bill)}`);
                   setAmt("");
                   setDirectCost("");
                   setPayment("cash");
@@ -138,23 +171,36 @@ export function Services() {
               />
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label>আনুমানিক বিল</Label>
-                  <NumInput value={r.estimate} onChange={(v) => setR({ ...r, estimate: v })} />
+                  <Label htmlFor="repair-estimate">আনুমানিক বিল</Label>
+                  <NumInput
+                    id="repair-estimate"
+                    value={r.estimate}
+                    onChange={(v) => setR({ ...r, estimate: v })}
+                  />
                 </div>
                 <div>
-                  <Label>অগ্রিম</Label>
-                  <NumInput value={r.advance} onChange={(v) => setR({ ...r, advance: v })} />
+                  <Label htmlFor="repair-advance">ক্যাশে অগ্রিম পেলাম</Label>
+                  <NumInput
+                    id="repair-advance"
+                    value={r.advance}
+                    onChange={(v) => setR({ ...r, advance: v })}
+                  />
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                অগ্রিম লিখলে সেই টাকা ক্যাশে জমা হবে। বিল জানা না থাকলে ফাঁকা রাখতে পারেন।
+                রিপেয়ারের আয় ও লাভ ডেলিভারির সময় ধরা হবে।
+              </p>
               <BigButton
-                disabled={!r.customer || !r.device}
+                disabled={!repairReady}
                 onClick={async () => {
+                  if (!repairReady) return;
                   try {
                     await confirmed(() =>
                       addRepair({
                         ...r,
-                        estimate: Number(r.estimate),
-                        advance: Number(r.advance),
+                        estimate,
+                        advance,
                       }),
                     );
                     setR({

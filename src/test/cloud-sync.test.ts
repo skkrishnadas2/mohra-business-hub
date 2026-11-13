@@ -52,6 +52,7 @@ function cloudShop(state: State, version: number) {
 beforeEach(() => {
   window.localStorage.clear();
   vi.clearAllMocks();
+  useCloud.setState({ shopId: null });
   resetShop();
   useCloud.setState({
     status: "connected",
@@ -396,4 +397,40 @@ describe("canonical state before successful confirmation", () => {
       window.removeEventListener("mohra:cloud-result", listener);
     }
   });
+});
+
+it("blocks mutations, replay and remote replacement while pending storage is damaged", async () => {
+  const originalCash = useStore.getState().accounts.find((a) => a.id === "cash")!.balance;
+  localStorage.setItem(`mohra-cloud-outbox-v1:${shopId}:action:${actionId}`, "{broken");
+  expect(() => useStore.getState().serviceSlip("Print", 500, "cash")).toThrow(/নতুন লেনদেন বন্ধ/);
+  await flushCloudOutbox();
+  expect(useCloud.getState().status).toBe("error");
+  expect(mocks.apply).not.toHaveBeenCalled();
+  await expect(openCloudShop(shopId)).rejects.toThrow(/নতুন লেনদেন বন্ধ/);
+  expect(mocks.get).not.toHaveBeenCalled();
+  expect(useStore.getState().accounts.find((a) => a.id === "cash")!.balance).toBe(originalCash);
+});
+
+it("rolls back a local financial change immediately if the durable queue cannot be saved", () => {
+  const before = shopSnapshot(useStore.getState());
+  const nativeSet = Storage.prototype.setItem;
+  const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+    this: Storage,
+    key,
+    value,
+  ) {
+    if (key.includes(":action:")) throw new DOMException("Quota exceeded", "QuotaExceededError");
+    return nativeSet.call(this, key, value);
+  });
+  try {
+    expect(() => useStore.getState().serviceSlip("Print", 500, "cash")).toThrow(
+      /নিরাপদে রাখা যায়নি/,
+    );
+    expect(shopSnapshot(useStore.getState())).toEqual(before);
+    expect(readOutbox(shopId)).toEqual([]);
+    expect(useCloud.getState().status).toBe("error");
+    expect(mocks.apply).not.toHaveBeenCalled();
+  } finally {
+    spy.mockRestore();
+  }
 });

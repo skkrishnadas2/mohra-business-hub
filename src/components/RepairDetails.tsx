@@ -4,6 +4,7 @@ import { useStore, type Repair } from "@/lib/store";
 import { act, AccountSelect, Field } from "./BusinessWorkspace";
 import { BigButton, NumInput, TextInput } from "./kit";
 import { taka } from "@/lib/rules";
+import { counterMoney } from "@/lib/counter-preferences";
 export function RepairDetails({ repair: r }: { repair: Repair }) {
   const s = useStore();
   const busy = useSubmission((s) => s.busy);
@@ -16,6 +17,17 @@ export function RepairDetails({ repair: r }: { repair: Repair }) {
   const [cost, setCost] = useState("");
   const [account, setAccount] = useState("cash");
   const active = r.status !== "delivered" && r.status !== "cancelled";
+  const billValue = counterMoney(bill);
+  const billReady = Number.isFinite(billValue) && billValue >= r.advance;
+  const costValue = counterMoney(cost);
+  const costAccount = s.accounts.find(
+    (a) => a.id === account && !a.inactive && a.kind !== "recharge",
+  );
+  const costReady =
+    Number.isFinite(costValue) &&
+    costValue > 0 &&
+    !!costAccount &&
+    costValue <= costAccount.balance;
   return (
     <div className="mt-3">
       <button className="rounded-lg border px-3 py-2 text-sm" onClick={() => setOpen(!open)}>
@@ -25,10 +37,22 @@ export function RepairDetails({ repair: r }: { repair: Repair }) {
         <fieldset disabled={busy} className="mt-3 min-w-0 space-y-3 rounded-xl bg-secondary/50 p-3">
           <div className="grid grid-cols-2 gap-3">
             <Field title="চূড়ান্ত বিল">
-              <NumInput disabled={!active} value={bill} onChange={setBill} />
+              <NumInput
+                aria-label="চূড়ান্ত বিল"
+                disabled={!active}
+                value={bill}
+                onChange={setBill}
+              />
             </Field>
             <div className="self-end pb-3 text-sm">অগ্রিম {taka(r.advance)}</div>
           </div>
+          {active && (
+            <p className="text-sm text-muted-foreground" role="status">
+              {billReady
+                ? `ডেলিভারির সময় ক্যাশ নিতে হবে ${taka(billValue - r.advance)}। বিল শূন্য হলে ০ লিখুন।`
+                : "চূড়ান্ত বিল লিখুন; বিল নেওয়া অগ্রিমের কম হতে পারবে না।"}
+            </p>
+          )}
           <TextInput
             disabled={!active}
             placeholder="গ্রহণের সময় কন্ডিশন"
@@ -43,7 +67,11 @@ export function RepairDetails({ repair: r }: { repair: Repair }) {
           />
           {active && (
             <BigButton
-              onClick={() => act(() => s.updateRepair(r.id, Number(bill), condition, accessories))}
+              disabled={!billReady}
+              onClick={() => {
+                if (billReady)
+                  void act(() => s.updateRepair(r.id, billValue, condition, accessories));
+              }}
             >
               বিল ও তথ্য সংরক্ষণ
             </BigButton>
@@ -97,8 +125,10 @@ export function RepairDetails({ repair: r }: { repair: Repair }) {
               <AccountSelect value={account} onChange={setAccount} />
               <button
                 className="rounded-lg border px-3 py-2 text-sm"
+                disabled={!costReady}
                 onClick={async () => {
-                  if (await act(() => s.repairCost(r.id, Number(cost), account))) setCost("");
+                  if (costReady && (await act(() => s.repairCost(r.id, costValue, account))))
+                    setCost("");
                 }}
               >
                 খরচ রেকর্ড
