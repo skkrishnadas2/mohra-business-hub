@@ -5,7 +5,7 @@ import { useSubmission } from "@/lib/confirmed-write";
 import { taka } from "@/lib/rules";
 import { counterMoney } from "@/lib/counter-preferences";
 import { visibleAccountTransactions } from "@/lib/account-activity";
-import { exportCsv } from "@/lib/export";
+import { PdfButton } from "./PdfButton";
 import { AccountSelect, act, Field, Panel } from "./BusinessWorkspace";
 import { BigButton, Money, NumInput, TextInput } from "./kit";
 
@@ -391,22 +391,26 @@ export function FinancialPartyWorkspace() {
                     আপনার অ্যাকাউন্ট অনুমতিতে দৃশ্যমান লেনদেন দেখানো হচ্ছে।
                   </p>
                 )}
-                <button
-                  className="min-h-11 rounded-xl border px-3 text-sm"
-                  onClick={() =>
-                    exportCsv(
-                      selected.name + "-statement",
-                      ["তারিখ", "বিবরণ", "পরিমাণ"],
-                      txns.map((t) => [
-                        new Date(t.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" }),
-                        t.title,
-                        t.amount,
-                      ]),
-                    )
-                  }
-                >
-                  CSV ডাউনলোড
-                </button>
+                <PdfButton
+                  report={() => ({
+                    title: "পার্টির স্টেটমেন্ট",
+                    filename: selected.name + "-statement",
+                    subtitle: selected.name + (selected.phone ? " · " + selected.phone : ""),
+                    headers: ["তারিখ", "বিবরণ", "পরিমাণ"],
+                    widths: [100, "*", 100],
+                    numericColumns: [2],
+                    rows: txns.map((t) => [
+                      new Date(t.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" }),
+                      t.title,
+                      taka(t.amount),
+                    ]),
+                    summary: [
+                      { label: "আমরা পাব", value: taka(balance.receivable) },
+                      { label: "আমরা দেব", value: taka(balance.payable) },
+                    ],
+                    note: "পাওনা ও দেনা আলাদা হিসাব। কাটাকাটি করা না হলে একটির সঙ্গে অন্যটি মেশানো হয় না।",
+                  })}
+                />
                 {txns.slice(0, limit).map((t) => (
                   <div key={t.id} className="flex justify-between gap-3 border-b py-3 text-sm">
                     <div>

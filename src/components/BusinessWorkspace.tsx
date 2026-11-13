@@ -7,7 +7,6 @@ import { actionError, useStore } from "@/lib/store";
 import { allParties, financialParties, emptyBusiness } from "@/lib/business";
 import { BigButton, Label, Money, NumInput, TextInput } from "./kit";
 import { taka } from "@/lib/rules";
-import { exportCsv } from "@/lib/export";
 
 const selectClass = "h-12 w-full min-w-0 rounded-xl border border-input bg-card px-3 text-sm";
 export function Field({ title, children }: { title: string; children: ReactNode }) {

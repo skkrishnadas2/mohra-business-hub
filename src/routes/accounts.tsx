@@ -1,3 +1,4 @@
+import { PdfButton } from "@/components/PdfButton";
 import { taka } from "@/lib/rules";
 import { confirmed, useSubmission } from "@/lib/confirmed-write";
 import { FinanceWorkspace, GeneralTransfer } from "@/components/BusinessWorkspace";
@@ -285,6 +286,35 @@ export function Accounts() {
                 থেকে দেখানো হয়। মালিকের আগের / পরের ব্যালেন্স বর্তমান ব্যালেন্স ও সংরক্ষিত লেনদেন
                 থেকে গণনা করা। সংরক্ষিত ইতিহাসের আগের তথ্য দেখানো হয় না।
               </p>
+              <PdfButton
+                label="অ্যাকাউন্ট স্টেটমেন্ট PDF"
+                report={() => ({
+                  title: "অ্যাকাউন্ট স্টেটমেন্ট",
+                  filename: "mohra-account-statement",
+                  subtitle: selected.name + (selected.number ? " · " + selected.number : ""),
+                  headers:
+                    role === "owner"
+                      ? ["তারিখ", "বিবরণ", "জমা / খরচ", "আগে", "পরে"]
+                      : ["তারিখ", "বিবরণ", "জমা / খরচ"],
+                  widths: role === "owner" ? [85, "*", 75, 75, 75] : [100, "*", 100],
+                  numericColumns: role === "owner" ? [2, 3, 4] : [2],
+                  rows: activity.rows.map((row) => [
+                    new Date(row.txn.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" }),
+                    row.txn.title,
+                    (row.delta >= 0 ? "+" : "−") + taka(Math.abs(row.delta)),
+                    ...(role === "owner" ? [taka(row.before), taka(row.after)] : []),
+                  ]),
+                  summary: [
+                    { label: "বর্তমান ব্যালেন্স", value: taka(selected.balance) },
+                    { label: "আজ জমা", value: taka(activity.inflow) },
+                    { label: "আজ খরচ", value: taka(activity.outflow) },
+                  ],
+                  note:
+                    role === "owner"
+                      ? "সংরক্ষিত লেনদেন। আগে / পরে ব্যালেন্স বর্তমান ব্যালেন্স ও সংরক্ষিত ইতিহাস থেকে গণনা করা।"
+                      : "সংরক্ষিত ও আপনার অনুমতিতে দৃশ্যমান লেনদেন।",
+                })}
+              />
               {role === "owner" && !selected.inactive && (
                 <button
                   className="min-h-11 rounded-xl border px-4 text-sm"

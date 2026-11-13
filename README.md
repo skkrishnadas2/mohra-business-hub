@@ -40,7 +40,7 @@ This deployment is exclusively MOHRA IT CARE & TELECOM CENTER, proprietor Sankar
 6. Use Party & Khata for money-only lending/borrowing, advances, collections and payments. Receivable and payable stay separate; opening entries and explicit offsets do not move cash. B2B has no party debt or mandatory SR directory: MFS supports direct agent/cash/bank movements; recharge supports only cash purchase plus a manual bonus. Historical pending settlements remain in a collapsed owner-only section, never silently marked received.
 7. Purchase stock through the supplier flow for weighted-average cost and payable tracking; full cash payment is the explicit default, with partial/due alternatives. Full purchase returns reconcile outstanding debt and refunds.
 8. Repair advances are liabilities until delivery; consumed parts and direct costs reduce repair profit. Historical repair entries keep their legacy recognition convention.
-9. Open a counted cash shift before posting transactions; only one drawer shift can be active. Cashiers work in their own shift; owners can reconcile or close it. Cash variances need a reason and owner approval. Export statements/stock/journals as CSV, print reports or save them as PDF, and download a full JSON backup.
+9. Open a counted cash shift before posting transactions; only one drawer shift can be active. Cashiers work in their own shift; owners can reconcile or close it. Cash variances need a reason and owner approval. Download statements/stock/journals as branded PDFs, and download a full JSON backup.
 
 ## Ready-to-use controls
 
@@ -62,7 +62,7 @@ Free-tier quotas still apply. The current JSON snapshot approach is suitable for
 
 ## Employee controls and returns
 
-Verified Auth user ID and profile name are attached by the Edge Function to new vouchers. The current actor is transient, excluded from snapshots and cannot be supplied in a Cloud action. Reports and CSV include actor, shift, requesting employee and approval ID. Legacy vouchers are not retroactively assigned an employee.
+Verified Auth user ID and profile name are attached by the Edge Function to new vouchers. The current actor is transient, excluded from snapshots and cannot be supplied in a Cloud action. The audit history and full JSON backup retain actor, shift, requesting employee and approval ID; PDF reports present readable staff names and voucher references. Legacy vouchers are not retroactively assigned an employee.
 
 Owner settings define default per-party cashier credit and discount limits, with party-specific credit overrides. Beyond-limit POS sales and recharge credit, product refunds and cash-short shifts can be requested from the cashier and executed once by the owner under Shift & Approvals. Requests expire when their shift closes; a changed cash balance also invalidates a closing count.
 
@@ -95,3 +95,7 @@ This file does not update hosted Supabase Auth by itself. Apply its HTML in the 
 Customer MFS/recharge forms retain only safe shop/operator account context, lock submitted inputs until the exact receipt, then clear customer details. Recharge resets payment to cash and clears the due contact. New B2B requests use `workflow: "direct"` for strict task rules; old markerless outbox requests retain their original financial interpretation. The flush worker rechecks actions queued during its final snapshot refresh.
 
 Recharge and customer MFS counters show permitted account/provider names and individual recorded balances directly on selection cards. Recharge prefix suggestions use original Bangladesh number allocations only; MNP corrections stay manual for that customer and reset after a confirmed save. Missing or ambiguous provider accounts require a choice instead of silently using another SIM. Bank selectors show balances subject to viewBank permissions. These are shop-ledger balances, not fetched provider statements.
+
+## PDF reports
+
+Reports, party ledgers, inventory and individual account statements download as device-generated A4 PDFs. The shared MOHRA template includes proprietor identity, selected period/filters, summaries, repeated table headings and page numbers. Licensed Noto Bengali and Latin fonts are bundled under public/fonts with OFL licenses; no business data is sent to an external PDF service. The PDF library loads only when requested. Pending financial writes block final PDF export; cashier PDFs use the same filtered records and omit owner-only balance history. Full restore backups remain JSON.

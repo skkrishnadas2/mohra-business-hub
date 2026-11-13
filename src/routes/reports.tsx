@@ -1,10 +1,12 @@
+import { PdfButton } from "@/components/PdfButton";
+import { taka } from "@/lib/rules";
 import { transactionLabel } from "@/lib/transaction-label";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStore, shopSnapshot } from "@/lib/store";
 import { Page, Money } from "@/components/kit";
 import { Panel } from "@/components/BusinessWorkspace";
-import { downloadFile, exportCsv } from "@/lib/export";
+import { downloadFile } from "@/lib/export";
 import { financialParties, partyBalance } from "@/lib/business";
 export const Route = createFileRoute("/reports")({
   head: () => ({ meta: [{ title: "রিপোর্ট — মোহরা" }] }),
@@ -39,18 +41,67 @@ export function Reports() {
   const stock = s.products.reduce((n, p) => n + p.stock * p.cost, 0);
   const parties = financialParties(s);
   const balances = parties.map((p) => ({ ...p, ...partyBalance(s, p.id) }));
+  const prettyDate = (key: string) =>
+    key
+      ? new Date(key + "T12:00:00+06:00").toLocaleDateString("bn-BD", {
+          timeZone: "Asia/Dhaka",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : "";
+  const period = `${prettyDate(from) || "শুরু থেকে"} থেকে ${prettyDate(to) || "আজ পর্যন্ত"}`;
+  const mainPdf = () => ({
+    title: "লেনদেনের প্রতিবেদন",
+    filename: "mohra-transactions-" + today,
+    subtitle:
+      period +
+      " · " +
+      (s.accounts.find((a) => a.id === account)?.name ?? "সব অ্যাকাউন্ট") +
+      " · " +
+      (type ? transactionLabel(type) : "সব লেনদেন"),
+    headers: ["তারিখ", "বিবরণ", "পরিমাণ", "লাভ", "কর্মী"],
+    widths: [76, "*", 70, 65, 65] as (number | "*")[],
+    numericColumns: [2, 3],
+    rows: rows.map((t) => [
+      new Date(t.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" }),
+      t.title + "\nমেমো #" + t.id.slice(0, 8).toUpperCase(),
+      taka(t.amount),
+      taka(t.profit),
+      t.actor?.name ?? (t.by === "owner" ? "মালিক" : "ক্যাশিয়ার"),
+    ]),
+    summary: [
+      { label: "নেট লাভ", value: taka(profit) },
+      { label: "দোকানের খরচ", value: taka(expense) },
+      { label: "লেনদেন", value: String(rows.length) },
+    ],
+  });
+  const ledgerLabel = (code: string) => {
+    const [kind, id] = code.split(":");
+    if (code === "asset:inventory") return "স্টকের মূল্য";
+    if (kind === "asset") return s.accounts.find((a) => a.id === id)?.name ?? "সম্পদ";
+    if (kind === "receivable" || kind === "payable")
+      return (
+        (parties.find((p) => p.id === id)?.name ?? "পার্টি") +
+        (kind === "receivable" ? " · পাওনা" : " · দেনা")
+      );
+    return kind === "income"
+      ? "আয়"
+      : kind === "expense"
+        ? "খরচ"
+        : kind === "equity"
+          ? "মূলধন ও সমন্বয়"
+          : kind === "liability"
+            ? "দায়"
+            : "অন্যান্য হিসাব";
+  };
   return (
     <Page
       title="রিপোর্ট"
       sub="লেনদেন, লাভ, স্টক এবং পাওনা–দেনা"
       action={
         <>
-          <button
-            className="rounded-xl border bg-card px-4 py-3 text-sm"
-            onClick={() => window.print()}
-          >
-            প্রিন্ট / PDF
-          </button>
+          <PdfButton label="পূর্ণ রিপোর্ট PDF" disabled={dateError} report={mainPdf} />
           <button
             className="rounded-xl border bg-card px-4 py-3 text-sm"
             onClick={() => {
@@ -87,27 +138,28 @@ export function Reports() {
           </summary>
           <div className="mt-3">
             {" "}
-            <button
+            <PdfButton
+              label="ডেবিট–ক্রেডিট PDF"
               disabled={dateError}
-              className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50"
-              onClick={() =>
-                exportCsv(
-                  "mohra-journal",
-                  ["ভাউচার", "তারিখ", "হিসাব", "ডেবিট", "ক্রেডিট"],
-                  rows.flatMap((t) =>
-                    (t.journal ?? []).map((l) => [
-                      t.id,
+              report={() => ({
+                title: "ডেবিট–ক্রেডিট জার্নাল",
+                filename: "mohra-journal-" + today,
+                subtitle: period,
+                headers: ["মেমো / তারিখ", "হিসাব", "ডেবিট", "ক্রেডিট"],
+                widths: [95, "*", 85, 85],
+                numericColumns: [2, 3],
+                rows: rows.flatMap((t) =>
+                  (t.journal ?? []).map((l) => [
+                    t.id.slice(0, 8).toUpperCase() +
+                      "\n" +
                       new Date(t.at).toLocaleDateString("bn-BD", { timeZone: "Asia/Dhaka" }),
-                      l.account,
-                      l.debit,
-                      l.credit,
-                    ]),
-                  ),
-                )
-              }
-            >
-              ডেবিট–ক্রেডিট জার্নাল CSV
-            </button>
+                    ledgerLabel(l.account),
+                    taka(l.debit),
+                    taka(l.credit),
+                  ]),
+                ),
+              })}
+            />
           </div>
         </details>
         <div className="flex flex-wrap gap-2" aria-label="দ্রুত রিপোর্টের সময়">
@@ -195,43 +247,7 @@ export function Reports() {
             ))}
           </select>
         </div>
-        <button
-          disabled={dateError}
-          className="rounded-lg border px-4 py-2 text-sm"
-          onClick={() =>
-            exportCsv(
-              "mohra-transactions",
-              [
-                "ভাউচার",
-                "তারিখ",
-                "ধরন",
-                "বিবরণ",
-                "পরিমাণ",
-                "লাভ",
-                "কর্মী",
-                "কর্মী ID",
-                "শিফট",
-                "অনুমোদন",
-                "অনুরোধকারী",
-              ],
-              rows.map((t) => [
-                t.id,
-                new Date(t.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" }),
-                transactionLabel(t.type),
-                t.title,
-                t.amount,
-                t.profit,
-                t.actor?.name ?? "পুরনো রেকর্ড",
-                t.actor?.userId ?? "",
-                t.shiftId ?? "",
-                t.approvalId ?? "",
-                t.requestedBy?.name ?? "",
-              ]),
-            )
-          }
-        >
-          CSV ডাউনলোড
-        </button>
+        <PdfButton disabled={dateError} report={mainPdf} />
         {dateError && (
           <p role="alert" className="text-sm text-destructive">
             শুরুর তারিখ শেষের তারিখের পরে হতে পারে না। তারিখ ঠিক করুন।
@@ -282,18 +298,22 @@ export function Reports() {
       </Panel>
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <Panel title="পাওনা–দেনা">
-          <button
-            className="rounded-lg border px-3 py-2 text-sm"
-            onClick={() =>
-              exportCsv(
-                "mohra-parties",
-                ["পার্টি", "নম্বর", "পাব", "দেব", "নেট"],
-                balances.map((p) => [p.name, p.phone, p.receivable, p.payable, p.net]),
-              )
-            }
-          >
-            খাতা CSV
-          </button>
+          <PdfButton
+            label="খাতার PDF"
+            report={() => ({
+              title: "পাওনা ও দেনার খাতা",
+              filename: "mohra-parties-" + today,
+              subtitle: "বর্তমান হিসাব · " + prettyDate(today),
+              headers: ["পার্টি", "ফোন", "আমরা পাব", "আমরা দেব"],
+              numericColumns: [2, 3],
+              widths: ["*", 100, 100, 100],
+              rows: balances.map((p) => [p.name, p.phone, taka(p.receivable), taka(p.payable)]),
+              summary: [
+                { label: "মোট পাওনা", value: taka(balances.reduce((n, p) => n + p.receivable, 0)) },
+                { label: "মোট দেনা", value: taka(balances.reduce((n, p) => n + p.payable, 0)) },
+              ],
+            })}
+          />
           {balances.map((p) => (
             <div key={p.id} className="flex flex-wrap justify-between gap-2 border-b pb-2 text-sm">
               <span>{p.name}</span>
@@ -304,18 +324,28 @@ export function Reports() {
           ))}
         </Panel>
         <Panel title="স্টক মূল্য">
-          <button
-            className="rounded-lg border px-3 py-2 text-sm"
-            onClick={() =>
-              exportCsv(
-                "mohra-stock",
-                ["পণ্য", "বারকোড", "স্টক", "ক্রয়মূল্য", "বিক্রয়মূল্য"],
-                s.products.map((p) => [p.name, p.barcodes.join(" / "), p.stock, p.cost, p.price]),
-              )
-            }
-          >
-            স্টক CSV
-          </button>
+          <PdfButton
+            label="স্টকের PDF"
+            report={() => ({
+              title: "স্টক ও পণ্যের প্রতিবেদন",
+              filename: "mohra-stock-" + today,
+              subtitle: "বর্তমান স্টক · " + prettyDate(today),
+              headers: ["পণ্য / বারকোড", "পিস", "ক্রয়মূল্য", "বিক্রয়মূল্য", "স্টক মূল্য"],
+              numericColumns: [1, 2, 3, 4],
+              widths: ["*", 35, 75, 75, 85],
+              rows: s.products.map((p) => [
+                p.name + "\n" + p.barcodes.join(" / "),
+                p.stock,
+                taka(p.cost),
+                taka(p.price),
+                taka(p.stock * p.cost),
+              ]),
+              summary: [
+                { label: "মোট পণ্য", value: String(s.products.length) },
+                { label: "স্টকের মূল্য", value: taka(stock) },
+              ],
+            })}
+          />
           {s.products.map((p) => (
             <div key={p.id} className="flex justify-between gap-3 border-b pb-2 text-sm">
               <span>
