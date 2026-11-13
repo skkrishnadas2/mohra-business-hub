@@ -14,7 +14,7 @@
     "test:watch": "vitest",
     "build:edge": "node scripts/build-edge.mjs",
     "typecheck": "tsc --noEmit",
-    "test:edge": "node scripts/build-edge.mjs && node --test scripts/edge-contract.test.mjs scripts/pwa-cache.test.mjs",
+    "test:edge": "node scripts/build-edge.mjs && node --test scripts/edge-contract.test.mjs scripts/pwa-cache.test.mjs scripts/pdf-font.test.mjs",
     "test:all": "npm run test && npm run test:edge"
   },
   "overrides": {

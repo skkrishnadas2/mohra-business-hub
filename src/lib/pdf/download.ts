@@ -13,7 +13,7 @@ async function loadFonts() {
       const timer = setTimeout(() => controller.abort(), 30000);
       let bytes: Uint8Array;
       try {
-        const response = await fetch("/fonts/" + name, {
+        const response = await fetch("/fonts/" + name + "?v=hind-siliguri-1", {
           cache: "force-cache",
           signal: controller.signal,
         });
