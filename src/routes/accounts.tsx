@@ -1,15 +1,12 @@
 import { confirmed } from "@/lib/confirmed-write";
-import {
-  FinanceWorkspace,
-  GeneralTransfer,
-  SettlementWorkspace,
-} from "@/components/BusinessWorkspace";
+import { FinanceWorkspace, GeneralTransfer } from "@/components/BusinessWorkspace";
 import { AccountSettings } from "@/components/AccountSettings";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { actionError, useStore, type Account } from "@/lib/store";
 import { Page, Money, BigButton, Chips, NumInput, TextInput, Label } from "@/components/kit";
+import { accountActivity, visibleAccounts } from "@/lib/account-activity";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/accounts")({
@@ -37,10 +34,16 @@ const KIND_LABEL: Record<Account["kind"], string> = {
   recharge: "রিচার্জ সিম",
 };
 
-function Accounts() {
-  const { accounts, can, transfer, setBalance, addAccount, role, actor } = useStore();
+export function Accounts() {
+  const { accounts, txns, can, transfer, setBalance, addAccount, role, actor } = useStore();
   const [tab, setTab] = useState("accounts");
-  const banks = accounts.filter((a) => a.kind === "bank");
+  const allowedAccounts = visibleAccounts(accounts, role);
+  const banks = allowedAccounts.filter((a) => a.kind === "bank" && !a.inactive);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = allowedAccounts.find(
+    (a) => a.id === selectedId && (a.kind !== "bank" || can("viewBank")),
+  );
+  const activity = selected ? accountActivity(selected, txns) : null;
   const [dir, setDir] = useState<"dep" | "wd">("dep");
   const [bank, setBank] = useState(banks[0]?.id ?? "");
   const [amt, setAmt] = useState("");
@@ -56,7 +59,8 @@ function Accounts() {
 
   return (
     <Page
-      title="হিসাব ও ব্যাংক"
+      title="আমার অ্যাকাউন্টস"
+      sub="প্রতিটি হিসাবে কত আছে ও আজ কত ঢুকেছে / বেরিয়েছে। বিস্তারিত দেখতে হিসাবটি চাপুন।"
       action={
         role === "owner" && (
           <button
@@ -71,62 +75,95 @@ function Accounts() {
       <div className="mb-5 flex flex-wrap gap-2">
         {[
           ["accounts", "অ্যাকাউন্টস"],
-          ["sr", "SR settlement"],
+          ["transfer", "টাকা সরান"],
           ["finance", "খরচ ও মূলধন"],
           ["settings", "অ্যাকাউন্ট সেটিং"],
-        ].map(([v, l]) => (
-          <button
-            key={v}
-            onClick={() => setTab(v!)}
-            className={`rounded-xl border px-4 py-3 text-sm ${tab === v ? "bg-primary text-primary-foreground" : "bg-card"}`}
-          >
-            {l}
-          </button>
-        ))}
+        ]
+          .filter(([v]) => role === "owner" || v !== "settings")
+          .map(([v, l]) => (
+            <button
+              key={v}
+              onClick={() => setTab(v!)}
+              className={`rounded-xl border px-4 py-3 text-sm ${tab === v ? "bg-primary text-primary-foreground" : "bg-card"}`}
+            >
+              {l}
+            </button>
+          ))}
       </div>
-      {tab === "sr" ? (
-        <SettlementWorkspace />
-      ) : tab === "finance" ? (
+      {tab === "finance" ? (
         <FinanceWorkspace />
       ) : tab === "settings" ? (
         <div className="space-y-5">
           <AccountSettings />
-          <GeneralTransfer />
+        </div>
+      ) : tab === "accounts" ? (
+        <div>
+          <div className="space-y-5">
+            {(Object.keys(KIND_LABEL) as Account["kind"][])
+              .filter((kind) => allowedAccounts.some((account) => account.kind === kind))
+              .map((k) => (
+                <div key={k}>
+                  <div className="mb-2 text-sm font-semibold text-muted-foreground">
+                    {KIND_LABEL[k]}
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {allowedAccounts
+                      .filter((a) => a.kind === k)
+                      .map((a) => (
+                        <button
+                          key={a.id}
+                          disabled={k === "bank" && !showBank}
+                          onClick={() => setSelectedId(a.id)}
+                          className="min-h-36 rounded-2xl border bg-card p-4 text-left text-sm shadow-soft transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="font-medium">{a.name}</span>
+                            {a.inactive && (
+                              <span className="text-xs text-muted-foreground">বন্ধ</span>
+                            )}
+                          </div>
+                          <Money
+                            v={a.balance}
+                            hidden={k === "bank" && !showBank}
+                            className="block text-2xl font-semibold"
+                          />
+                          {k === "bank" && !showBank ? (
+                            <p className="mt-3 text-xs text-muted-foreground">
+                              ব্যালেন্স দেখার অনুমতি নেই
+                            </p>
+                          ) : (
+                            (() => {
+                              const today = accountActivity(a, txns);
+                              return (
+                                <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs">
+                                  <div className="text-muted-foreground">
+                                    আজ ঢুকেছে · রেকর্ড
+                                    <Money
+                                      v={today.inflow}
+                                      className="mt-1 block font-medium text-emerald-700"
+                                    />
+                                  </div>
+                                  <div className="text-muted-foreground">
+                                    আজ বেরিয়েছে · রেকর্ড
+                                    <Money
+                                      v={today.outflow}
+                                      className="mt-1 block font-medium text-foreground"
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })()
+                          )}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              ))}
+          </div>
         </div>
       ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-5">
-            {(Object.keys(KIND_LABEL) as Account["kind"][]).map((k) => (
-              <div key={k}>
-                <div className="mb-2 text-sm font-semibold text-muted-foreground">
-                  {KIND_LABEL[k]}
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {accounts
-                    .filter((a) => a.kind === k)
-                    .map((a) => (
-                      <button
-                        key={a.id}
-                        onClick={() => {
-                          setAdj(a);
-                          setAdjVal(String(a.balance));
-                          setPin("");
-                        }}
-                        className="flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border bg-card px-4 py-3 text-left text-sm shadow-soft transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <span>{a.name}</span>
-                        <Money
-                          v={a.balance}
-                          hidden={k === "bank" && !showBank}
-                          className="font-semibold"
-                        />
-                      </button>
-                    ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-4 rounded-xl border bg-card p-4 shadow-soft sm:p-5 lg:self-start">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <div className="space-y-4 rounded-xl border bg-card p-4 shadow-soft sm:p-5">
             <div className="border-b pb-3 text-base font-semibold">ব্যাংক লেনদেন</div>
             <Chips
               value={dir}
@@ -168,8 +205,87 @@ function Accounts() {
               নিশ্চিত করুন
             </BigButton>
           </div>
+          <GeneralTransfer />
         </div>
       )}
+
+      <Sheet open={!!selected} onOpenChange={(open) => !open && setSelectedId(null)}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[90dvh] overflow-y-auto rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]"
+        >
+          <SheetHeader>
+            <SheetTitle>{selected?.name} · লেনদেনের ইতিহাস</SheetTitle>
+          </SheetHeader>
+          {selected && activity && (
+            <div className="space-y-4 p-4 pt-0">
+              <div className="rounded-2xl bg-secondary p-4">
+                <div className="text-sm text-muted-foreground">বর্তমান ব্যালেন্স</div>
+                <Money v={selected.balance} className="text-3xl font-semibold" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                আজকের জমা ও খরচ বাংলাদেশ সময় অনুযায়ী সংরক্ষিত ও আপনার অনুমতিতে দৃশ্যমান লেনদেন
+                থেকে দেখানো হয়। মালিকের আগের / পরের ব্যালেন্স বর্তমান ব্যালেন্স ও সংরক্ষিত লেনদেন
+                থেকে গণনা করা। সংরক্ষিত ইতিহাসের আগের তথ্য দেখানো হয় না।
+              </p>
+              {role === "owner" && !selected.inactive && (
+                <button
+                  className="min-h-11 rounded-xl border px-4 text-sm"
+                  onClick={() => {
+                    setAdj(selected);
+                    setAdjVal(String(selected.balance));
+                    setPin("");
+                    setAdjustReason("");
+                    setSelectedId(null);
+                  }}
+                >
+                  শুরুর ব্যালেন্স / সমন্বয়
+                </button>
+              )}
+              {!activity.rows.length && (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  এই হিসাবে এখনো কোনো লেনদেন সংরক্ষিত নেই।
+                </p>
+              )}
+              {activity.rows.slice(0, 100).map((row) => (
+                <div key={row.txn.id} className="rounded-xl border p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium">{row.txn.title}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {new Date(row.txn.at).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" })}
+                      </div>
+                    </div>
+                    <span
+                      className={
+                        row.delta >= 0
+                          ? "whitespace-nowrap text-emerald-700"
+                          : "whitespace-nowrap text-foreground"
+                      }
+                    >
+                      {row.delta >= 0 ? "+" : "−"}
+                      <Money v={Math.abs(row.delta)} />
+                    </span>
+                  </div>
+                  {role === "owner" && (
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span>
+                        আগে <Money v={row.before} />
+                      </span>
+                      <span>
+                        পরে <Money v={row.after} />
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {activity.rows.length > 100 && (
+                <p className="text-xs text-muted-foreground">সর্বশেষ ১০০টি লেনদেন দেখানো হচ্ছে।</p>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={!!adj} onOpenChange={(v) => !v && setAdj(null)}>
         <SheetContent

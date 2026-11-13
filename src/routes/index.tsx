@@ -148,10 +148,10 @@ function Dashboard() {
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Link
-                to="/accounts"
+                to="/opening"
                 className="rounded-lg bg-primary px-4 py-3 text-primary-foreground"
               >
-                অ্যাকাউন্ট ও ব্যালেন্স
+                ধাপে ধাপে হিসাব বসান
               </Link>
               <Link to="/products" className="rounded-lg border px-4 py-3">
                 পণ্য ও সিমের স্টক

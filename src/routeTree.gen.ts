@@ -11,12 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountsRouteImport } from './routes/accounts'
+import { Route as B2bRouteImport } from './routes/b2b'
 import { Route as ClosingRouteImport } from './routes/closing'
 import { Route as CloudRouteImport } from './routes/cloud'
 import { Route as InstallRouteImport } from './routes/install'
 import { Route as KhataRouteImport } from './routes/khata'
 import { Route as MfsRouteImport } from './routes/mfs'
 import { Route as MonitorRouteImport } from './routes/monitor'
+import { Route as OpeningRouteImport } from './routes/opening'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as RechargeRouteImport } from './routes/recharge'
@@ -32,6 +34,11 @@ const IndexRoute = IndexRouteImport.update({
 const AccountsRoute = AccountsRouteImport.update({
   id: '/accounts',
   path: '/accounts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const B2bRoute = B2bRouteImport.update({
+  id: '/b2b',
+  path: '/b2b',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClosingRoute = ClosingRouteImport.update({
@@ -62,6 +69,11 @@ const MfsRoute = MfsRouteImport.update({
 const MonitorRoute = MonitorRouteImport.update({
   id: '/monitor',
   path: '/monitor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpeningRoute = OpeningRouteImport.update({
+  id: '/opening',
+  path: '/opening',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PosRoute = PosRouteImport.update({
@@ -98,12 +110,14 @@ const SettingsRoute = SettingsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
+  '/b2b': typeof B2bRoute
   '/closing': typeof ClosingRoute
   '/cloud': typeof CloudRoute
   '/install': typeof InstallRoute
   '/khata': typeof KhataRoute
   '/mfs': typeof MfsRoute
   '/monitor': typeof MonitorRoute
+  '/opening': typeof OpeningRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/recharge': typeof RechargeRoute
@@ -114,12 +128,14 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
+  '/b2b': typeof B2bRoute
   '/closing': typeof ClosingRoute
   '/cloud': typeof CloudRoute
   '/install': typeof InstallRoute
   '/khata': typeof KhataRoute
   '/mfs': typeof MfsRoute
   '/monitor': typeof MonitorRoute
+  '/opening': typeof OpeningRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/recharge': typeof RechargeRoute
@@ -131,12 +147,14 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
+  '/b2b': typeof B2bRoute
   '/closing': typeof ClosingRoute
   '/cloud': typeof CloudRoute
   '/install': typeof InstallRoute
   '/khata': typeof KhataRoute
   '/mfs': typeof MfsRoute
   '/monitor': typeof MonitorRoute
+  '/opening': typeof OpeningRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/recharge': typeof RechargeRoute
@@ -149,12 +167,14 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/accounts'
+    | '/b2b'
     | '/closing'
     | '/cloud'
     | '/install'
     | '/khata'
     | '/mfs'
     | '/monitor'
+    | '/opening'
     | '/pos'
     | '/products'
     | '/recharge'
@@ -165,12 +185,14 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/accounts'
+    | '/b2b'
     | '/closing'
     | '/cloud'
     | '/install'
     | '/khata'
     | '/mfs'
     | '/monitor'
+    | '/opening'
     | '/pos'
     | '/products'
     | '/recharge'
@@ -181,12 +203,14 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/accounts'
+    | '/b2b'
     | '/closing'
     | '/cloud'
     | '/install'
     | '/khata'
     | '/mfs'
     | '/monitor'
+    | '/opening'
     | '/pos'
     | '/products'
     | '/recharge'
@@ -198,12 +222,14 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountsRoute: typeof AccountsRoute
+  B2bRoute: typeof B2bRoute
   ClosingRoute: typeof ClosingRoute
   CloudRoute: typeof CloudRoute
   InstallRoute: typeof InstallRoute
   KhataRoute: typeof KhataRoute
   MfsRoute: typeof MfsRoute
   MonitorRoute: typeof MonitorRoute
+  OpeningRoute: typeof OpeningRoute
   PosRoute: typeof PosRoute
   ProductsRoute: typeof ProductsRoute
   RechargeRoute: typeof RechargeRoute
@@ -226,6 +252,13 @@ declare module '@tanstack/react-router' {
       path: '/accounts'
       fullPath: '/accounts'
       preLoaderRoute: typeof AccountsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/b2b': {
+      id: '/b2b'
+      path: '/b2b'
+      fullPath: '/b2b'
+      preLoaderRoute: typeof B2bRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/closing': {
@@ -268,6 +301,13 @@ declare module '@tanstack/react-router' {
       path: '/monitor'
       fullPath: '/monitor'
       preLoaderRoute: typeof MonitorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/opening': {
+      id: '/opening'
+      path: '/opening'
+      fullPath: '/opening'
+      preLoaderRoute: typeof OpeningRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pos': {
@@ -318,12 +358,14 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountsRoute: AccountsRoute,
+  B2bRoute: B2bRoute,
   ClosingRoute: ClosingRoute,
   CloudRoute: CloudRoute,
   InstallRoute: InstallRoute,
   KhataRoute: KhataRoute,
   MfsRoute: MfsRoute,
   MonitorRoute: MonitorRoute,
+  OpeningRoute: OpeningRoute,
   PosRoute: PosRoute,
   ProductsRoute: ProductsRoute,
   RechargeRoute: RechargeRoute,

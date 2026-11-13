@@ -4,14 +4,31 @@ export type MfsProvider = "bkash" | "nagad" | "rocket" | "upay";
 export type Operator = "gp" | "robi" | "airtel" | "banglalink" | "teletalk";
 
 export function validAccountProvider(kind: string, provider?: string) {
-  if (kind === "mfs_agent" || kind === "mfs_personal") return ["bkash", "nagad", "rocket", "upay"].includes(provider ?? "");
-  if (kind === "recharge") return ["gp", "robi", "airtel", "banglalink", "teletalk"].includes(provider ?? "");
+  if (kind === "mfs_agent" || kind === "mfs_personal")
+    return ["bkash", "nagad", "rocket", "upay"].includes(provider ?? "");
+  if (kind === "recharge")
+    return ["gp", "robi", "airtel", "banglalink", "teletalk"].includes(provider ?? "");
   return kind === "cash" || kind === "bank";
 }
 
 /** SR settlement is separate from customer cash-in/out. */
-export function b2bLeg(kind: "mfs" | "recharge", sourceKind: string, targetKind: string): "sim_cash" | "bank_sim" | "bank_cash" | "cash_sim" | null {
+export function b2bLeg(
+  kind: "mfs" | "recharge",
+  sourceKind: string,
+  targetKind: string,
+  strictSr = false,
+): "sim_cash" | "sim_bank" | "bank_sim" | "bank_cash" | "cash_bank" | "cash_sim" | null {
   const simKind = kind === "mfs" ? "mfs_agent" : "recharge";
+  // Old anonymous queued actions retain their original interpretation. New SR trades
+  // use cash-only recharge purchasing and explicit immediate MFS/bank purposes.
+  if (strictSr && kind === "recharge") {
+    if (sourceKind === "cash" && targetKind === "recharge") return "cash_sim";
+    return null;
+  }
+  if (strictSr && kind === "mfs" && sourceKind === "mfs_agent" && targetKind === "bank")
+    return "sim_bank";
+  if (strictSr && kind === "mfs" && sourceKind === "cash" && targetKind === "bank")
+    return "cash_bank";
   if (sourceKind === simKind && targetKind === "cash") return "sim_cash";
   if (sourceKind === "bank" && targetKind === simKind) return "bank_sim";
   if (sourceKind === "bank" && targetKind === "cash") return "bank_cash";
@@ -19,27 +36,43 @@ export function b2bLeg(kind: "mfs" | "recharge", sourceKind: string, targetKind:
   return null;
 }
 
-export function availableB2BLegs(kind: "mfs" | "recharge", accounts: { kind: string }[]) {
+export function availableB2BLegs(
+  kind: "mfs" | "recharge",
+  accounts: { kind: string }[],
+  strictSr = false,
+) {
   const sim = kind === "mfs" ? "mfs_agent" : "recharge";
-  const has = (accountKind: string) => accounts.some(account => account.kind === accountKind);
-  return ([
-    { from: "sim", receive: "cash", sourceKind: sim, targetKind: "cash" },
-    { from: "bank", receive: "sim", sourceKind: "bank", targetKind: sim },
-    { from: "bank", receive: "cash", sourceKind: "bank", targetKind: "cash" },
-    { from: "cash", receive: "sim", sourceKind: "cash", targetKind: sim },
-  ] as const).filter(leg => has(leg.sourceKind) && has(leg.targetKind));
+  const has = (accountKind: string) => accounts.some((account) => account.kind === accountKind);
+  return (
+    [
+      { from: "sim", receive: "cash", sourceKind: sim, targetKind: "cash" },
+      { from: "bank", receive: "sim", sourceKind: "bank", targetKind: sim },
+      { from: "bank", receive: "cash", sourceKind: "bank", targetKind: "cash" },
+      { from: "cash", receive: "sim", sourceKind: "cash", targetKind: sim },
+      { from: "sim", receive: "bank", sourceKind: sim, targetKind: "bank" },
+      { from: "cash", receive: "bank", sourceKind: "cash", targetKind: "bank" },
+    ] as const
+  ).filter(
+    (leg) =>
+      has(leg.sourceKind) &&
+      has(leg.targetKind) &&
+      b2bLeg(kind, leg.sourceKind, leg.targetKind, strictSr),
+  );
 }
 
 /** Allocate the first unused numbered name, including after row deletion or renaming. */
 export function nextSetupName(base: string, names: string[]) {
-  const taken = new Set(names.map(name => name.trim().toLowerCase()));
+  const taken = new Set(names.map((name) => name.trim().toLowerCase()));
   let index = 1;
   while (taken.has(`${base} ${bn(index)}`.toLowerCase())) index += 1;
   return `${base} ${bn(index)}`;
 }
 
 export function parseOpeningBalance(value: string): number | null {
-  const clean = value.replace(/[০-৯]/g, digit => String("০১২৩৪৫৬৭৮৯".indexOf(digit))).replace(/,/g, "").trim();
+  const clean = value
+    .replace(/[০-৯]/g, (digit) => String("০১২৩৪৫৬৭৮৯".indexOf(digit)))
+    .replace(/,/g, "")
+    .trim();
   if (!clean) return 0;
   if (!/^\d+(\.\d{0,2})?$/.test(clean)) return null;
   const amount = Number(clean);
@@ -50,9 +83,13 @@ export function formatOpeningBalance(value: string) {
   if (!value) return "";
   const amount = parseOpeningBalance(value);
   if (amount === null) return value;
-  const clean = value.replace(/[০-৯]/g, digit => String("০১২৩৪৫৬৭৮৯".indexOf(digit))).replace(/,/g, "");
+  const clean = value
+    .replace(/[০-৯]/g, (digit) => String("০১২৩৪৫৬৭৮৯".indexOf(digit)))
+    .replace(/,/g, "");
   const [whole, fraction] = clean.split(".");
-  return bn(Number(whole).toLocaleString("en-IN")) + (fraction === undefined ? "" : `.${bn(fraction)}`);
+  return (
+    bn(Number(whole).toLocaleString("en-IN")) + (fraction === undefined ? "" : `.${bn(fraction)}`)
+  );
 }
 
 /** Agent commission in ৳ per ৳1000 transacted (cash-in & cash-out). */
@@ -91,7 +128,12 @@ export function taka(n: number): string {
 
 export function genBarcode(): string {
   // 13-digit internal code starting with 2 (in-store range)
-  let s = "2" + Date.now().toString().slice(-9) + Math.floor(Math.random() * 100).toString().padStart(2, "0");
+  let s =
+    "2" +
+    Date.now().toString().slice(-9) +
+    Math.floor(Math.random() * 100)
+      .toString()
+      .padStart(2, "0");
   let sum = 0;
   for (let i = 0; i < 12; i++) sum += Number(s[i]) * (i % 2 ? 3 : 1);
   return s + ((10 - (sum % 10)) % 10);

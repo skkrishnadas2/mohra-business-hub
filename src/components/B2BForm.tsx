@@ -15,7 +15,7 @@ export function B2BForm({ kind }: { kind: "mfs" | "recharge" }) {
   const legs = availableB2BLegs(kind, accounts);
   const [chosenFrom, setPayFrom] = useState<"sim" | "bank" | "cash">("bank");
   const payFrom = legs.some(leg => leg.from === chosenFrom) ? chosenFrom : legs[0]?.from ?? "bank";
-  const [chosenReceive, setReceive] = useState<"sim" | "cash">("sim");
+  const [chosenReceive, setReceive] = useState<"sim" | "bank" | "cash">("sim");
   const receivingLegs = legs.filter(leg => leg.from === payFrom);
   const receive = receivingLegs.some(leg => leg.receive === chosenReceive) ? chosenReceive : receivingLegs[0]?.receive ?? "sim";
   const [sim, setSim] = useState(sims[0]?.id ?? "");

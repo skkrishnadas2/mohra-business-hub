@@ -10,6 +10,14 @@ export interface Party {
   phone: string;
   roles: string[];
 }
+/** SR contacts belong to immediate B2B trades, never to a party debt ledger. */
+export interface Sr {
+  id: string;
+  name: string;
+  phone: string;
+  provider?: string | undefined;
+  inactive?: boolean | undefined;
+}
 export interface PartyEntry {
   id: string;
   partyId: string;
@@ -54,6 +62,7 @@ export interface Commission {
   received: number;
 }
 export interface BusinessState {
+  srs?: Sr[] | undefined;
   parties: Party[];
   entries: PartyEntry[];
   purchases: Purchase[];
@@ -61,6 +70,7 @@ export interface BusinessState {
   commissions: Commission[];
 }
 export const emptyBusiness = (): BusinessState => ({
+  srs: [],
   parties: [],
   entries: [],
   purchases: [],
@@ -73,6 +83,14 @@ export interface BusinessActions {
   repairCost: (id: string, amount: number, accountId: string) => void;
   cancelRepair: (id: string, accountId: string) => void;
   saveParty: (p: Omit<Party, "id"> & { id?: string }) => void;
+  saveSr: (p: Omit<Sr, "id"> & { id?: string }) => void;
+  partyMoney: (p: {
+    partyId: string;
+    kind: "lend" | "borrow" | "advance_given" | "advance_received";
+    amount: number;
+    accountId: string;
+    note: string;
+  }) => void;
   partyEntry: (partyId: string, side: PartyEntry["side"], amount: number, note: string) => void;
   settleParty: (
     partyId: string,
@@ -143,6 +161,19 @@ export function allParties(state: State): Party[] {
     if (!parties.some((p) => p.id === c.id))
       parties.push({ id: c.id, name: c.name, phone: c.phone, roles: ["customer"] });
   return parties;
+}
+/** Commercial contacts can have money-only dealings; SR-only legacy records stay out. */
+export function financialParties(state: State): Party[] {
+  return allParties(state).filter((p) => p.roles.some((role) => role !== "sr"));
+}
+/** Read old SR identities without deleting or reclassifying historical settlements. */
+export function allSrs(state: State): Sr[] {
+  const srs = [...(state.business?.srs ?? [])];
+  for (const p of state.business?.parties ?? []) {
+    if (p.roles.includes("sr") && !srs.some((s) => s.id === p.id))
+      srs.push({ id: p.id, name: p.name, phone: p.phone });
+  }
+  return srs;
 }
 export function businessActions({
   set,
@@ -325,7 +356,8 @@ export function businessActions({
       const name = p.name.trim();
       check(name, "পার্টির নাম দিন");
       check(
-        p.roles.length > 0 && p.roles.every((r) => ["customer", "supplier", "sr"].includes(r)),
+        p.roles.length > 0 &&
+          p.roles.every((r) => ["business", "customer", "supplier", "sr"].includes(r)),
         "পার্টির ধরন দিন",
       );
       const id = p.id ?? uid();
@@ -339,6 +371,82 @@ export function businessActions({
       set((s) => ({
         customers: s.customers.map((c) => (c.id === id ? { ...c, name, phone: clean.phone } : c)),
       }));
+    },
+    saveSr: (p) => {
+      owner();
+      const name = p.name.trim();
+      check(name, "SR-এর নাম দিন");
+      const id = p.id ?? uid();
+      const existing = allSrs(get());
+      if (p.id)
+        check(
+          existing.some((sr) => sr.id === p.id),
+          "SR পাওয়া যায়নি",
+        );
+      const phone = p.phone.trim();
+      check(
+        !phone || !existing.some((sr) => sr.id !== id && sr.phone === phone),
+        "এই নম্বরে SR আগে থেকেই আছে",
+      );
+      const clean: Sr = { id, name, phone, provider: p.provider?.trim(), inactive: !!p.inactive };
+      update({ srs: [...(b().srs ?? []).filter((sr) => sr.id !== id), clean] });
+    },
+    partyMoney: (p) => {
+      owner();
+      const labels = {
+        lend: "ধার দিলাম",
+        borrow: "ধার নিলাম",
+        advance_given: "অগ্রিম দিলাম",
+        advance_received: "অগ্রিম পেলাম",
+      } as const;
+      check(Object.prototype.hasOwnProperty.call(labels, p.kind), "সঠিক পার্টি লেনদেন বেছে নিন");
+      const contact = financialParties(get()).find((contact) => contact.id === p.partyId);
+      check(contact, "আর্থিক লেনদেনের পার্টি বেছে নিন");
+      account(p.accountId, true);
+      const value = money(p.amount);
+      const outgoing = p.kind === "lend" || p.kind === "advance_given";
+      const side = outgoing ? "receivable" : "payable";
+      const moves = [{ accountId: p.accountId, delta: outgoing ? -value : value }];
+      validateMoves(get().accounts, moves);
+      const entryId = uid();
+      const note = [labels[p.kind], p.note.trim()].filter(Boolean).join(" · ");
+      const transaction = post({
+        type: `party_${p.kind}`,
+        title: `${labels[p.kind]} · ${contact!.name}`,
+        partyId: p.partyId,
+        amount: value,
+        profit: 0,
+        cat: "none",
+        ref: entryId,
+        moves,
+        journal: [
+          {
+            account: "asset:" + p.accountId,
+            debit: outgoing ? 0 : value,
+            credit: outgoing ? value : 0,
+          },
+          {
+            account: `${side}:${p.partyId}`,
+            debit: outgoing ? value : 0,
+            credit: outgoing ? 0 : value,
+          },
+        ],
+      });
+      update({
+        entries: [
+          ...b().entries,
+          {
+            id: entryId,
+            partyId: p.partyId,
+            side,
+            amount: value,
+            remaining: value,
+            note,
+            at: now(),
+            ref: transaction.id,
+          },
+        ],
+      });
     },
     partyEntry: (partyId, side, amount, note) => {
       owner();

@@ -72,6 +72,8 @@ export const backupStateSchema = z.object({
         at: money,
         type: text,
         title: text,
+        srId: id.optional(),
+        providerRef: text.optional(),
         amount: money,
         profit: money,
         cat: z.enum(["product", "mfs", "recharge", "service", "none"]),
@@ -104,20 +106,33 @@ export const backupStateSchema = z.object({
       .passthrough(),
   ),
   closings: z.array(
-    z.object({
-      id,
-      at: money,
-      expected: money,
-      counted: money,
-      diff: money,
-      profit: money,
-      by: role,
-    }).passthrough(),
+    z
+      .object({
+        id,
+        at: money,
+        expected: money,
+        counted: money,
+        diff: money,
+        profit: money,
+        by: role,
+      })
+      .passthrough(),
   ),
   operations: operationsSchema.optional(),
   lastClosedAt: money,
   business: z
     .object({
+      srs: z
+        .array(
+          z.object({
+            id,
+            name: text,
+            phone: text,
+            provider: text.optional(),
+            inactive: z.boolean().optional(),
+          }),
+        )
+        .optional(),
       parties: z.array(z.object({ id, name: text, phone: text, roles: z.array(text) })),
       entries: z.array(
         z

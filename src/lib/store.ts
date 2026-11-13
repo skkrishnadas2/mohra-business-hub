@@ -17,6 +17,7 @@ import { persist } from "zustand/middleware";
 import {
   businessActions,
   emptyBusiness,
+  allSrs,
   type BusinessState,
   type BusinessActions,
 } from "./business";
@@ -87,6 +88,8 @@ export interface Sale extends Audit {
 }
 export type ProfitCat = "product" | "mfs" | "recharge" | "service" | "none";
 export interface Txn extends Audit {
+  srId?: string | undefined;
+  providerRef?: string | undefined;
   id: string;
   at: number;
   type: string;
@@ -309,6 +312,9 @@ interface Actions extends BusinessActions, OperationsActions {
     number: string,
   ) => void;
   b2b: (p: {
+    workflow?: "direct" | undefined;
+    srId?: string | undefined;
+    providerRef?: string | undefined;
     kind: "mfs" | "recharge";
     dir?: "load" | "return";
     targetId: string;
@@ -1054,15 +1060,29 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
           ],
         });
       },
-      b2b: ({ kind, dir, targetId, sourceId, amount, commission, ref }) => {
+      b2b: ({
+        kind,
+        dir,
+        targetId,
+        sourceId,
+        amount,
+        commission,
+        ref,
+        srId,
+        providerRef,
+        workflow,
+      }) => {
         permitted("b2b");
+        if (workflow !== undefined && workflow !== "direct") fail("সঠিক B2B কাজ বেছে নিন");
+        const sr = srId ? allSrs(get()).find((sr) => sr.id === srId && !sr.inactive) : undefined;
+        if (srId !== undefined && !sr) fail("সক্রিয় SR বেছে নিন");
         const target = requireAccount(targetId);
         const source = requireAccount(sourceId);
         if (kind !== "mfs" && kind !== "recharge") fail("সঠিক B2B ধরন বেছে নিন");
-        const leg = b2bLeg(kind, source.kind, target.kind);
+        const leg = b2bLeg(kind, source.kind, target.kind, workflow === "direct" || !!srId);
         if (!leg)
           fail(
-            "SR লেনদেনে সিম থেকে শুধু ক্যাশ; ব্যাংক থেকে সিম ব্যালেন্স বা ক্যাশ; ক্যাশ থেকে শুধু সিম ব্যালেন্স নেওয়া যাবে",
+            "এই কাজের জন্য সঠিক উৎস ও গন্তব্য বেছে নিন। রিচার্জ ব্যালেন্স কিনতে ক্যাশ ব্যবহার করুন।",
           );
         // Never reinterpret a durable legacy return action as a forward payment.
         if (dir !== undefined && (dir !== "load" || (leg !== "bank_sim" && leg !== "cash_sim")))
@@ -1073,7 +1093,9 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
         const reference = required(ref, "রেফারেন্স");
         post({
           type: `b2b_${kind}`,
-          title: `B2B SR · ${source.name} → ${target.name}`,
+          title: `B2B · ${sr?.name ?? "SR"} · ${source.name} → ${target.name}`,
+          srId: sr?.id,
+          providerRef: providerRef?.trim() || undefined,
           amount: value,
           profit: extra,
           cat: kind === "recharge" && receivesSim ? "recharge" : "none",
@@ -1304,6 +1326,8 @@ export const CLOUD_ACTIONS = [
   "closeDay",
   "resetAll",
   "saveParty",
+  "saveSr",
+  "partyMoney",
   "partyEntry",
   "settleParty",
   "offsetParty",

@@ -33,12 +33,12 @@ This deployment is exclusively MOHRA IT CARE & TELECOM CENTER, proprietor Sankar
 ## Daily operation
 
 1. Sign in with the proprietor’s existing email; the one assigned store opens automatically, and a blank store is prepared automatically when necessary. Existing device history is preserved and imported only into an untouched empty Cloud ledger.
-2. Add bank, personal/agent MFS and recharge accounts. Add parties once, using customer/supplier/SR roles as appropriate. Cashiers sign in with accounts provisioned by the proprietor.
+2. Add bank, personal/agent MFS and recharge accounts. Use the opening guide for each account balance, current stock and old receivables/payables. Add financial parties, customers or suppliers by purpose; SR registration is not required. Cashiers sign in with accounts provisioned by the proprietor.
 3. Create products or physical SIM stock. Existing barcodes can be scanned; unbranded products receive internal barcodes and A4/thermal labels.
 4. Scan into the POS cart, then use one-tap cash checkout. Other payment, split and due options remain in a separate drawer. Every new sale defaults to cash. Draft/held carts stay on the current device.
-5. Use Accounts for bank transfers, SR advances/partial receipts, expenses, capital/drawings, account settings and deferred commissions.
-6. Use Party & Khata for distinct receivable/payable balances and collections. SR balances awaiting receipt are shown separately; they cannot be accidentally collected twice as ordinary debt.
-7. Purchase stock through the supplier flow for weighted-average cost and payable tracking. Full purchase returns reconcile outstanding debt and refunds.
+5. Use Accounts for current balances, today’s recorded inflow/outflow and per-account signed history, transfers, expenses, capital/drawings, settings and deferred commissions. Owner before/after figures are derived from current balances and recorded history only.
+6. Use Party & Khata for money-only lending/borrowing, advances, collections and payments. Receivable and payable stay separate; opening entries and explicit offsets do not move cash. B2B has no party debt or mandatory SR directory: MFS supports direct agent/cash/bank movements; recharge supports only cash purchase plus a manual bonus. Historical pending settlements remain in a collapsed owner-only section, never silently marked received.
+7. Purchase stock through the supplier flow for weighted-average cost and payable tracking; full cash payment is the explicit default, with partial/due alternatives. Full purchase returns reconcile outstanding debt and refunds.
 8. Repair advances are liabilities until delivery; consumed parts and direct costs reduce repair profit. Historical repair entries keep their legacy recognition convention.
 9. Open a counted cash shift before posting transactions; only one drawer shift can be active. Cashiers work in their own shift; owners can reconcile or close it. Cash variances need a reason and owner approval. Export statements/stock/journals as CSV, print reports or save them as PDF, and download a full JSON backup.
 
@@ -91,3 +91,5 @@ Browser Auth and business-api HTTP traffic use `/api/cloud` on the shop origin. 
 `supabase/templates/recovery.html` is the reviewed source for the hosted **Reset password** email template. It provides a high-contrast Bengali/English button and the complete visible `{{ .ConfirmationURL }}` as a separate fallback link, without external images or scripts. Suggested subject: `MOHRA — নতুন পাসওয়ার্ড সেট করুন`.
 
 This file does not update hosted Supabase Auth by itself. Apply its HTML in the project's Authentication → Emails/Templates → Reset password editor (or the authorized Management API) and save it there. Verify the template preview, then send one recovery email and confirm that the recipient sees the button and full link before considering delivery/formatting validated. Never hardcode a recovery token into source or share a live reset URL in chat.
+
+Customer MFS/recharge forms retain only safe shop/operator account context, lock submitted inputs until the exact receipt, then clear customer details. Recharge resets payment to cash and clears the due contact. New B2B requests use `workflow: "direct"` for strict task rules; old markerless outbox requests retain their original financial interpretation. The flush worker rechecks actions queued during its final snapshot refresh.

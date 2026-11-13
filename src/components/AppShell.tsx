@@ -32,15 +32,17 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutGrid; owner?: boolean };
 const NAV: NavItem[] = [
-  { to: "/", label: "ওভারভিউ", icon: LayoutGrid },
+  { to: "/", label: "হোম", icon: LayoutGrid },
   { to: "/pos", label: "কাউন্টার", icon: ScanBarcode },
-  { to: "/accounts", label: "অ্যাকাউন্টস", icon: Landmark },
+  { to: "/b2b", label: "B2B / SR", icon: Wallet },
   { to: "/khata", label: "পার্টি ও খাতা", icon: BookUser },
   { to: "/products", label: "স্টক ও ক্রয়", icon: Package },
+  { to: "/accounts", label: "আমার অ্যাকাউন্টস", icon: Landmark },
   { to: "/reports", label: "রিপোর্ট", icon: Activity, owner: true },
   { to: "/closing", label: "শিফট ও অনুমোদন", icon: MoonStar },
   { to: "/cloud", label: "দোকান ও টিম", icon: Cloud },
   { to: "/monitor", label: "লাইভ মনিটর", icon: Activity, owner: true },
+  { to: "/opening", label: "শুরুর হিসাব", icon: BookUser, owner: true },
   { to: "/settings", label: "সেটিংস", icon: Settings, owner: true },
 ];
 
@@ -145,9 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mb-2 px-3 text-xs font-medium text-muted-foreground">কাজের মেনু</div>
         <nav aria-label="প্রধান নেভিগেশন" className="min-h-0 flex-1 space-y-1 overflow-y-auto">
           {items
-            .filter((n) =>
-              ["/", "/pos", "/accounts", "/khata", "/products", "/reports"].includes(n.to),
-            )
+            .filter((n) => ["/", "/pos", "/b2b", "/khata", "/products", "/accounts"].includes(n.to))
             .map((n) => (
               <Link
                 key={n.to}
@@ -172,8 +172,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="mt-2 space-y-1">
             {items
               .filter(
-                (n) =>
-                  !["/", "/pos", "/accounts", "/khata", "/products", "/reports"].includes(n.to),
+                (n) => !["/", "/pos", "/b2b", "/khata", "/products", "/accounts"].includes(n.to),
               )
               .map((n) => (
                 <Link

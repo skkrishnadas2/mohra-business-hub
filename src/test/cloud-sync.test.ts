@@ -23,6 +23,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 import { appendOutbox, readOutbox } from "@/lib/cloud-outbox";
 import {
   disconnectCloud,
+  queueCloudAction,
   flushCloudOutbox,
   openCloudShop,
   createOnlineShop,
@@ -220,6 +221,81 @@ describe("Cloud conflict recovery", () => {
     expect(useCloud.getState().version).toBe(2);
   });
 
+  it("drains a second action queued while the trailing snapshot refresh is pending", async () => {
+    const authoritative = shopSnapshot(useStore.getState());
+    let finishRefresh!: (value: ReturnType<typeof cloudShop>) => void;
+    let refreshStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      refreshStarted = resolve;
+    });
+    mocks.get
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishRefresh = resolve;
+            refreshStarted();
+          }),
+      )
+      .mockResolvedValueOnce(cloudShop(authoritative, 3));
+    mocks.apply
+      .mockResolvedValueOnce({ status: "ok", version: 2 })
+      .mockResolvedValueOnce({ status: "ok", version: 3 });
+    appendOutbox(shopId, {
+      id: actionId,
+      name: "transfer",
+      args: ["dbbl", "cash", 100, "First"],
+    });
+    const flushing = flushCloudOutbox();
+    await started;
+    queueCloudAction({
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      name: "transfer",
+      args: ["cash", "dbbl", 50, "Second"],
+    });
+    expect(mocks.apply).toHaveBeenCalledTimes(1);
+    expect(readOutbox(shopId)).toHaveLength(1);
+    finishRefresh(cloudShop(authoritative, 2));
+    await flushing;
+    expect(mocks.apply).toHaveBeenCalledTimes(2);
+    expect(mocks.apply.mock.calls[1]![0].data.baseVersion).toBe(2);
+    expect(readOutbox(shopId)).toEqual([]);
+    expect(useCloud.getState().pending).toBe(0);
+  });
+
+  it("stops after a refresh network failure with newly queued work preserved", async () => {
+    let failRefresh!: (error: Error) => void;
+    let refreshStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      refreshStarted = resolve;
+    });
+    mocks.get.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          failRefresh = reject;
+          refreshStarted();
+        }),
+    );
+    mocks.apply.mockResolvedValueOnce({ status: "ok", version: 2 });
+    appendOutbox(shopId, {
+      id: actionId,
+      name: "transfer",
+      args: ["dbbl", "cash", 100, "First"],
+    });
+    const flushing = flushCloudOutbox();
+    await started;
+    queueCloudAction({
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      name: "transfer",
+      args: ["cash", "dbbl", 50, "Second"],
+    });
+    failRefresh(new Error("Network unavailable"));
+    await flushing;
+    expect(mocks.apply).toHaveBeenCalledTimes(1);
+    expect(mocks.get).toHaveBeenCalledTimes(1);
+    expect(readOutbox(shopId)).toHaveLength(1);
+    expect(useCloud.getState().status).toBe("error");
+  });
+
   it("keeps an action queued when the failure is a network error", async () => {
     appendOutbox(shopId, {
       id: actionId,
@@ -301,11 +377,23 @@ describe("first-connection backup boundaries", () => {
   });
 });
 
-describe('canonical state before successful confirmation',()=>{
-  it('adopts acknowledged server data before announcing the exact receipt',async()=>{
-    const state=shopSnapshot(useStore.getState());state.accounts=state.accounts.map(a=>a.id==='cash'?{...a,balance:10100}:a);
-    appendOutbox(shopId,{id:actionId,name:'serviceSlip',args:['Copy',100,'cash']});mocks.apply.mockResolvedValue({status:'ok',version:2,state});mocks.get.mockResolvedValue(cloudShop(state,2));
-    let observed=0;const listener=()=>{observed=useStore.getState().accounts.find(a=>a.id==='cash')!.balance;};window.addEventListener('mohra:cloud-result',listener);
-    try{await flushCloudOutbox();expect(observed).toBe(10100);}finally{window.removeEventListener('mohra:cloud-result',listener);}
+describe("canonical state before successful confirmation", () => {
+  it("adopts acknowledged server data before announcing the exact receipt", async () => {
+    const state = shopSnapshot(useStore.getState());
+    state.accounts = state.accounts.map((a) => (a.id === "cash" ? { ...a, balance: 10100 } : a));
+    appendOutbox(shopId, { id: actionId, name: "serviceSlip", args: ["Copy", 100, "cash"] });
+    mocks.apply.mockResolvedValue({ status: "ok", version: 2, state });
+    mocks.get.mockResolvedValue(cloudShop(state, 2));
+    let observed = 0;
+    const listener = () => {
+      observed = useStore.getState().accounts.find((a) => a.id === "cash")!.balance;
+    };
+    window.addEventListener("mohra:cloud-result", listener);
+    try {
+      await flushCloudOutbox();
+      expect(observed).toBe(10100);
+    } finally {
+      window.removeEventListener("mohra:cloud-result", listener);
+    }
   });
 });

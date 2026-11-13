@@ -263,99 +263,106 @@ async function runFlush() {
   const epoch = connectionEpoch;
   const shopId = useCloud.getState().shopId ?? savedShopId();
   if (!shopId) return;
-  let synced = false;
+  // A new action can arrive while the trailing snapshot request is in flight.
+  // Keep ownership of the flush until that successful refresh has been rechecked.
+  for (;;) {
+    let synced = false;
 
-  while (readOutbox(shopId).length) {
-    if (epoch !== connectionEpoch) return;
-    const action = readOutbox(shopId)[0];
-    if (!action) break;
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      useCloud.setState({
-        status: "error",
-        error: "ইন্টারনেট ফিরলে জমা থাকা কাজ নিজে থেকেই সিঙ্ক হবে।",
-      });
-      break;
-    }
-    try {
-      if (useCloud.getState().version < 1 && savedVersion() < 1) await openCloudShop(shopId);
+    while (readOutbox(shopId).length) {
       if (epoch !== connectionEpoch) return;
-      const baseVersion = useCloud.getState().version || savedVersion();
-      if (baseVersion < 1) throw new Error("Cloud সংযোগের সংস্করণ পাওয়া যায়নি");
-      const result = await applyCloudAction({ data: { shopId, baseVersion, action } });
-      if (epoch !== connectionEpoch) return;
-      if (result.status === "conflict") {
-        // Rebase the same durable action on the latest snapshot; never overwrite the other device.
-        useCloud.setState({ version: result.version });
-        saveVersion(result.version);
-        continue;
-      }
-      if (result.status === "rejected") {
-        // A business-rule rejection is final: do not retry it forever or block later actions.
-        if (typeof window !== "undefined")
-          window.dispatchEvent(
-            new CustomEvent(CLOUD_RESULT_EVENT, {
-              detail: { id: action.id, ok: false, message: result.message },
-            }),
-          );
-        const pending = acknowledgeOutbox(shopId, action.id).length;
-        const notice = `একটি কাজ Cloud-এ গ্রহণ করা যায়নি: ${result.message}`;
+      const action = readOutbox(shopId)[0];
+      if (!action) break;
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
         useCloud.setState({
-          status: "connected",
-          version: result.version,
-          pending,
-          error: null,
-          notice,
+          status: "error",
+          error: "ইন্টারনেট ফিরলে জমা থাকা কাজ নিজে থেকেই সিঙ্ক হবে।",
         });
-        saveVersion(result.version);
-        if (pending === 0) {
+        break;
+      }
+      try {
+        if (useCloud.getState().version < 1 && savedVersion() < 1) await openCloudShop(shopId);
+        if (epoch !== connectionEpoch) return;
+        const baseVersion = useCloud.getState().version || savedVersion();
+        if (baseVersion < 1) throw new Error("Cloud সংযোগের সংস্করণ পাওয়া যায়নি");
+        const result = await applyCloudAction({ data: { shopId, baseVersion, action } });
+        if (epoch !== connectionEpoch) return;
+        if (result.status === "conflict") {
+          // Rebase the same durable action on the latest snapshot; never overwrite the other device.
+          useCloud.setState({ version: result.version });
+          saveVersion(result.version);
+          continue;
+        }
+        if (result.status === "rejected") {
+          // A business-rule rejection is final: do not retry it forever or block later actions.
+          if (typeof window !== "undefined")
+            window.dispatchEvent(
+              new CustomEvent(CLOUD_RESULT_EVENT, {
+                detail: { id: action.id, ok: false, message: result.message },
+              }),
+            );
+          const pending = acknowledgeOutbox(shopId, action.id).length;
+          const notice = `একটি কাজ Cloud-এ গ্রহণ করা যায়নি: ${result.message}`;
+          useCloud.setState({
+            status: "connected",
+            version: result.version,
+            pending,
+            error: null,
+            notice,
+          });
+          saveVersion(result.version);
+          if (pending === 0) {
+            useStore.setState({
+              ...result.state,
+              operations: result.state.operations ?? emptyOperations(),
+              actor: useStore.getState().actor,
+              setupDone: true,
+              role: useCloud.getState().role,
+            });
+          }
+          toast.error(notice);
+          synced = true;
+          continue;
+        }
+        const pending = acknowledgeOutbox(shopId, action.id).length;
+        if (pending === 0 && result.state)
           useStore.setState({
             ...result.state,
             operations: result.state.operations ?? emptyOperations(),
-            actor: useStore.getState().actor,
+            actor: result.actor ?? useStore.getState().actor,
             setupDone: true,
             role: useCloud.getState().role,
           });
-        }
-        toast.error(notice);
+        useCloud.setState({ status: "connected", version: result.version, pending, error: null });
+        saveVersion(result.version);
+        if (typeof window !== "undefined")
+          window.dispatchEvent(
+            new CustomEvent(CLOUD_RESULT_EVENT, { detail: { id: action.id, ok: true } }),
+          );
         synced = true;
-        continue;
-      }
-      const pending = acknowledgeOutbox(shopId, action.id).length;
-      if (pending === 0 && result.state)
-        useStore.setState({
-          ...result.state,
-          operations: result.state.operations ?? emptyOperations(),
-          actor: result.actor ?? useStore.getState().actor,
-          setupDone: true,
-          role: useCloud.getState().role,
+      } catch (error) {
+        if (epoch !== connectionEpoch) return;
+        const message = actionError(error);
+        const shouldNotify = useCloud.getState().status !== "error";
+        useCloud.setState({
+          status: "error",
+          error: `${message} · ${readOutbox(shopId).length}টি কাজ জমা আছে`,
         });
-      useCloud.setState({ status: "connected", version: result.version, pending, error: null });
-      saveVersion(result.version);
-      if (typeof window !== "undefined")
-        window.dispatchEvent(
-          new CustomEvent(CLOUD_RESULT_EVENT, { detail: { id: action.id, ok: true } }),
-        );
-      synced = true;
-    } catch (error) {
-      if (epoch !== connectionEpoch) return;
-      const message = actionError(error);
-      const shouldNotify = useCloud.getState().status !== "error";
-      useCloud.setState({
-        status: "error",
-        error: `${message} · ${readOutbox(shopId).length}টি কাজ জমা আছে`,
-      });
-      if (shouldNotify) toast.error("Cloud সিঙ্ক হয়নি—কাজটি ডিভাইসে জমা আছে");
-      break;
+        if (shouldNotify) toast.error("Cloud সিঙ্ক হয়নি—কাজটি ডিভাইসে জমা আছে");
+        break;
+      }
     }
-  }
 
-  // Re-read the authoritative result after the whole batch, including other devices' changes.
-  if (synced && readOutbox(shopId).length === 0) {
-    try {
-      await openCloudShop(shopId);
-    } catch {
-      /* The next poll/online event will retry. */
+    // Re-read the authoritative result after the whole batch, including other devices' changes.
+    if (synced && readOutbox(shopId).length === 0) {
+      try {
+        await openCloudShop(shopId);
+      } catch {
+        /* The next poll/online event will retry; never spin on a network failure. */
+        return;
+      }
+      if (epoch === connectionEpoch && readOutbox(shopId).length) continue;
     }
+    return;
   }
 }
 
