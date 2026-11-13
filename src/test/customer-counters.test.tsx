@@ -19,7 +19,7 @@ vi.mock("@/lib/store", () => ({
   useStore: () => ({
     accounts: [
       { id: "cash", name: "Cash drawer", kind: "cash", balance: 10000 },
-      { id: "sim", name: "GP SIM", kind: "recharge", balance: 10000 },
+      { id: "sim", name: "GP SIM", kind: "recharge", provider: "gp", balance: 10000 },
       { id: "agent", name: "Agent wallet", kind: "mfs_agent", provider: "bkash", balance: 10000 },
       {
         id: "personal",
@@ -89,13 +89,13 @@ describe("customer counter submission lifecycle", () => {
     expect(screen.queryByLabelText("Customer")).not.toBeInTheDocument();
     expect(screen.getByText("Cash drawer", { selector: "b" })).toBeInTheDocument();
     expect(screen.getByLabelText("মোবাইল নম্বর")).toHaveFocus();
-    fireEvent.change(screen.getByLabelText("মোবাইল নম্বর"), { target: { value: "01812345678" } });
+    fireEvent.change(screen.getByLabelText("মোবাইল নম্বর"), { target: { value: "01787654321" } });
     fireEvent.change(screen.getByLabelText("পরিমাণ · কাস্টমও লিখতে পারেন"), {
       target: { value: "50" },
     });
     fireEvent.submit(screen.getByRole("button", { name: /রিচার্জ রেকর্ড/ }).closest("form")!);
     await waitFor(() =>
-      expect(mocks.recharge).toHaveBeenLastCalledWith("sim", 50, "01812345678", "cash", undefined),
+      expect(mocks.recharge).toHaveBeenLastCalledWith("sim", 50, "01787654321", "cash", undefined),
     );
   });
   it("freezes personal MFS context until receipt, then clears customer amount and manual fee", async () => {

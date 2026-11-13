@@ -1,3 +1,4 @@
+import { taka } from "@/lib/rules";
 import { confirmed } from "@/lib/confirmed-write";
 import { FinanceWorkspace, GeneralTransfer } from "@/components/BusinessWorkspace";
 import { AccountSettings } from "@/components/AccountSettings";
@@ -176,7 +177,10 @@ export function Accounts() {
             <Chips
               value={bank}
               onChange={setBank}
-              options={banks.map((b) => ({ value: b.id, label: b.name }))}
+              options={banks.map((b) => ({
+                value: b.id,
+                label: showBank ? `${b.name} · ${taka(b.balance)}` : b.name,
+              }))}
             />
             <div>
               <Label>পরিমাণ</Label>

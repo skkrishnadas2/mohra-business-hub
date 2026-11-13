@@ -1,3 +1,10 @@
+import { AccountBalancePicker } from "@/components/AccountBalancePicker";
+import {
+  PROVIDER_NAMES,
+  RECHARGE_PROVIDERS,
+  rechargeOperatorHint,
+  suggestedRechargeAccount,
+} from "@/lib/account-display";
 import { confirmed, useSubmission } from "@/lib/confirmed-write";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -37,10 +44,15 @@ export function Recharge() {
   const scope = counterScope(shopId, actor?.userId);
   const sims = counterAccounts(accounts, "recharge", role);
   const [savedSim, chooseSim] = useCounterPreference(scope, "recharge-sim");
-  const sim = selectedCounterAccount(savedSim, sims);
-  const selected = sims.find((s) => s.id === sim);
   const [tab, setTab] = useState<"sell" | "b2b">("sell");
   const [num, setNum] = useState("");
+  const [manualOperator, setManualOperator] = useState(false);
+  const hint = rechargeOperatorHint(num);
+  const sim = selectedCounterAccount(
+    savedSim,
+    !manualOperator && hint ? sims.filter((s) => s.provider === hint) : sims,
+  );
+  const selected = sims.find((s) => s.id === sim);
   const [amt, setAmt] = useState("");
   const [payment, setPayment] = useState("cash");
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -54,7 +66,10 @@ export function Recharge() {
   const amount = counterMoney(amt);
   const paymentAccounts = accounts.filter(
     (x) =>
-      !x.inactive && x.kind !== "recharge" && (role !== "cashier" || x.cashierAllowed !== false),
+      !x.inactive &&
+      x.kind !== "recharge" &&
+      (role !== "cashier" || x.cashierAllowed !== false) &&
+      (x.kind !== "bank" || can("viewBank")),
   );
   const paidTo = paymentAccounts.find((x) => x.id === payment);
   const ready =
@@ -69,6 +84,7 @@ export function Recharge() {
     if (completed) phoneRef.current?.focus();
   }, [completed]);
   useEffect(() => {
+    setManualOperator(false);
     setNum("");
     setAmt("");
     setReason("");
@@ -78,6 +94,7 @@ export function Recharge() {
     setLast("");
   }, [scope]);
   const clearCustomer = () => {
+    setManualOperator(false);
     setNum("");
     setAmt("");
     setReason("");
@@ -126,32 +143,6 @@ export function Recharge() {
           <form onSubmit={submit} className="rounded-2xl border bg-card p-4 shadow-soft sm:p-5">
             <fieldset disabled={locked} className="min-w-0 space-y-4">
               <div>
-                <Label>রিচার্জ সিম</Label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {sims.map((s) => (
-                    <BigButton
-                      type="button"
-                      key={s.id}
-                      aria-pressed={sim === s.id}
-                      onClick={() => chooseSim(s.id)}
-                      className={`min-h-12 rounded-lg border px-3 py-2 text-center text-sm ${sim === s.id ? "border-primary bg-primary text-primary-foreground" : "bg-card text-foreground hover:enabled:bg-secondary"}`}
-                    >
-                      {s.name}
-                    </BigButton>
-                  ))}
-                </div>
-                {!sims.length && (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    আগে অ্যাকাউন্টস থেকে রিচার্জ সিম যোগ করুন।
-                  </p>
-                )}
-                {savedSim && !sim && (
-                  <p role="alert" className="mt-2 text-sm text-destructive">
-                    আগের সিমটি এখন ব্যবহারযোগ্য নয়। একটি সিম বেছে নিন।
-                  </p>
-                )}
-              </div>
-              <div>
                 <Label htmlFor="recharge-phone">মোবাইল নম্বর</Label>
                 <TextInput
                   id="recharge-phone"
@@ -160,7 +151,14 @@ export function Recharge() {
                   inputMode="tel"
                   autoComplete="off"
                   value={num}
-                  onChange={(e) => setNum(normalizeCounterPhone(e.target.value))}
+                  onChange={(e) => {
+                    const phone = normalizeCounterPhone(e.target.value);
+                    setNum(phone);
+                    if (!manualOperator) {
+                      const next = suggestedRechargeAccount(phone, sims, sim);
+                      if (next !== undefined) chooseSim(next);
+                    }
+                  }}
                   placeholder="01XXXXXXXXX"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -173,6 +171,43 @@ export function Recharge() {
                     }
                   }}
                 />
+              </div>
+              <div>
+                <Label>রিচার্জ সিম</Label>
+                <AccountBalancePicker
+                  accounts={sims}
+                  value={sim}
+                  onChange={(id) => {
+                    chooseSim(id);
+                    setManualOperator(true);
+                  }}
+                  missingProviders={RECHARGE_PROVIDERS}
+                />
+                {hint && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {manualOperator
+                      ? "নিজে অপারেটর বেছে নিয়েছেন।"
+                      : `নম্বর অনুযায়ী সাজেশন: ${PROVIDER_NAMES[hint]}`}{" "}
+                    পোর্ট করা নম্বর হলে সঠিক অপারেটর বেছে নিন।
+                  </p>
+                )}
+                {hint && !selected && !manualOperator && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {sims.some((s) => s.provider === hint)
+                      ? "এই অপারেটরের একাধিক সিম আছে। একটি বেছে নিন।"
+                      : "এই অপারেটরের ব্যবহারযোগ্য সিম নেই। পোর্ট করা নম্বর হলে সঠিক সিম নিজে বেছে নিন।"}
+                  </p>
+                )}
+                {!sims.length && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    আগে অ্যাকাউন্টস থেকে রিচার্জ সিম যোগ করুন।
+                  </p>
+                )}
+                {savedSim && !sim && (
+                  <p role="alert" className="mt-2 text-sm text-destructive">
+                    আগের সিমটি এখন ব্যবহারযোগ্য নয়। একটি সিম বেছে নিন।
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {QUICK.map((q) => (
@@ -233,7 +268,7 @@ export function Recharge() {
                       <option value="">অ্যাকাউন্ট বেছে নিন</option>
                       {paymentAccounts.map((x) => (
                         <option key={x.id} value={x.id}>
-                          {x.name}
+                          {x.name} · {taka(x.balance)}
                         </option>
                       ))}
                     </select>

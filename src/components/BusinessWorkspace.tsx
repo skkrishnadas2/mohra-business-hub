@@ -45,7 +45,7 @@ export function AccountSelect({
       <option value="">অ্যাকাউন্ট বেছে নিন</option>
       {accounts.map((a) => (
         <option value={a.id} key={a.id}>
-          {a.name}
+          {a.name} · {taka(a.balance)}
         </option>
       ))}
     </select>

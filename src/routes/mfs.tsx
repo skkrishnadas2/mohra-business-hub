@@ -1,3 +1,4 @@
+import { AccountBalancePicker } from "@/components/AccountBalancePicker";
 import { confirmed, useSubmission } from "@/lib/confirmed-write";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -150,11 +151,7 @@ export function Mfs() {
               )}
               <div>
                 <Label>যে ওয়ালেট দিয়ে কাজ করছেন</Label>
-                <Chips
-                  value={wallet}
-                  onChange={chooseWallet}
-                  options={list.map((x) => ({ value: x.id, label: x.name }))}
-                />
+                <AccountBalancePicker accounts={list} value={wallet} onChange={chooseWallet} />
                 {!list.length && (
                   <p className="mt-2 text-sm text-muted-foreground">
                     আগে অ্যাকাউন্টস থেকে সক্রিয় ওয়ালেট যোগ করুন।

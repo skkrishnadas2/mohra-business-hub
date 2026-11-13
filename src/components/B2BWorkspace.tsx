@@ -1,3 +1,4 @@
+import { accountProviderName } from "@/lib/account-display";
 import { useRef, useState, type FormEvent } from "react";
 import { ArrowDownLeft, ArrowUpRight, CheckCircle2, UsersRound } from "lucide-react";
 import { toast } from "sonner";
@@ -525,7 +526,7 @@ function AccountChoice({
         <option value="">হিসাব বেছে নিন</option>
         {options.map((a) => (
           <option key={a.id} value={a.id}>
-            {a.name}
+            {a.name} · {accountProviderName(a)} · {taka(a.balance)}
           </option>
         ))}
       </select>

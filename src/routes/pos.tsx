@@ -1,3 +1,4 @@
+import { AccountBalancePicker } from "@/components/AccountBalancePicker";
 import { refreshCart } from "@/lib/cart";
 import { confirmed } from "@/lib/confirmed-write";
 import { createFileRoute } from "@tanstack/react-router";
@@ -491,7 +492,9 @@ function PaySheet({
   ) => void;
 }) {
   const fullState = useStore();
-  const { accounts } = fullState;
+  const accounts = fullState.accounts.filter(
+    (a) => fullState.role !== "cashier" || a.cashierAllowed !== false,
+  );
   const [mode, setMode] = useState<"mfs" | "bank" | "split" | "due">("mfs");
   const [acc, setAcc] = useState("");
   const [split, setSplit] = useState<Record<string, string>>({});
@@ -567,23 +570,25 @@ function PaySheet({
             ]}
           />
           {(mode === "mfs" || mode === "bank") && (
-            <div className="grid grid-cols-2 gap-2">
-              {(mode === "mfs" ? mfs : banks).map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => setAcc(a.id)}
-                  className={`h-12 rounded-lg border text-sm ${acc === a.id ? "border-primary bg-accent font-medium" : ""}`}
-                >
-                  {a.name}
-                </button>
-              ))}
-            </div>
+            <AccountBalancePicker
+              accounts={mode === "mfs" ? mfs : banks}
+              value={acc}
+              onChange={setAcc}
+              hideBalance={mode === "bank" && !fullState.can("viewBank")}
+            />
           )}
           {mode === "split" && (
             <div className="space-y-2">
               {[...accounts.filter((x) => x.kind === "cash"), ...mfs, ...banks].map((a) => (
                 <div key={a.id} className="flex items-center gap-3">
-                  <span className="flex-1 text-sm">{a.name}</span>
+                  <span className="flex-1 text-sm">
+                    {a.name}
+                    <Money
+                      v={a.balance}
+                      hidden={a.kind === "bank" && !fullState.can("viewBank")}
+                      className="mt-1 block text-xs text-muted-foreground"
+                    />
+                  </span>
                   <NumInput
                     className="h-10 w-32 text-right text-base"
                     value={split[a.id] ?? ""}
