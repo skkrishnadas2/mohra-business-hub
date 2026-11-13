@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
-import { ArrowDownLeft, ArrowUpRight, CheckCircle2, ChevronDown, UsersRound } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CheckCircle2, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { actionError, useStore, type Account } from "@/lib/store";
 import { useCloud } from "@/lib/cloud-sync";
@@ -65,7 +65,12 @@ function B2BSession({ scope, context }: { scope: string; context?: "mfs" | "rech
   const [bonus, setBonus] = useState("");
   const [providerRef, setProviderRef] = useState("");
   const [lastReceipt, setLastReceipt] = useState("");
-  const [more, setMore] = useState(false);
+  const [method, setMethod] = useState<"cash" | "bank">(() => {
+    const saved = task === "agent_return" ? targetId : sourceId;
+    return saved && saved !== "cash" && s.accounts.find((a) => a.id === saved)?.kind !== "cash"
+      ? "bank"
+      : "cash";
+  });
   const input = useRef<HTMLInputElement>(null);
   const memo = useRef("");
   const posting = useRef(false);
@@ -118,6 +123,14 @@ function B2BSession({ scope, context }: { scope: string; context?: "mfs" | "rech
       preferences.accounts[next]?.targetId,
       b2bOptions(next, accounts, nextSource).targets,
       true,
+    );
+    const financialId = next === "agent_return" ? nextTarget : nextSource;
+    setMethod(
+      financialId &&
+        financialId !== "cash" &&
+        s.accounts.find((a) => a.id === financialId)?.kind !== "cash"
+        ? "bank"
+        : "cash",
     );
     setTask(next);
     setSource(nextSource);
@@ -177,21 +190,39 @@ function B2BSession({ scope, context }: { scope: string; context?: "mfs" | "rech
         B2B লেনদেনের অনুমতি নেই। মালিকের সঙ্গে যোগাযোগ করুন।
       </div>
     );
-  const visibleTasks = allowedTasks.filter(
-    (t) => more || context || !["bank_cash", "cash_bank"].includes(t.id) || t.id === task,
-  );
+  const visibleTasks = allowedTasks;
+  const mfsTask = task === "agent_load" || task === "agent_return";
+  const financialOptions = accounts.filter((a) => a.kind === method);
+  const financialId = task === "agent_return" ? targetId : sourceId;
+  const chooseFinancial = (id: string) => {
+    if (task === "agent_return") {
+      setTarget(id);
+      remember(task, sourceId, id);
+    } else {
+      setSource(id);
+      remember(task, id, targetId);
+    }
+  };
+  const changeMethod = (next: "cash" | "bank") => {
+    if (next === method) return;
+    setMethod(next);
+    const options = accounts.filter((a) => a.kind === next);
+    chooseFinancial(chooseB2BAccount(undefined, options, true));
+    setProviderRef("");
+    memo.current = "";
+  };
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border bg-card p-4 shadow-soft sm:p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold">SR-এর সঙ্গে B2B</h2>
+            <h2 className="font-semibold">SR / DSO-এর সঙ্গে B2B</h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               সম্পন্ন লেনদেন লিখুন · একবার সেভে দুই পাশের ব্যালেন্স
             </p>
           </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-2">
           {visibleTasks.map((t) => (
             <button
               key={t.id}
@@ -210,17 +241,6 @@ function B2BSession({ scope, context }: { scope: string; context?: "mfs" | "rech
             </button>
           ))}
         </div>
-        {!context && (
-          <button
-            type="button"
-            disabled={lock}
-            onClick={() => setMore((v) => !v)}
-            className="mt-3 inline-flex min-h-10 items-center gap-1 text-xs font-medium text-muted-foreground"
-          >
-            {more ? "কম দেখুন" : "আরও B2B লেনদেন"}
-            <ChevronDown size={14} />
-          </button>
-        )}
       </div>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
         <form
@@ -228,32 +248,105 @@ function B2BSession({ scope, context }: { scope: string; context?: "mfs" | "rech
           className="space-y-5 rounded-2xl border bg-card p-4 shadow-soft sm:p-5"
         >
           <fieldset disabled={lock} className="min-w-0 space-y-5 disabled:opacity-70">
-            <div className="grid gap-3 md:grid-cols-2">
-              <AccountChoice
-                label="যে হিসাব থেকে কমবে"
-                value={sourceId}
-                options={sources}
-                onChange={(id) => {
-                  const nextTarget = chooseB2BAccount(
-                    targetId || undefined,
-                    b2bOptions(task, accounts, id).targets,
-                    true,
-                  );
-                  setSource(id);
-                  setTarget(nextTarget);
-                  remember(task, id, nextTarget);
-                }}
-              />
-              <AccountChoice
-                label="যে হিসাবে বাড়বে"
-                value={targetId}
-                options={targets}
-                onChange={(id) => {
-                  setTarget(id);
-                  remember(task, sourceId, id);
-                }}
-              />
-            </div>
+            {mfsTask ? (
+              <div className="space-y-4">
+                <AccountChoice
+                  label="কোন এজেন্ট অ্যাকাউন্ট"
+                  value={task === "agent_load" ? targetId : sourceId}
+                  options={accounts.filter((a) => a.kind === "mfs_agent")}
+                  onChange={(id) => {
+                    if (task === "agent_load") {
+                      setTarget(id);
+                      remember(task, sourceId, id);
+                    } else {
+                      setSource(id);
+                      remember(task, id, targetId);
+                    }
+                  }}
+                />
+                <div>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
+                    {task === "agent_load" ? "টাকা কীভাবে দিলেন?" : "টাকা কোথায় পেলেন?"}
+                  </p>
+                  <div
+                    className="grid grid-cols-2 gap-2"
+                    role="group"
+                    aria-label={
+                      task === "agent_load" ? "টাকা দেওয়ার মাধ্যম" : "টাকা পাওয়ার মাধ্যম"
+                    }
+                  >
+                    <button
+                      type="button"
+                      aria-pressed={method === "cash"}
+                      onClick={() => changeMethod("cash")}
+                      className={`min-h-12 rounded-xl border px-3 text-sm font-semibold ${method === "cash" ? "border-primary bg-primary/5 text-primary" : ""}`}
+                    >
+                      {task === "agent_load" ? "ক্যাশে দিলাম" : "ক্যাশ পেলাম"}
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={method === "bank"}
+                      onClick={() => changeMethod("bank")}
+                      className={`min-h-12 rounded-xl border px-3 text-sm font-semibold ${method === "bank" ? "border-primary bg-primary/5 text-primary" : ""}`}
+                    >
+                      {task === "agent_load" ? "ব্যাংক থেকে দিলাম" : "ব্যাংকে পেলাম"}
+                    </button>
+                  </div>
+                </div>
+                <AccountChoice
+                  label={
+                    method === "bank"
+                      ? task === "agent_load"
+                        ? "কোন ব্যাংক থেকে দিলেন"
+                        : "কোন ব্যাংকে পেলেন"
+                      : "ক্যাশ অ্যাকাউন্ট"
+                  }
+                  value={financialId}
+                  options={financialOptions}
+                  onChange={chooseFinancial}
+                />
+                {method === "bank" && !financialOptions.length && (
+                  <p className="text-sm text-muted-foreground">
+                    ব্যবহারযোগ্য ব্যাংক অ্যাকাউন্ট নেই। আমার অ্যাকাউন্টসে ব্যাংক যোগ করুন বা মালিকের
+                    কাছে অনুমতি নিন।
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {task === "agent_load"
+                    ? "SR / DSO-কে টাকা দিয়ে এজেন্ট ব্যালেন্স পেয়েছেন।"
+                    : method === "bank"
+                      ? "এজেন্ট থেকে নিজের ব্যাংকে টাকা এসেছে; ক্যাশ বাক্স বদলাবে না।"
+                      : "SR / DSO-কে এজেন্ট ব্যালেন্স দিয়ে হাতে ক্যাশ পেয়েছেন।"}
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                <AccountChoice
+                  label="যে হিসাব থেকে কমবে"
+                  value={sourceId}
+                  options={sources}
+                  onChange={(id) => {
+                    const nextTarget = chooseB2BAccount(
+                      targetId || undefined,
+                      b2bOptions(task, accounts, id).targets,
+                      true,
+                    );
+                    setSource(id);
+                    setTarget(nextTarget);
+                    remember(task, id, nextTarget);
+                  }}
+                />
+                <AccountChoice
+                  label="যে হিসাবে বাড়বে"
+                  value={targetId}
+                  options={targets}
+                  onChange={(id) => {
+                    setTarget(id);
+                    remember(task, sourceId, id);
+                  }}
+                />
+              </div>
+            )}
             {(!source || !target) && (
               <p className="rounded-xl bg-secondary px-3 py-2 text-xs leading-relaxed text-muted-foreground">
                 একবার সঠিক হিসাব বেছে নিলে পরের এন্ট্রিতে মনে থাকবে। কোনো হিসাব বন্ধ হলে অন্যটিতে

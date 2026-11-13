@@ -27,8 +27,6 @@ export const B2B_TASKS: { id: B2BTask; label: string; hint: string; kind: "mfs" 
     hint: "ক্যাশ → রিচার্জ সিম",
     kind: "recharge",
   },
-  { id: "bank_cash", label: "ব্যাংক দিয়ে ক্যাশ নিলাম", hint: "ব্যাংক → ক্যাশ", kind: "mfs" },
-  { id: "cash_bank", label: "ক্যাশ দিয়ে ব্যাংকে জমা", hint: "ক্যাশ → ব্যাংক", kind: "mfs" },
 ];
 export function b2bTaskKind(task: B2BTask): "mfs" | "recharge" {
   return task === "recharge_buy" ? "recharge" : "mfs";
@@ -123,7 +121,9 @@ export function writeB2BPreferences(key: string, preferences: B2BPreferences) {
   }
   try {
     localStorage.setItem(key, JSON.stringify(clean));
-  } catch {}
+  } catch {
+    // Keep the current form usable when browser storage is unavailable.
+  }
 }
 export function parseB2BMoney(value: string) {
   const normalized = value

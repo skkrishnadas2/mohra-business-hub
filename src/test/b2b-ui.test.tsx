@@ -47,8 +47,70 @@ describe("direct B2B entry", () => {
     expect(trade.partyId).toBeUndefined();
     expect(state.business!.settlements).toHaveLength(0);
     expect(screen.getByLabelText("B2B পরিমাণ")).toHaveValue("");
-    expect(screen.getByLabelText("যে হিসাবে বাড়বে")).toHaveValue("bk_a1");
+    expect(screen.getByLabelText("কোন এজেন্ট অ্যাকাউন্ট")).toHaveValue("bk_a1");
   });
+  it.each([
+    { direction: "load", method: "cash", from: "cash", to: "bk_a1" },
+    { direction: "load", method: "bank", from: "bank-two", to: "bk_a1" },
+    { direction: "return", method: "cash", from: "bk_a1", to: "cash" },
+    { direction: "return", method: "bank", from: "bk_a1", to: "bank-two" },
+  ])(
+    "routes $direction through the chosen $method account only",
+    async ({ direction, method, from, to }) => {
+      useStore.setState((state) => ({
+        accounts: [
+          ...state.accounts,
+          { id: "bank-one", name: "Bank One", kind: "bank", balance: 8000 },
+          { id: "bank-two", name: "Bank Two", kind: "bank", balance: 6000 },
+          {
+            id: "agent-two",
+            name: "Other Agent",
+            kind: "mfs_agent",
+            provider: "bkash",
+            balance: 500,
+          },
+        ],
+      }));
+      const before = new Map(useStore.getState().accounts.map((a) => [a.id, a.balance]));
+      render(<B2BWorkspace context="mfs" />);
+      expect(screen.queryByRole("button", { name: /ব্যাংক দিয়ে ক্যাশ নিলাম/ })).toBeNull();
+      expect(screen.queryByRole("button", { name: /ক্যাশ দিয়ে ব্যাংকে জমা/ })).toBeNull();
+      if (direction === "return")
+        fireEvent.click(screen.getByRole("button", { name: /^এজেন্ট ব্যালেন্স দিলাম/ }));
+      fireEvent.change(screen.getByLabelText("কোন এজেন্ট অ্যাকাউন্ট"), {
+        target: { value: "bk_a1" },
+      });
+      fireEvent.change(screen.getByLabelText("B2B পরিমাণ"), { target: { value: "500" } });
+      if (method === "bank") {
+        fireEvent.click(
+          screen.getByRole("button", {
+            name: direction === "load" ? "ব্যাংক থেকে দিলাম" : "ব্যাংকে পেলাম",
+          }),
+        );
+        const bank = screen.getByLabelText(
+          direction === "load" ? "কোন ব্যাংক থেকে দিলেন" : "কোন ব্যাংকে পেলেন",
+        );
+        expect(bank).toHaveValue("");
+        expect(screen.getByRole("button", { name: "সম্পন্ন লেনদেন সেভ করুন" })).toBeDisabled();
+        fireEvent.change(bank, { target: { value: "bank-two" } });
+      }
+      await act(async () =>
+        fireEvent.click(screen.getByRole("button", { name: "সম্পন্ন লেনদেন সেভ করুন" })),
+      );
+      for (const account of useStore.getState().accounts) {
+        expect(account.balance).toBe(
+          before.get(account.id)! + (account.id === from ? -500 : account.id === to ? 500 : 0),
+        );
+      }
+      const trade = useStore.getState().txns.find((t) => t.type === "b2b_mfs")!;
+      expect(trade.profit).toBe(0);
+      expect(trade.moves).toEqual([
+        { accountId: from, delta: -500 },
+        { accountId: to, delta: 500 },
+      ]);
+      expect(useStore.getState().business!.entries).toHaveLength(0);
+    },
+  );
   it("hides cached trade titles and references involving cashier-restricted wallets or hidden banks", () => {
     useStore.setState((s) => ({
       accounts: [
@@ -65,18 +127,16 @@ describe("direct B2B entry", () => {
       ],
     }));
     const post = (sourceId: string, targetId: string, providerRef: string) =>
-      useStore
-        .getState()
-        .b2b({
-          kind: "mfs",
-          workflow: "direct",
-          sourceId,
-          targetId,
-          amount: 100,
-          commission: 0,
-          ref: `internal-${providerRef}`,
-          providerRef,
-        });
+      useStore.getState().b2b({
+        kind: "mfs",
+        workflow: "direct",
+        sourceId,
+        targetId,
+        amount: 100,
+        commission: 0,
+        ref: `internal-${providerRef}`,
+        providerRef,
+      });
     post("secret-bank", "bk_a1", "BANK-SECRET-REF");
     post("cash", "secret-agent", "WALLET-SECRET-REF");
     post("cash", "bk_a1", "VISIBLE-REF");
