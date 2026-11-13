@@ -88,7 +88,8 @@ export function Reports() {
           <div className="mt-3">
             {" "}
             <button
-              className="rounded-lg border px-4 py-2 text-sm"
+              disabled={dateError}
+              className="rounded-lg border px-4 py-2 text-sm disabled:opacity-50"
               onClick={() =>
                 exportCsv(
                   "mohra-journal",
@@ -109,6 +110,43 @@ export function Reports() {
             </button>
           </div>
         </details>
+        <div className="flex flex-wrap gap-2" aria-label="দ্রুত রিপোর্টের সময়">
+          {[
+            { label: "আজ", start: today, end: today },
+            {
+              label: "গতকাল",
+              start: new Date(Date.now() - 86400000).toLocaleDateString("en-CA", {
+                timeZone: "Asia/Dhaka",
+              }),
+              end: new Date(Date.now() - 86400000).toLocaleDateString("en-CA", {
+                timeZone: "Asia/Dhaka",
+              }),
+            },
+            { label: "এই মাস", start: today.slice(0, 7) + "-01", end: today },
+          ].map((preset) => (
+            <button
+              key={preset.label}
+              className="min-h-11 rounded-lg border px-3 text-sm font-medium"
+              onClick={() => {
+                setFrom(preset.start);
+                setTo(preset.end);
+              }}
+            >
+              {preset.label}
+            </button>
+          ))}
+          {(account || type) && (
+            <button
+              className="min-h-11 rounded-lg px-3 text-sm text-primary"
+              onClick={() => {
+                setAccount("");
+                setType("");
+              }}
+            >
+              সব অ্যাকাউন্ট ও লেনদেন দেখুন
+            </button>
+          )}
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className="text-xs text-muted-foreground">
             শুরু
@@ -158,6 +196,7 @@ export function Reports() {
           </select>
         </div>
         <button
+          disabled={dateError}
           className="rounded-lg border px-4 py-2 text-sm"
           onClick={() =>
             exportCsv(

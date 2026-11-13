@@ -80,3 +80,14 @@ it("rejects malformed backup contents before rendering an unsafe shop name", asy
   await waitFor(() => expect(error).toHaveBeenCalled());
   expect(screen.queryByLabelText("পুনরুদ্ধার নিশ্চিতকরণ")).toBeNull();
 });
+
+it("offers date shortcuts and clears account/type filters without losing the chosen dates", () => {
+  render(<Reports />);
+  fireEvent.click(screen.getByRole("button", { name: "এই মাস" }));
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" });
+  expect(screen.getByLabelText("শুরুর তারিখ")).toHaveValue(today.slice(0, 7) + "-01");
+  fireEvent.change(screen.getByLabelText("রিপোর্ট অ্যাকাউন্ট"), { target: { value: "cash" } });
+  fireEvent.click(screen.getByRole("button", { name: "সব অ্যাকাউন্ট ও লেনদেন দেখুন" }));
+  expect(screen.getByLabelText("রিপোর্ট অ্যাকাউন্ট")).toHaveValue("");
+  expect(screen.getByLabelText("শুরুর তারিখ")).toHaveValue(today.slice(0, 7) + "-01");
+});

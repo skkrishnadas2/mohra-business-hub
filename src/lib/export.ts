@@ -7,12 +7,13 @@ export function downloadFile(name: string, content: string, type = "application/
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function exportCsv(name: string, headers: string[], rows: (string | number)[][]) {
-  const cell = (v: string | number) =>
-    '"' +
-    String(v)
-      .replace(/^[=+@-]/, "'$&")
-      .replace(/"/g, '""') +
-    '"';
+  const cell = (v: string | number) => {
+    const raw = String(v);
+    // Genuine numeric debits/credits must remain numbers in spreadsheets.
+    // Untrusted labels can begin with a formula after leading whitespace.
+    const safe = typeof v === "string" && /^\s*[=+@-]/.test(raw) ? "'" + raw : raw;
+    return '"' + safe.replace(/"/g, '""') + '"';
+  };
   downloadFile(
     name + ".csv",
     "\uFEFF" + [headers, ...rows].map((row) => row.map(cell).join(",")).join("\r\n"),
