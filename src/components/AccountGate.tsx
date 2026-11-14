@@ -20,6 +20,19 @@ export function AccountGate() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const submitting = useRef(false);
+  const [resendAt, setResendAt] = useState(0);
+  const [clock, setClock] = useState(Date.now());
+  const resendSeconds = Math.max(0, Math.ceil((resendAt - clock) / 1000));
+  useEffect(() => {
+    if (!resendAt) return;
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setClock(now);
+      if (now >= resendAt) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendAt]);
   const recovering = useRef(useRecovery.getState().active);
   const loadStore = async () => {
     if (recovering.current) return;
@@ -84,7 +97,14 @@ export function AccountGate() {
     return () => data.subscription.unsubscribe();
   }, []);
   const submit = async () => {
-    if (busy || !isCloudConfigured) return;
+    if (
+      submitting.current ||
+      busy ||
+      !isCloudConfigured ||
+      (phase === "recover" && Date.now() < resendAt)
+    )
+      return;
+    submitting.current = true;
     setBusy(true);
     setError("");
     setNotice("");
@@ -95,7 +115,12 @@ export function AccountGate() {
           redirectTo: STORE_BRAND.url + "/",
         });
         if (error) throw error;
-        setNotice("অ্যাকাউন্টটি থাকলে পাসওয়ার্ড পুনরুদ্ধারের নির্দেশনা ইমেইলে পাবেন।");
+        const sentAt = Date.now();
+        setClock(sentAt);
+        setResendAt(sentAt + 60_000);
+        setNotice(
+          `অ্যাকাউন্টটি থাকলে ${email.trim()}-এ পাসওয়ার্ড পুনরুদ্ধারের মেইল পাবেন। ইনবক্স ও স্প্যাম দেখুন; শুধু সর্বশেষ মেইলের লিংক ব্যবহার করুন।`,
+        );
         return;
       }
       if (phase === "reset") {
@@ -118,6 +143,7 @@ export function AccountGate() {
     } catch (e) {
       setError(authMessage(e));
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   };
@@ -205,7 +231,10 @@ export function AccountGate() {
                     autoComplete="username"
                     placeholder="আপনার ইমেইল"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setNotice("");
+                    }}
                     required
                     disabled={busy}
                   />
@@ -263,13 +292,18 @@ export function AccountGate() {
                   {notice}
                 </p>
               )}
-              <button className="store-login-submit" disabled={busy || !isCloudConfigured}>
+              <button
+                className="store-login-submit"
+                disabled={busy || !isCloudConfigured || (recovery && resendSeconds > 0)}
+              >
                 {busy
                   ? "অপেক্ষা করুন…"
                   : reset
                     ? "পাসওয়ার্ড সংরক্ষণ"
                     : recovery
-                      ? "নির্দেশনা পাঠান"
+                      ? resendSeconds > 0
+                        ? `${resendSeconds} সেকেন্ড পরে আবার পাঠান`
+                        : "নির্দেশনা পাঠান"
                       : "প্রবেশ করুন"}
                 {!busy && <ArrowRight size={19} />}
               </button>

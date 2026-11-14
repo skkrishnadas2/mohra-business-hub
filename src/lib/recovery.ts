@@ -48,6 +48,16 @@ export function authMessage(error: unknown) {
     return "ইমেইল বা পাসওয়ার্ড সঠিক নয়।";
   if (/rate.limit|too.many.requests|over.*rate/i.test(message))
     return "অল্প সময়ে অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।";
+  if (/same.password|new password should be different/i.test(message))
+    return "আগের পাসওয়ার্ড থেকে আলাদা একটি নতুন পাসওয়ার্ড দিন।";
+  if (
+    /weak.password|password.*(?:weak|strength|characters|length)|password should (?:contain|be at least)/i.test(
+      message,
+    )
+  )
+    return "পাসওয়ার্ডটি যথেষ্ট শক্ত নয়। আরও বড় পাসওয়ার্ডে বড়-ছোট অক্ষর, সংখ্যা ও চিহ্ন মিলিয়ে দিন।";
+  if (/email.address.invalid|unable to validate email/i.test(message))
+    return "ইমেইল ঠিকানাটি সঠিকভাবে লিখুন।";
   if (/email.not.confirmed/i.test(message))
     return "এই ইমেইলের যাচাই সম্পন্ন হয়নি। ইমেইলের নির্দেশনা দেখুন।";
   if (/fetch|network|abort|timeout|সময়/i.test(message))

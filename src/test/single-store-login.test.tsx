@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { canInitializeStore, belongsToStore, STORE_OWNER_ID } from "@/lib/single-shop-policy";
 import { STORE_BRAND } from "@/lib/store-brand";
 const mocks = vi.hoisted(() => ({
@@ -166,4 +166,37 @@ describe("password recovery", () => {
     await waitFor(() => expect(mocks.update).toHaveBeenCalledWith({ password: "test-password-1" }));
     await waitFor(() => expect(mocks.open).toHaveBeenCalledWith("store-1"));
   });
+});
+
+it("does not send duplicate reset emails and explains the recipient and resend wait", async () => {
+  let finish!: (value: { error: null }) => void;
+  mocks.reset.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  render(<AccountGate />);
+  fireEvent.click(await screen.findByRole("button", { name: "পাসওয়ার্ড ভুলে গেছেন?" }));
+  fireEvent.change(screen.getByLabelText("ইমেইল"), { target: { value: "owner@example.com" } });
+  const form = screen.getByRole("button", { name: "নির্দেশনা পাঠান" }).closest("form")!;
+  fireEvent.submit(form);
+  fireEvent.submit(form);
+  expect(mocks.reset).toHaveBeenCalledOnce();
+  await act(async () => finish({ error: null }));
+  expect(screen.getByRole("status")).toHaveTextContent("owner@example.com");
+  expect(screen.getByRole("status")).toHaveTextContent("স্প্যাম");
+  expect(screen.getByRole("button", { name: /সেকেন্ড পরে আবার পাঠান/ })).toBeDisabled();
+  fireEvent.submit(form);
+  expect(mocks.reset).toHaveBeenCalledOnce();
+});
+
+it("keeps an expired recovery link out of password update even on a signed-in device", async () => {
+  beginRecovery(true);
+  mocks.getSession.mockResolvedValue({ data: { session: { user: { id: STORE_OWNER_ID } } } });
+  render(<AccountGate />);
+  await screen.findByRole("alert");
+  expect(screen.queryByLabelText("নতুন পাসওয়ার্ড")).toBeNull();
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(mocks.open).not.toHaveBeenCalled();
 });

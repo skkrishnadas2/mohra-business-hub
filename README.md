@@ -103,3 +103,7 @@ Reports, party ledgers, inventory and individual account statements download as 
 ## Accounting and daily-workflow audit
 
 See [the senior audit and roadmap](docs/SENIOR-AUDIT-2026-11-13.md) for corrected daily metrics, inventory returns, durable-write failure handling, cashier field controls, worked acceptance examples and remaining device checks.
+
+### Recovery verification — 14 November 2026
+
+Recovery submissions now prevent duplicate in-flight requests, wait 60 seconds before resending, name the requested recipient without disclosing account existence, and explain the newest-link/inbox/spam checks. Password policy errors are explained in Bengali. Targeted Auth/gateway/config tests cover duplicate requests, redirection, stale/expired recovery on an authenticated device and password confirmation. A real production recovery request returned 200; hosted Auth logs recorded recovery mail.send with the production root redirect and no SMTP error. Inbox receipt/content and the final user-controlled password change remain separate acceptance steps; no actual password was changed by the agent. The hosted email template still requires dashboard verification; a local HTML file alone does not apply it.
