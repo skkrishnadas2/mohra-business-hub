@@ -7,6 +7,7 @@ import { useCloud } from "@/lib/cloud-sync";
 import { useCloudPresence } from "@/lib/cloud-presence";
 import { Page, Money, Tile } from "@/components/kit";
 import { bn } from "@/lib/rules";
+import { isBusinessTransaction, periodSummary, shopDay } from "@/lib/daily-summary";
 
 export const Route = createFileRoute("/monitor")({
   head: () => ({
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/monitor")({
   component: Monitor,
 });
 
-function Monitor() {
+export function Monitor() {
   const { role, txns, sales, deleteSale, can } = useStore();
   const busy = useSubmission((s) => s.busy);
   const cloudShopId = useCloud((s) => s.shopId);
@@ -38,8 +39,11 @@ function Monitor() {
       </Page>
     );
   const today = txns.filter((t) => sinceToday(t.at));
-  const cashierTx = today.filter((t) => t.by === "cashier");
+  const businessToday = today.filter(isBusinessTransaction);
+  const cashierTx = businessToday.filter((t) => t.by === "cashier");
   const p = todayProfit(txns);
+  const day = shopDay(Date.now());
+  const daily = periodSummary(txns, sales, day, day);
   const todaySales = sales.filter((s) => !s.voidedAt && sinceToday(s.at));
   const ownerDevices = presence.devices.filter((device) => device.role === "owner").length;
   const cashierDevices = presence.devices.filter((device) => device.role === "cashier").length;
@@ -49,18 +53,15 @@ function Monitor() {
       <div className="grid grid-cols-2 items-start gap-3 md:grid-cols-4">
         <Tile>
           <div className="text-xs text-muted-foreground">আজ লেনদেন</div>
-          <div className="tnum text-2xl font-semibold">{bn(today.length)}</div>
+          <div className="tnum text-2xl font-semibold">{bn(businessToday.length)}</div>
         </Tile>
         <Tile>
           <div className="text-xs text-muted-foreground">ক্যাশিয়ারের লেনদেন</div>
           <div className="tnum text-2xl font-semibold">{bn(cashierTx.length)}</div>
         </Tile>
         <Tile>
-          <div className="text-xs text-muted-foreground">আজ পণ্য বিক্রি (ফেরতের আগে)</div>
-          <Money
-            v={todaySales.reduce((s, x) => s + x.total, 0)}
-            className="text-2xl font-semibold"
-          />
+          <div className="text-xs text-muted-foreground">আজ পণ্য বিক্রি (ফেরত বাদে)</div>
+          <Money v={daily.netSales} className="text-2xl font-semibold" />
         </Tile>
         <Tile>
           <div className="text-xs text-muted-foreground">নেট লাভ</div>
@@ -114,6 +115,7 @@ function Monitor() {
                   {new Date(device.onlineAt).toLocaleTimeString("bn-BD", {
                     hour: "2-digit",
                     minute: "2-digit",
+                    timeZone: "Asia/Dhaka",
                   })}
                 </span>
               </div>

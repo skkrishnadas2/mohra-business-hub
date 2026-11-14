@@ -555,9 +555,11 @@ export function businessActions({
       const p = party(partyId);
       const value = money(amount);
       const entries = b().entries;
-      const r = entries
-        .filter((e) => e.partyId === partyId && e.side === "receivable")
-        .reduce((s, e) => s + e.remaining, 0);
+      const r = round2(
+        entries
+          .filter((e) => e.partyId === partyId && e.side === "receivable")
+          .reduce((s, e) => s + e.remaining, 0),
+      );
       const pay = partyBalance(get(), partyId).payable;
       check(
         value <= r && value <= pay,

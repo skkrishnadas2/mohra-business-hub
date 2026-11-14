@@ -6,12 +6,15 @@ import { Accounts } from "@/routes/accounts";
 import { useStore } from "@/lib/store";
 import { useCloud } from "@/lib/cloud-sync";
 import { useSubmission } from "@/lib/confirmed-write";
-const mocks = vi.hoisted(() => ({ download: vi.fn() }));
+import { toast } from "sonner";
+const mocks = vi.hoisted(() => ({ download: vi.fn(), backup: vi.fn() }));
 vi.mock("@/lib/pdf/download", () => ({ downloadPdfReport: mocks.download }));
+vi.mock("@/lib/export", () => ({ downloadFile: mocks.backup }));
 afterEach(cleanup);
 beforeEach(() => {
   localStorage.clear();
   mocks.download.mockReset().mockResolvedValue(undefined);
+  mocks.backup.mockReset();
   useCloud.setState({ shopId: null, pending: 0 });
   useSubmission.setState({ busy: false });
   useStore.setState({ role: "owner" });
@@ -106,4 +109,50 @@ it("blocks final PDF exports when damaged pending work cannot be counted", () =>
   for (const button of screen.getAllByRole("button", { name: /হিসাব যাচাই হলে PDF নিন/ }))
     expect(button).toBeDisabled();
   expect(mocks.download).not.toHaveBeenCalled();
+});
+it("exports a full restore backup only after pending financial changes are confirmed", () => {
+  useCloud.setState({ pending: 1 });
+  const view = render(<Reports />);
+  expect(screen.getByRole("button", { name: "পূর্ণ ব্যাকআপ" })).toBeDisabled();
+  view.unmount();
+  useCloud.setState({ pending: 0 });
+  render(<Reports />);
+  fireEvent.click(screen.getByRole("button", { name: "পূর্ণ ব্যাকআপ" }));
+  expect(mocks.backup).toHaveBeenCalledOnce();
+  expect(JSON.parse(mocks.backup.mock.calls[0]![1])).toMatchObject({
+    format: "mohra-business-backup",
+    version: 2,
+    state: { shopName: "MOHRA" },
+  });
+});
+it("rechecks durable actions at backup click time even before the sync badge updates", () => {
+  const shop = "11111111-1111-4111-8111-111111111111";
+  useCloud.setState({ shopId: shop, pending: 0 });
+  render(<Reports />);
+  localStorage.setItem(`mohra-cloud-outbox-v1:${shop}`, "{broken");
+  fireEvent.click(screen.getByRole("button", { name: "পূর্ণ ব্যাকআপ" }));
+  expect(mocks.backup).not.toHaveBeenCalled();
+});
+it("blocks backups for a valid durable action even if the in-memory pending count is stale", () => {
+  const shop = "11111111-1111-4111-8111-111111111111";
+  useCloud.setState({ shopId: shop, pending: 0 });
+  localStorage.setItem(
+    `mohra-cloud-outbox-v1:${shop}`,
+    JSON.stringify([{ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "transfer", args: [] }]),
+  );
+  render(<Reports />);
+  expect(screen.getByRole("button", { name: "পূর্ণ ব্যাকআপ" })).toBeDisabled();
+  expect(mocks.backup).not.toHaveBeenCalled();
+});
+it("preserves a large archive while explaining that assisted recovery will be needed", () => {
+  const warning = vi.spyOn(toast, "warning");
+  useStore.setState({ shopName: "ম".repeat(1_000_001) });
+  render(<Reports />);
+  fireEvent.click(screen.getByRole("button", { name: "পূর্ণ ব্যাকআপ" }));
+  expect(mocks.backup).toHaveBeenCalledOnce();
+  expect(warning).toHaveBeenCalledWith(
+    expect.stringContaining("পুনরুদ্ধার সীমা ৩ MB"),
+    expect.any(Object),
+  );
+  warning.mockRestore();
 });

@@ -350,7 +350,8 @@ export function FinancialPartyWorkspace() {
                     {opening === "offset" && (
                       <p className="text-xs text-muted-foreground">
                         সর্বোচ্চ কাটাকাটি করা যাবে {taka(offsetLimit)}। ক্যাশ বা ব্যাংকের টাকা
-                        বদলাবে না।
+                        বদলাবে না। শুধু আলাদা খাতায় যোগ করা পাওনা–দেনা কাটাকাটি হবে; পণ্য বিক্রির
+                        মেমোর বাকি এতে কমবে না।
                       </p>
                     )}
                     <TextInput

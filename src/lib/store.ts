@@ -615,6 +615,9 @@ export function createShopStoreCreator(identity: ActionIdentity = {}): StateCrea
         if (!validAccountProvider(a.kind, a.provider))
           fail("হিসাবের সঠিক অপারেটর বা প্রোভাইডার বেছে নিন");
         if (a.kind === "cash") fail("একটি ক্যাশ ড্রয়ার ইতিমধ্যে আছে");
+        for (const rate of [a.commissionIn, a.commissionOut])
+          if (rate !== undefined && (!Number.isFinite(rate) || rate < 0 || rate > 1000))
+            fail("সঠিক কমিশন রেট দিন");
         const opening = nonNegative(a.balance, "শুরুর ব্যালেন্স");
         const account = { ...a, name, balance: 0, id: uid() };
         validateMoves([...get().accounts, account], [{ accountId: account.id, delta: opening }]);

@@ -74,12 +74,15 @@ export function printLabelBatch(
     products.some((p) => !Number.isInteger(p.count) || p.count < 1 || !p.code)
   )
     throw new Error("১ থেকে মোট ১০০০টি বৈধ লেবেল দিন");
+  const barcodes = products.map((p) => barcodeSvg(p.code));
+  if (barcodes.some((svg) => !svg.startsWith("<svg")))
+    throw new Error("বারকোড তৈরি হয়নি। ইংরেজি অক্ষর ও সংখ্যার বৈধ কোড দিন।");
   const html = products
-    .flatMap((p) =>
+    .flatMap((p, index) =>
       Array.from(
         { length: p.count },
         () =>
-          `<div class="sticker"><div class="b" style="font-size:9px">${escapeHtml(shop)}</div><div style="font-size:10px">${escapeHtml(p.name)}</div>${barcodeSvg(p.code)}<div class="r b">${showPrice ? `<span>${taka(p.price)}</span>` : "<span></span>"}${withCipher ? `<span>${escapeHtml(cipherEncode(p.cost, key))}</span>` : ""}</div></div>`,
+          `<div class="sticker"><div class="b" style="font-size:9px">${escapeHtml(shop)}</div><div style="font-size:10px">${escapeHtml(p.name)}</div>${barcodes[index]}<div class="r b">${showPrice ? `<span>${taka(p.price)}</span>` : "<span></span>"}${withCipher ? `<span>${escapeHtml(cipherEncode(p.cost, key))}</span>` : ""}</div></div>`,
       ),
     )
     .join("");

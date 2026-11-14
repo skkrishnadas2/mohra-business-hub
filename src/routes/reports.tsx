@@ -5,6 +5,10 @@ import { transactionLabel } from "@/lib/transaction-label";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStore, shopSnapshot } from "@/lib/store";
+import { useCloud } from "@/lib/cloud-sync";
+import { useSubmission } from "@/lib/confirmed-write";
+import { outboxIssue, readOutbox } from "@/lib/cloud-outbox";
+import { toast } from "sonner";
 import { Page, Money } from "@/components/kit";
 import { Panel } from "@/components/BusinessWorkspace";
 import { downloadFile } from "@/lib/export";
@@ -15,6 +19,25 @@ export const Route = createFileRoute("/reports")({
 });
 export function Reports() {
   const s = useStore();
+  const cloud = useCloud();
+  const writing = useSubmission((state) => state.busy);
+  const backupIssue = () => {
+    const current = useCloud.getState();
+    if (useSubmission.getState().busy || current.pending > 0)
+      return "হিসাব সেভ হলে পূর্ণ ব্যাকআপ নিন।";
+    try {
+      const shop =
+        current.shopId ??
+        (typeof window !== "undefined" ? window.localStorage.getItem("mohra-cloud-shop-v1") : null);
+      if (shop && (outboxIssue(shop) || readOutbox(shop).length))
+        return "অপেক্ষমাণ হিসাব যাচাই ও সেভ হলে পূর্ণ ব্যাকআপ নিন।";
+    } catch {
+      return "এই ডিভাইসের সেভ হওয়া হিসাব যাচাই করা যাচ্ছে না। স্টোরেজ ও সংযোগ যাচাই করুন।";
+    }
+    return null;
+  };
+  // A backup of optimistic changes cannot be treated as an authoritative restore point.
+  const backupBlocked = writing || cloud.pending > 0 || !!backupIssue();
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" });
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
@@ -106,15 +129,30 @@ export function Reports() {
         <>
           <PdfButton label="পূর্ণ রিপোর্ট PDF" disabled={dateError} report={mainPdf} />
           <button
-            className="rounded-xl border bg-card px-4 py-3 text-sm"
+            className="rounded-xl border bg-card px-4 py-3 text-sm disabled:opacity-50"
+            disabled={backupBlocked}
+            title={backupBlocked ? "হিসাব সেভ ও যাচাই হলে পূর্ণ ব্যাকআপ নিন।" : undefined}
             onClick={() => {
+              const issue = backupIssue();
+              if (issue) {
+                toast.error(issue);
+                return;
+              }
+              const current = useStore.getState();
+              if (current.role !== "owner") return;
               const data = {
                 format: "mohra-business-backup",
                 version: 2,
                 exportedAt: new Date().toISOString(),
-                state: shopSnapshot(s),
+                state: shopSnapshot(current),
               };
-              downloadFile(`mohra-backup-${today}.json`, JSON.stringify(data, null, 2));
+              const contents = JSON.stringify(data, null, 2);
+              if (new Blob([contents]).size > 3_000_000)
+                toast.warning(
+                  "ব্যাকআপটি ৩ MB-এর বড়। ফাইলটি রাখুন; বর্তমান অ্যাপের পুনরুদ্ধার সীমা ৩ MB, তাই এটি ফেরাতে সহায়তা লাগবে।",
+                  { duration: 12000 },
+                );
+              downloadFile(`mohra-backup-${today}.json`, contents);
             }}
           >
             পূর্ণ ব্যাকআপ

@@ -275,7 +275,7 @@ export function PurchaseWorkspace() {
             </div>
             <p className="text-xs text-muted-foreground">
               {allParties(state).find((x) => x.id === p.partyId)?.name} · {p.ref} ·{" "}
-              {new Date(p.at).toLocaleDateString("bn-BD")}
+              {new Date(p.at).toLocaleDateString("bn-BD", { timeZone: "Asia/Dhaka" })}
             </p>
             {p.returned ? (
               <span className="text-muted-foreground">ফেরত হয়েছে</span>

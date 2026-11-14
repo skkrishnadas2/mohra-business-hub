@@ -9,7 +9,7 @@ export function CameraScanner({
 }: {
   open: boolean;
   onClose: () => void;
-  onCode: (code: string,source?: "camera"|"manual") => void;
+  onCode: (code: string, source?: "camera" | "manual") => void;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const callback = useRef(onCode);
@@ -19,10 +19,13 @@ export function CameraScanner({
   const [last, setLast] = useState("");
   useEffect(() => {
     if (!open) return;
+    setManual("");
+    setLast("");
+    setError("");
     let cancelled = false;
     let controls: { stop: () => void } | undefined;
     let stream: MediaStream | undefined;
-    let boundVideo:HTMLVideoElement|undefined;
+    let boundVideo: HTMLVideoElement | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let lastCode = "";
     let lastAt = 0;
@@ -35,7 +38,7 @@ export function CameraScanner({
       lastCode = code;
       lastAt = Date.now();
       setLast(code);
-      callback.current(code,"camera");
+      callback.current(code, "camera");
     };
     const start = async () => {
       try {
@@ -44,7 +47,7 @@ export function CameraScanner({
           throw new Error("ক্যামেরার জন্য HTTPS ও অনুমতি প্রয়োজন।");
         const { BrowserMultiFormatReader } = await import("@zxing/browser");
         if (cancelled || !video.current) return;
-        boundVideo=video.current;
+        boundVideo = video.current;
         const reader = new BrowserMultiFormatReader();
         controls = await reader.decodeFromConstraints(
           { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } } },
@@ -58,7 +61,7 @@ export function CameraScanner({
       } catch (e) {
         if (!cancelled)
           setError(
-            e instanceof Error && e.name === "NotAllowedError"
+            e && typeof e === "object" && "name" in e && e.name === "NotAllowedError"
               ? "ক্যামেরার অনুমতি দিন, অথবা নিচে বারকোড লিখুন।"
               : "ক্যামেরা চালু হয়নি। অনুমতি যাচাই করুন অথবা বারকোড লিখুন।",
           );
@@ -93,7 +96,7 @@ export function CameraScanner({
           onSubmit={(e) => {
             e.preventDefault();
             if (manual.trim()) {
-              callback.current(manual.trim(),"manual");
+              callback.current(manual.trim(), "manual");
               setManual("");
             }
           }}

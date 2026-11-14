@@ -37,7 +37,7 @@ const NAV: NavItem[] = [
   { to: "/accounts", label: "আমার অ্যাকাউন্টস", icon: Landmark },
   { to: "/khata", label: "পার্টি ও খাতা", icon: BookUser },
   { to: "/products", label: "স্টক ও ক্রয়", icon: Package },
-  { to: "/b2b", label: "SR-এর লেনদেন", icon: Wallet },
+  { to: "/b2b", label: "ব্যালেন্স কেনা/সরানো", icon: Wallet },
   { to: "/reports", label: "রিপোর্ট", icon: Activity, owner: true },
   { to: "/closing", label: "শিফট ও অনুমোদন", icon: MoonStar },
   { to: "/cloud", label: "দোকান ও টিম", icon: Cloud },

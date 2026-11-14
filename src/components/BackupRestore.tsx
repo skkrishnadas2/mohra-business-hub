@@ -17,7 +17,7 @@ export function BackupRestore() {
       <Panel title="ব্যাকআপ পুনরুদ্ধার">
         <p className="text-sm text-muted-foreground">
           রিপোর্ট থেকে নেওয়া পূর্ণ JSON ব্যাকআপ বেছে নিন। শুধু নতুন খালি দোকানে পুনরুদ্ধার করা
-          যাবে; চালু দোকানের ইতিহাস প্রতিস্থাপন হবে না।
+          যাবে; চালু দোকানের ইতিহাস প্রতিস্থাপন হবে না। এখানে সর্বোচ্চ ৩ MB ফাইল নেওয়া যায়।
         </p>
         <input
           aria-label="ব্যাকআপ JSON ফাইল"
@@ -36,7 +36,14 @@ export function BackupRestore() {
             }
             try {
               const value = JSON.parse(await file.text());
-              if (value.format !== "mohra-business-backup" || value.version !== 2 || !value.state)
+              if (
+                !value ||
+                typeof value !== "object" ||
+                Array.isArray(value) ||
+                value.format !== "mohra-business-backup" ||
+                value.version !== 2 ||
+                !value.state
+              )
                 throw new Error("সঠিক MOHRA ব্যাকআপ দিন");
               if (request !== fileRead.current) return;
               const parsed = backupStateSchema.safeParse(value.state);

@@ -50,7 +50,7 @@ export function DeviceCheck() {
           kind,
           false,
         );
-      setResult("প্রিন্ট ডায়ালগ খোলা হয়েছে। কাগজে মাপ ও লেখা মিলিয়ে নিন।");
+      setResult("প্রিন্টের পাতা খোলা হয়েছে। প্রিন্ট ডায়ালগে কাগজের মাপ ও লেখা মিলিয়ে নিন।");
     } catch (e) {
       toast.error(actionError(e));
     }
