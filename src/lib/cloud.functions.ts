@@ -1,6 +1,7 @@
 import type { Actor } from "./operations";
 import { supabase } from "@/integrations/supabase/client";
 import type { CloudAction, Role, State } from "./store";
+import type { CleanupSelection } from "./selected-cleanup";
 export interface CloudShop {
   actor?: Actor | undefined;
   shopId: string;
@@ -60,3 +61,13 @@ export const addStoreStaff = (data: {
 }) => invoke<{ ok: boolean }>({ op: "addStaff", ...data });
 
 export const bootstrapStore = () => invoke<{ shopId: string }>({ op: "bootstrap" });
+
+/** Deliberately outside the durable action queue: passwords must never be persisted. */
+export const resetCloudShop = (data: {
+  selection?: CleanupSelection | undefined;
+  shopId: string;
+  baseVersion: number;
+  requestId: string;
+  password: string;
+  confirmation: "RESET";
+}) => invoke<ApplyResult>({ op: "factoryReset", ...data });

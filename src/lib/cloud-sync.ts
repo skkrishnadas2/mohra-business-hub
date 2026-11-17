@@ -8,6 +8,7 @@ import {
   createCloudShop,
   getCloudShop,
   joinCloudShop,
+  resetCloudShop,
   type CloudShop,
 } from "@/lib/cloud.functions";
 import {
@@ -59,7 +60,9 @@ export const useCloud = create<CloudUiState>(() => ({
 let activeFlush: Promise<void> | null = null;
 let connectionEpoch = 0;
 let switchingShop = false;
+let resettingShop = false;
 setCloudActionGuard(() => {
+  if (resettingShop) throw new Error("দোকানের তথ্য রিসেট হচ্ছে—একটু অপেক্ষা করুন");
   if (switchingShop) throw new Error("দোকান খোলা হচ্ছে—একটু অপেক্ষা করুন");
   const shop = useCloud.getState().shopId ?? savedShopId();
   const issue = shop && outboxIssue(shop);
@@ -98,6 +101,7 @@ function adopt(shop: CloudShop) {
   const current = useCloud.getState();
   if (current.shopId === shop.shopId && shop.version < current.version) return;
   const pending = readOutbox(shop.shopId).length;
+  clearResetDrafts(shop.shopId, shop.state);
   // A remote refresh must not wipe local work that has not been acknowledged yet.
   if (pending === 0)
     useStore.setState({
@@ -121,7 +125,32 @@ function adopt(shop: CloudShop) {
   saveVersion(shop.version);
 }
 
+function clearResetDrafts(shopId: string, state: import("./store").State) {
+  if (
+    !state.resetId ||
+    state.resetId === useStore.getState().resetId ||
+    typeof window === "undefined"
+  )
+    return;
+  try {
+    const prefixes = [
+      `mohra-cart:${shopId}`,
+      `mohra-cart:${useStore.getState().shopName}`,
+      `mohra-b2b-defaults-v1:${shopId}:`,
+      `mohra-counter-v1:${encodeURIComponent(shopId)}:`,
+    ];
+    const keys = Object.keys(window.localStorage).filter(
+      (key) =>
+        key === `mohra-before-cloud:${shopId}` || prefixes.some((prefix) => key.startsWith(prefix)),
+    );
+    for (const key of keys) window.localStorage.removeItem(key);
+  } catch {
+    /* Browser-private copies may need manual removal if storage is unavailable. */
+  }
+}
+
 export async function openCloudShop(shopId: string) {
+  if (resettingShop) return;
   const current = useCloud.getState();
   const issue = outboxIssue(shopId) ?? (current.shopId ? outboxIssue(current.shopId) : null);
   if (issue) {
@@ -345,6 +374,7 @@ async function runFlush() {
           });
           saveVersion(result.version);
           if (pending === 0) {
+            clearResetDrafts(shopId, result.state);
             useStore.setState({
               ...result.state,
               operations: result.state.operations ?? emptyOperations(),
@@ -425,6 +455,7 @@ export function handleRealtimeVersion(version: number) {
 }
 
 export function refreshCloudIfIdle() {
+  if (resettingShop) return;
   const shopId = useCloud.getState().shopId ?? savedShopId();
   if (!shopId) return;
   if (readOutbox(shopId).length) void flushCloudOutbox();
@@ -432,6 +463,78 @@ export function refreshCloudIfIdle() {
 }
 
 export const CLOUD_RESULT_EVENT = "mohra:cloud-result";
+
+/** Immediate server-only reset; neither the password nor this operation enters the outbox. */
+export async function factoryResetOnlineShop(
+  password: string,
+  requestId: string,
+  options?: {
+    selection?: import("./selected-cleanup").CleanupSelection | undefined;
+    reviewedVersion?: number;
+  },
+) {
+  const cloud = useCloud.getState();
+  if (
+    resettingShop ||
+    switchingShop ||
+    activeFlush ||
+    cloud.pending ||
+    !cloud.shopId ||
+    cloud.status !== "connected" ||
+    cloud.role !== "owner" ||
+    useStore.getState().actor?.role !== "owner" ||
+    !password ||
+    (typeof navigator !== "undefined" && !navigator.onLine)
+  )
+    throw new Error("মালিক হিসেবে অনলাইনে থাকুন এবং অপেক্ষমাণ কাজ শেষ করে আবার চেষ্টা করুন।");
+  if (outboxIssue(cloud.shopId) || readOutbox(cloud.shopId).length)
+    throw new Error("আগের জমা কাজ নিশ্চিত না হওয়া পর্যন্ত রিসেট করা যাবে না।");
+  if (options?.reviewedVersion !== undefined && options.reviewedVersion !== cloud.version)
+    throw new Error("সতর্কতা পড়ার পর হিসাব বদলেছে। নতুন তথ্য দেখে আবার শুরু করুন।");
+  resettingShop = true;
+  const epoch = ++connectionEpoch;
+  try {
+    const result = await resetCloudShop({
+      shopId: cloud.shopId,
+      baseVersion: cloud.version,
+      requestId,
+      password,
+      confirmation: "RESET",
+      selection: options?.selection,
+    });
+    if (epoch !== connectionEpoch)
+      throw new Error("লগইন বদলেছে। আবার সাইন ইন করে হিসাব যাচাই করুন।");
+    if (result.state)
+      adopt({
+        shopId: cloud.shopId,
+        name: cloud.shopName!,
+        role: "owner",
+        joinCode: cloud.joinCode,
+        version: result.version,
+        state: result.state,
+        actor: result.status === "ok" ? result.actor : useStore.getState().actor,
+      });
+    if (result.status !== "ok")
+      throw new Error(
+        result.status === "conflict"
+          ? "অন্য ডিভাইসে হিসাব বদলেছে। নতুন হিসাব দেখে দুই ধাপের সতর্কতা আবার পড়ুন।"
+          : result.message,
+      );
+    useCloud.setState({ notice: null });
+    // Remove this device's pre-cloud financial recovery copy as well.
+    try {
+      if (!options?.selection) window.localStorage.removeItem(`mohra-before-cloud:${cloud.shopId}`);
+    } catch {}
+  } catch (error) {
+    // A lost response may mean the reset committed. Never show optimistic success
+    // or automatically replay a destructive request; refresh before further work.
+    if (epoch === connectionEpoch)
+      useCloud.setState({ status: "error", error: actionError(error) });
+    throw error;
+  } finally {
+    resettingShop = false;
+  }
+}
 /** Wait for this exact action's acknowledgement; never treat a network queue as a completed sale. */
 export async function confirmCloudWrite<T>(
   operation: () => T,

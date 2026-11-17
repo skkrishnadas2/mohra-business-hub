@@ -930,6 +930,7 @@ export function businessActions({
       }
       set({
         ...restored,
+        resetId: get().resetId,
         operations: restored.operations ?? emptyOperations(),
         role: "owner",
         business: restored.business ?? emptyBusiness(),

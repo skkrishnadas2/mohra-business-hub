@@ -2,6 +2,7 @@ import { CashierPolicy } from "@/components/OperationsWorkspace";
 import { act } from "@/components/BusinessWorkspace";
 import { useSubmission } from "@/lib/confirmed-write";
 import { BackupRestore } from "@/components/BackupRestore";
+import { FactoryReset } from "@/components/FactoryReset";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStore, type Perms } from "@/lib/store";
@@ -40,8 +41,7 @@ const PERMS: { k: keyof Perms; l: string; d: string }[] = [
 ];
 
 export function Settings() {
-  const { role, perms, setPerm, setPins, ownerPin, cashierPin, resetAll, actor, cipherKey } =
-    useStore();
+  const { role, perms, setPerm, setPins, ownerPin, cashierPin, actor, cipherKey } = useStore();
   const busy = useSubmission((s) => s.busy);
   const [op, setOp] = useState(ownerPin);
   const [cp, setCp] = useState(cashierPin);
@@ -154,24 +154,7 @@ export function Settings() {
               </div>
             </details>
             <BackupRestore />
-            {!actor && (
-              <details className="rounded-xl border border-destructive/30 bg-card p-4">
-                <summary className="cursor-pointer text-sm text-destructive">
-                  পুরোনো ডিভাইসের তথ্য মুছুন
-                </summary>
-                <p className="my-3 text-xs text-muted-foreground">
-                  এই কাজ অনলাইন দোকানের জন্য নয়।
-                </p>
-                <BigButton
-                  onClick={() => {
-                    if (confirm("সব ডেটা মুছে নতুন করে শুরু করবেন?")) resetAll();
-                  }}
-                  className="border border-destructive/30 bg-card text-destructive hover:enabled:bg-destructive/10"
-                >
-                  এই ডিভাইসের সব তথ্য মুছুন
-                </BigButton>
-              </details>
-            )}
+            <FactoryReset />
           </div>
         </div>
       </fieldset>

@@ -57,10 +57,11 @@ function beep() {
 function PosRoute() {
   const shopId = useCloud((s) => s.shopId);
   const name = useStore((s) => s.shopName);
-  return <Pos key={shopId ?? name} />;
+  const resetId = useStore((s) => s.resetId);
+  return <Pos key={`${shopId ?? name}:${resetId ?? "initial"}`} />;
 }
 export function Pos() {
-  const { products, checkout, accounts, shopName, requestApproval } = useStore();
+  const { products, checkout, accounts, shopName, requestApproval, resetId } = useStore();
   const [busy, setBusy] = useState(false);
   const [completed, setCompleted] = useState(0);
   const globalBusy = useSubmission((s) => s.busy);
@@ -68,7 +69,7 @@ export function Pos() {
   const locked = busy || globalBusy;
   const checkoutLock = useRef(false);
   const shopId = useCloud((s) => s.shopId);
-  const cartKey = `mohra-cart:${shopId ?? shopName}`;
+  const cartKey = `mohra-cart:${shopId ?? shopName}${resetId ? `:${resetId}` : ""}`;
   const readCart = (key: string): CartLine[] => {
     try {
       const v = JSON.parse(localStorage.getItem(key) ?? "[]");

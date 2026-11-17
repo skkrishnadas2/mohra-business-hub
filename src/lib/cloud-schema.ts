@@ -2,6 +2,7 @@ import { operationsSchema } from "./operations-schema";
 import { z } from "zod";
 import { CLOUD_ACTIONS } from "./store";
 export const snapshotSchema = z.object({
+  resetId: z.string().uuid().optional(),
   setupDone: z.boolean(),
   shopName: z.string().trim().min(1).max(120),
   ownerPin: z.string(),
@@ -63,6 +64,21 @@ export const cloudRequestSchema = z.discriminatedUnion("op", [
   }),
   z.object({ op: z.literal("get"), shopId: z.string().uuid() }),
   z.object({
+    op: z.literal("factoryReset"),
+    shopId: z.string().uuid(),
+    baseVersion: z.number().int().positive(),
+    requestId: z.string().uuid(),
+    password: z.string().min(1).max(128),
+    confirmation: z.literal("RESET"),
+    selection: z
+      .object({
+        products: z.array(z.string().min(1)).max(500),
+        accounts: z.array(z.string().min(1)).max(500),
+        contacts: z.array(z.string().min(1)).max(500),
+      })
+      .optional(),
+  }),
+  z.object({
     op: z.literal("create"),
     name: z.string().trim().min(1).max(120),
     state: snapshotSchema,
@@ -74,6 +90,7 @@ export const cloudRequestSchema = z.discriminatedUnion("op", [
     baseVersion: z.number().int().positive(),
     action: z.object({
       id: z.string().uuid(),
+      resetId: z.string().uuid().optional(),
       at: z.number().finite().optional(),
       name: z.enum(CLOUD_ACTIONS),
       args: z.array(z.unknown()).max(20),

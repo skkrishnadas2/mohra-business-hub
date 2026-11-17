@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.119.0";
 import {
   initialShopState,
+  cleanSelectedRecords,
   assertStaffRemoval,
   cloudRequestSchema,
   replayCloudAction,
@@ -254,7 +255,41 @@ Deno.serve(async (req: Request) => {
         { error: "এই দোকানে আপনার প্রবেশাধিকার বন্ধ করা হয়েছে।", code: "ACCESS_REVOKED" },
         403,
       );
+    if (p.op === "factoryReset") {
+      if (role !== "owner" || !canInitializeStore(userId) || !auth.user.email)
+        return response({ error: "সব তথ্য মুছতে মালিকের অনলাইন লগইন প্রয়োজন।" }, 403);
+      // Check the owner's current password on the server, with a separate client
+      // so verification cannot replace the authenticated admin/request session.
+      const verifier = createClient(Deno.env.get("SUPABASE_URL")!, key, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const verified = await verifier.auth.signInWithPassword({ email: auth.user.email, password: p.password });
+      if (verified.error || verified.data.user?.id !== userId)
+        return response({ error: "মালিকের পাসওয়ার্ড সঠিক নয়, অথবা যাচাই করা যায়নি। আবার চেষ্টা করুন।" }, 403);
+      await verifier.auth.signOut({ scope: "local" });
+      const { data: receipt, error: receiptError } = await admin.from("shop_action_receipts")
+        .select("version").eq("shop_id", p.shopId).eq("action_id", p.requestId).maybeSingle();
+      if (receiptError) throw receiptError;
+      if (receipt) return response({ status: "ok", version: current.version, state: current.state, actor });
+      if (current.version !== p.baseVersion)
+        return response({ status: "conflict", version: current.version, state: current.state });
+      const state = p.selection ? cleanSelectedRecords(current.state, p.selection, {id:p.requestId,at:Date.now(),actor}) : initialShopState(current.state.ownerPin, current.state.cashierPin);
+      if (!p.selection) state.resetId = p.requestId;
+      // Login accounts and suspensions are security settings, not financial data.
+      state.operations.disabledStaff = current.state.operations?.disabledStaff ?? [];
+      const { data: committed, error } = await admin.rpc("commit_cloud_action", {
+        _shop_id: p.shopId, _action_id: p.requestId, _base_version: p.baseVersion,
+        _data: state, _user_id: userId,
+      }).single();
+      if (error || !committed) throw error || new Error("Reset commit failed");
+      // Re-read: an idempotent concurrent retry must return the actual current
+      // snapshot, never an empty snapshot paired with a newer version.
+      const latest = await read();
+      return response({ status: committed.result_status, version: latest.version, state: latest.state, actor });
+    }
     if (p.op === "apply") {
+      if (p.action.resetId !== current.state.resetId)
+        return response({ status: "rejected", message: "দোকানের তথ্য রিসেট হয়েছে। পুরোনো জমা কাজ বাতিল হয়েছে; নতুন হিসাব দেখে আবার এন্ট্রি দিন।", version: current.version, state: stateForRole(current.state, role, userId) });
       if (p.action.name === "setStaffAccess") {
         const { data: target } = await admin
           .from("shop_members")
@@ -325,7 +360,7 @@ Deno.serve(async (req: Request) => {
         _shop_id: p.shopId,
         _action_id: p.action.id,
         _base_version: p.baseVersion,
-        _data: { ...replay.state, shopName: STORE_BRAND.fullName },
+        _data: { ...replay.state, resetId: current.state.resetId, shopName: STORE_BRAND.fullName },
         _user_id: userId,
       })
       .single();

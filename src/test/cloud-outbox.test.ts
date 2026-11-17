@@ -16,6 +16,12 @@ const actionB = {
 
 beforeEach(() => window.localStorage.clear());
 
+it("retains the reset generation across a durable retry instead of stripping it", () => {
+  const action = { ...actionA, resetId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" };
+  appendOutbox(shopA, action);
+  expect(readOutbox(shopA)).toEqual([action]);
+});
+
 describe("durable Cloud outbox", () => {
   it("retains an independently appended action when another tab restores a stale legacy array", () => {
     appendOutbox(shopA, actionA);

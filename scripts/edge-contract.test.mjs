@@ -13,7 +13,7 @@ function runtime({shift=false}={}){
  let state=engine.initialShopState('1928','6574');
  state.products=[{id:'p1',name:'Cable',barcodes:['123'],price:100,cost:60,stock:2,lowStock:1}];
  if(shift){const replay=engine.replayCloudAction(state,'cashier',{name:'openShift',id:randomUUID(),at:Date.now(),args:[0]},{userId:CASHIER,name:'Cashier',role:'cashier'});assert.equal(replay.status,'ok');state=replay.state;}
- const db={state,version:1,receipts:new Map(),commits:0};
+ const db={state,version:1,receipts:new Map(),commits:0,passwordChecks:0,verifiedUser:OWNER};
  class Query{
   constructor(table){this.table=table;this.filters={};this.fields='';}
   select(fields){this.fields=fields;return this;}
@@ -33,7 +33,7 @@ function runtime({shift=false}={}){
   async single(){return {data:this.value(),error:null};}
   async maybeSingle(){return {data:this.value(),error:null};}
  }
- const admin={auth:{getUser:async token=>({data:{user:token==='owner-session'?{id:OWNER,email:'owner@example.invalid'}:token==='cashier-session'?{id:CASHIER,email:'cashier@example.invalid',user_metadata:{role:'owner'}}:null},error:!['owner-session','cashier-session'].includes(token)})},from:table=>new Query(table),rpc(name,p){assert.equal(name,'commit_cloud_action');return {async single(){if(p._base_version!==db.version)return {data:{result_status:'conflict',result_version:db.version},error:null};db.state=structuredClone(p._data);db.version++;db.receipts.set(p._action_id,db.version);db.commits++;return {data:{result_status:'ok',result_version:db.version},error:null};}};}};
+ const admin={auth:{getUser:async token=>({data:{user:token==='owner-session'?{id:OWNER,email:'owner@example.invalid'}:token==='cashier-session'?{id:CASHIER,email:'cashier@example.invalid',user_metadata:{role:'owner'}}:null},error:!['owner-session','cashier-session'].includes(token)}),signInWithPassword:async ({email,password})=>{db.passwordChecks++;assert.equal(email,'owner@example.invalid');return {data:{user:password==='test-only-owner-password'?{id:db.verifiedUser}:null},error:password!=='test-only-owner-password'};},signOut:async ()=>({error:null})},from:table=>new Query(table),rpc(name,p){assert.equal(name,'commit_cloud_action');return {async single(){if(db.receipts.has(p._action_id))return {data:{result_status:'ok',result_version:db.receipts.get(p._action_id)},error:null};if(p._base_version!==db.version)return {data:{result_status:'conflict',result_version:db.version},error:null};db.state=structuredClone(p._data);db.version++;db.receipts.set(p._action_id,db.version);db.commits++;return {data:{result_status:'ok',result_version:db.version},error:null};}};}};
  let handler;
  runInNewContext(code,{require:name=>name.startsWith('npm:')?{createClient:()=>admin}:engine,Deno:{env:{get:key=>key==='SUPABASE_URL'?'https://example.invalid':'test-only'},serve:fn=>{handler=fn;}},Response,Request,Headers,crypto:webcrypto,console:{error:()=>{}},exports:{}});
  const request=async(body,{token='owner-session',revision='3'}={})=>{const headers={'Content-Type':'application/json','Authorization':'Bearer '+token};if(revision)headers['x-mohra-client']=revision;const response=await handler(new Request('https://example.invalid/business-api',{method:'POST',headers,body:JSON.stringify(body)}));return {http:response.status,body:await response.json()};};
@@ -58,3 +58,40 @@ await test('HTTP: memo ID survives a customer being created by another device be
  pending.baseVersion=r.db.version;const accepted=await r.request(pending,{token:'cashier-session'});assert.equal(accepted.body.status,'ok');assert.equal(accepted.body.state.sales[0].id,memo);assert.equal(r.db.state.customers.length,1);assert.equal(r.db.state.customers[0].due,200);assert.equal(accepted.body.state.sales[0].cost,0);
 });
 await test('HTTP: duplicate receipts carry a current canonical snapshot and matching version',async()=>{const r=runtime({shift:true});const first=r.action('serviceSlip',['Copy',20,'cash']);assert.equal((await r.request(first)).body.status,'ok');assert.equal((await r.request(r.action('serviceSlip',['Copy',30,'cash']))).body.status,'ok');const duplicate=await r.request(first);assert.equal(duplicate.body.version,r.db.version);assert.equal(duplicate.body.state.accounts[0].balance,50);assert.equal(r.db.commits,2);});
+await test('HTTP: factory reset requires fixed owner, exact confirmation and current correct password',async()=>{
+ const r=runtime();const body={op:'factoryReset',shopId:SHOP,baseVersion:1,requestId:randomUUID(),password:'test-only-owner-password',confirmation:'RESET'};
+ assert.equal((await r.request(body,{token:'cashier-session'})).http,403);assert.equal(r.db.passwordChecks,0);
+ assert.equal((await r.request({...body,confirmation:'yes'})).http,400);
+ assert.equal((await r.request({...body,password:'wrong'})).http,403);
+ r.db.verifiedUser=CASHIER;assert.equal((await r.request(body)).http,403);
+ assert.equal(r.db.commits,0);assert.equal(r.db.state.products.length,1);
+});
+await test('HTTP: factory reset atomically clears business records, preserves suspensions, and retries safely',async()=>{
+ const r=runtime();r.db.state.operations.disabledStaff=['suspended-user'];
+ r.db.state.accounts[0].balance=700;r.db.state.customers=[{id:'c',name:'Customer',phone:'',due:100}];
+ const body={op:'factoryReset',shopId:SHOP,baseVersion:1,requestId:randomUUID(),password:'test-only-owner-password',confirmation:'RESET'};
+ const result=await r.request(body);assert.equal(result.body.status,'ok');assert.equal(r.db.commits,1);
+ for(const name of ['products','txns','sales','customers','repairs','closings'])assert.equal(r.db.state[name].length,0);
+ assert.deepEqual(r.db.state.accounts,[{id:'cash',name:'ক্যাশ ড্রয়ার',kind:'cash',balance:0}]);
+ assert.equal(r.db.state.resetId,body.requestId);assert.deepEqual(r.db.state.operations.disabledStaff,['suspended-user']);
+ const shift=r.action('openShift',[0]);shift.action.resetId=body.requestId;assert.equal((await r.request(shift)).body.status,'ok');
+ const after=r.action('capital',['cash',20,'in','After reset']);after.action.resetId=body.requestId;
+ const afterResult=await r.request(after);assert.equal(afterResult.body.status,'ok',JSON.stringify(afterResult.body));
+ const retry=await r.request(body);assert.equal(retry.body.status,'ok');assert.equal(retry.body.version,r.db.version);assert.equal(retry.body.state.accounts[0].balance,20);assert.equal(r.db.commits,3);
+});
+await test('HTTP: a changed shop stops reset and pre-reset queues cannot recreate deleted money',async()=>{
+ const r=runtime();const old=r.action('capital',['cash',999,'in','Before reset']);
+ const body={op:'factoryReset',shopId:SHOP,baseVersion:99,requestId:randomUUID(),password:'test-only-owner-password',confirmation:'RESET'};
+ assert.equal((await r.request(body)).body.status,'conflict');assert.equal(r.db.commits,0);
+ body.baseVersion=1;assert.equal((await r.request(body)).body.status,'ok');
+ old.baseVersion=r.db.version;
+ const stale=await r.request(old);assert.equal(stale.body.status,'rejected');assert.equal(stale.body.state.accounts[0].balance,0);
+ assert.equal(r.db.commits,1);
+});
+await test('HTTP: password-protected selective cleanup preserves balances and rejects linked rows atomically',async()=>{
+ const r=runtime();r.db.state.products.push({id:'unused',name:'Unused',barcodes:[],price:20,cost:10,stock:0,lowStock:1});
+ const body={op:'factoryReset',shopId:SHOP,baseVersion:1,requestId:randomUUID(),password:'test-only-owner-password',confirmation:'RESET',selection:{products:['unused'],accounts:[],contacts:[]}};
+ const cleaned=await r.request(body);assert.equal(cleaned.body.status,'ok');assert.deepEqual(r.db.state.products.map(p=>p.id),['p1']);assert.equal(r.db.state.resetId,undefined);assert.equal(r.db.state.accounts[0].balance,0);assert.equal(r.db.state.txns[0].type,'selected_cleanup');
+ const blocked=await r.request({...body,requestId:randomUUID(),baseVersion:r.db.version,selection:{products:['p1'],accounts:[],contacts:[]}});assert.equal(blocked.http,400);assert.equal(r.db.commits,1);assert.equal(r.db.state.products[0].stock,2);
+ assert.equal((await r.request({...body,password:'wrong',requestId:randomUUID()})).http,403);
+});

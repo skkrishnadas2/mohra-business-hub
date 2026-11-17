@@ -250,6 +250,8 @@ const SAMPLE_PRODUCTS: Product[] = [
 ];
 
 export interface State {
+  /** Changes only after an authenticated factory reset; fences old device queues. */
+  resetId?: string | undefined;
   actor?: Actor | undefined;
   operations?: Operations | undefined;
   business?: BusinessState | undefined;
@@ -340,6 +342,7 @@ interface Actions extends BusinessActions, OperationsActions {
 }
 
 const initial: State = {
+  resetId: undefined,
   actor: undefined,
   operations: emptyOperations(),
   business: emptyBusiness(),
@@ -1407,6 +1410,7 @@ export const CLOUD_ACTIONS = [
 ] as const;
 export type CloudActionName = (typeof CLOUD_ACTIONS)[number];
 export interface CloudAction extends ActionIdentity {
+  resetId?: string | undefined;
   name: CloudActionName;
   args: unknown[];
 }
@@ -1440,7 +1444,13 @@ function withCloudActions(
       try {
         const result = original(...args);
         if (result !== false && typeof window !== "undefined") {
-          const action: CloudAction = { name, args, id: identity.id, at: identity.at };
+          const action: CloudAction = {
+            name,
+            args,
+            id: identity.id,
+            at: identity.at,
+            resetId: before.resetId,
+          };
           cloudActionCommit?.(action);
           window.dispatchEvent(
             new CustomEvent<CloudAction>(CLOUD_ACTION_EVENT, { detail: action }),
@@ -1468,6 +1478,7 @@ function withCloudActions(
 /** Only serializable shop data crosses the Cloud boundary; device login state stays local. */
 export function shopSnapshot(state: State): State {
   return {
+    resetId: state.resetId,
     setupDone: state.setupDone,
     shopName: state.shopName,
     ownerPin: state.ownerPin,

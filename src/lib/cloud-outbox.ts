@@ -6,6 +6,7 @@ export interface OutboxAction extends CloudAction {
 }
 
 const outboxActionSchema = z.object({
+  resetId: z.string().uuid().optional(),
   id: z.string().uuid(),
   at: z.number().finite().optional(),
   name: z.enum(CLOUD_ACTIONS),
