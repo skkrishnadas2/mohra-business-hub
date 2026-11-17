@@ -2,6 +2,7 @@ import { AGENT_RATE_PER_THOUSAND, type MfsProvider } from "@/lib/rules";
 import { useSubmission } from "@/lib/confirmed-write";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import { accountProviderLabel } from "@/lib/account-activity";
 import { Panel, Field, act } from "./BusinessWorkspace";
 import { BigButton, TextInput, NumInput } from "./kit";
 export function AccountSettings() {
@@ -41,6 +42,7 @@ export function AccountSettings() {
             {s.accounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
+                {accountProviderLabel(a) ? ` · ${accountProviderLabel(a)}` : ""}
                 {a.inactive ? " (নিষ্ক্রিয়)" : ""}
               </option>
             ))}

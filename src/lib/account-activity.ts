@@ -1,6 +1,31 @@
 import type { Account, Role, Txn } from "./store";
 import { round2 } from "./rules";
 
+/** Provider identity remains visible even when an account has an ambiguous name. */
+export function accountProviderLabel(account: Account) {
+  const providers: Record<string, string> = {
+    bkash: "বিকাশ",
+    nagad: "নগদ",
+    rocket: "রকেট",
+    upay: "উপায়",
+    gp: "গ্রামীণফোন",
+    robi: "রবি",
+    airtel: "এয়ারটেল",
+    banglalink: "বাংলালিংক",
+    teletalk: "টেলিটক",
+  };
+  const provider = account.provider ? (providers[account.provider] ?? account.provider) : "";
+  const type =
+    account.kind === "mfs_agent"
+      ? "এজেন্ট"
+      : account.kind === "mfs_personal"
+        ? "পার্সোনাল"
+        : account.kind === "recharge"
+          ? "রিচার্জ সিম"
+          : "";
+  return [provider, type].filter(Boolean).join(" · ");
+}
+
 /** Cashier account exclusions apply even when viewing an existing local cache. */
 export function visibleAccounts(accounts: Account[], role: Role | null) {
   return accounts.filter((account) => role === "owner" || account.cashierAllowed !== false);

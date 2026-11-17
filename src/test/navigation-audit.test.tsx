@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 vi.mock("@tanstack/react-router", async () => {
   const actual =
@@ -89,6 +89,23 @@ it("never includes a cashier-restricted cached account in the home fund total", 
   render(<Dashboard />);
   expect(screen.queryByText(taka(177123))).toBeNull();
   expect(screen.getByText("আপনার অনুমতিপ্রাপ্ত হিসাব")).toBeDefined();
+  expect(screen.queryByRole("region", { name: "ব্যবসার মোট হিসাব" })).toBeNull();
+});
+it("distinguishes missing accounts from real zero and shows individual wallet balances", () => {
+  useStore.setState((s) => ({
+    accounts: [
+      ...s.accounts.filter((a) => a.kind === "cash"),
+      { id: "wallet", name: "1070", kind: "mfs_agent", provider: "bkash", balance: 0 },
+    ],
+  }));
+  render(<Dashboard />);
+  expect(screen.getAllByText("হিসাব যোগ হয়নি")).toHaveLength(2);
+  expect(screen.getByText("1070")).toBeDefined();
+  expect(screen.getByText(/হিসাবের নামের মধ্যে লেখা সংখ্যা ব্যালেন্সে যোগ হয় না/)).toBeDefined();
+  const summary = within(screen.getByRole("region", { name: "ব্যবসার মোট হিসাব" }));
+  expect(summary.getByText("ব্যবসার নিট অবস্থান")).toBeDefined();
+  expect(summary.getByText("মোট সম্পদ − মোট দায়")).toBeDefined();
+  expect(summary.getByText("পরে মালিকের যোগ করা মূলধন")).toBeDefined();
 });
 it("settings explains shared permissions and keeps occasional controls collapsed", () => {
   useStore.setState({ actor: { userId: "owner", name: "Sankar", role: "owner" } });

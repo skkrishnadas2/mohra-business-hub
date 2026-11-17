@@ -20,6 +20,8 @@ import { Page, Tile, Money } from "@/components/kit";
 import { bn, taka } from "@/lib/rules";
 import { periodSummary, shopDay, isBusinessTransaction } from "@/lib/daily-summary";
 import { financialParties, partyBalance } from "@/lib/business";
+import { BusinessPosition } from "@/components/BusinessPosition";
+import { accountProviderLabel } from "@/lib/account-activity";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -119,10 +121,16 @@ export function Dashboard() {
   const weekTotal = week.reduce((sum, d) => sum + d.total, 0);
 
   const fundRows = [
-    { label: "ক্যাশ ড্রয়ার", value: cash, icon: Banknote, hidden: false },
-    { label: "ব্যাংক", value: bank, icon: Landmark, hidden: !showBank },
-    { label: "MFS ওয়ালেট", value: mfs, icon: Wallet, hidden: false },
-    { label: "রিচার্জ সিম", value: rc, icon: Smartphone, hidden: false },
+    { label: "ক্যাশ ড্রয়ার", value: cash, icon: Banknote, hidden: false, kinds: ["cash"] },
+    { label: "ব্যাংক", value: bank, icon: Landmark, hidden: !showBank, kinds: ["bank"] },
+    {
+      label: "MFS ওয়ালেট",
+      value: mfs,
+      icon: Wallet,
+      hidden: false,
+      kinds: ["mfs_agent", "mfs_personal"],
+    },
+    { label: "রিচার্জ সিম", value: rc, icon: Smartphone, hidden: false, kinds: ["recharge"] },
   ];
   const fundBase = Math.max(
     1,
@@ -415,8 +423,43 @@ export function Dashboard() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-3 text-sm">
                       <span className="truncate">{row.label}</span>
-                      <Money v={row.value} hidden={row.hidden} className="shrink-0 font-semibold" />
+                      {!row.hidden && !accounts.some((a) => row.kinds.includes(a.kind)) ? (
+                        <span className="text-xs text-muted-foreground">হিসাব যোগ হয়নি</span>
+                      ) : (
+                        <Money
+                          v={row.value}
+                          hidden={row.hidden}
+                          className="shrink-0 font-semibold"
+                        />
+                      )}
                     </div>
+                    {!row.hidden && accounts.some((a) => row.kinds.includes(a.kind)) && (
+                      <details className="mt-2 text-xs">
+                        <summary className="cursor-pointer text-primary">আলাদা হিসাব দেখুন</summary>
+                        <dl className="mt-2 space-y-2">
+                          {accounts
+                            .filter((a) => row.kinds.includes(a.kind))
+                            .map((a) => (
+                              <div key={a.id} className="flex justify-between gap-3">
+                                <dt className="min-w-0 break-words text-muted-foreground">
+                                  <span>
+                                    {a.name}
+                                    {a.inactive ? " (বন্ধ)" : ""}
+                                  </span>
+                                  {accountProviderLabel(a) && (
+                                    <span className="mt-0.5 block text-[11px]">
+                                      {accountProviderLabel(a)}
+                                    </span>
+                                  )}
+                                </dt>
+                                <dd className="shrink-0">
+                                  <Money v={a.balance} />
+                                </dd>
+                              </div>
+                            ))}
+                        </dl>
+                      </details>
+                    )}
                     <div className="mt-2 h-1 overflow-hidden rounded-full bg-secondary">
                       <div
                         className="h-full rounded-full bg-primary/45"
@@ -429,6 +472,18 @@ export function Dashboard() {
                 </div>
               ))}
             </div>
+            {role === "owner" && (
+              <p className="mt-4 border-t pt-3 text-xs leading-relaxed text-muted-foreground">
+                ০ মানে সফটওয়্যারে সংরক্ষিত ব্যালেন্স শূন্য। আসল টাকা থাকলে হিসাব খুলে ‘ব্যালেন্স
+                সমন্বয়’ দিয়ে মোট টাকা বসান। হিসাবের নামের মধ্যে লেখা সংখ্যা ব্যালেন্সে যোগ হয় না।
+                <Link
+                  to="/accounts"
+                  className="ml-1 inline-flex min-h-10 items-center font-medium text-primary"
+                >
+                  হিসাব মিলিয়ে নিন →
+                </Link>
+              </p>
+            )}
             {!showBank && (
               <p className="mt-4 border-t pt-3 text-[11px] text-muted-foreground">
                 আপনার অনুমতিতে ব্যাংক ব্যালেন্স গোপন আছে।
@@ -436,6 +491,8 @@ export function Dashboard() {
             )}
           </Tile>
         </section>
+
+        {role === "owner" && <BusinessPosition state={state} />}
 
         <section
           aria-label="সাম্প্রতিক কার্যক্রম"

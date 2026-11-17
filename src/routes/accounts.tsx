@@ -11,6 +11,7 @@ import { Page, Money, BigButton, Chips, NumInput, TextInput, Label } from "@/com
 import { counterMoney } from "@/lib/counter-preferences";
 import {
   accountActivity,
+  accountProviderLabel,
   visibleAccounts,
   visibleAccountTransactions,
 } from "@/lib/account-activity";
@@ -61,9 +62,22 @@ export function Accounts() {
   const [adjVal, setAdjVal] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [pin, setPin] = useState("");
-  const [nw, setNw] = useState<{ name: string; kind: Account["kind"]; provider: string } | null>(
-    null,
-  );
+  const [nw, setNw] = useState<{
+    name: string;
+    kind: Account["kind"];
+    provider: string;
+    openingBalance: string;
+  } | null>(null);
+  const newBalance = counterMoney(nw?.openingBalance ?? "");
+  const newBalanceReady =
+    Number.isFinite(newBalance) &&
+    newBalance >= 0 &&
+    Number.isSafeInteger(Math.round(newBalance * 100));
+  const newAccountReady =
+    !!nw?.name.trim() &&
+    newBalanceReady &&
+    (!(nw.kind.startsWith("mfs") || nw.kind === "recharge") || !!nw.provider);
+  const numericAccountName = !!nw?.name.trim() && /^[০-৯0-9.,\s]+$/.test(nw.name.trim());
   const showBank = can("viewBank");
   const bankAccount = banks.find((a) => a.id === bank);
   const cashAccount = allowedAccounts.find((a) => a.id === "cash" && !a.inactive);
@@ -95,7 +109,7 @@ export function Accounts() {
         role === "owner" && (
           <button
             disabled={busy}
-            onClick={() => setNw({ name: "", kind: "bank", provider: "" })}
+            onClick={() => setNw({ name: "", kind: "bank", provider: "", openingBalance: "" })}
             className="h-11 rounded-xl border px-4 text-sm"
           >
             + হিসাব
@@ -149,7 +163,14 @@ export function Accounts() {
                             className="min-h-36 rounded-2xl border bg-card p-4 text-left text-sm shadow-soft transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
                           >
                             <div className="mb-2 flex items-center justify-between gap-2">
-                              <span className="font-medium">{a.name}</span>
+                              <div>
+                                <span className="font-medium">{a.name}</span>
+                                {accountProviderLabel(a) && (
+                                  <span className="mt-1 block text-xs text-muted-foreground">
+                                    {accountProviderLabel(a)}
+                                  </span>
+                                )}
+                              </div>
                               {a.inactive && (
                                 <span className="text-xs text-muted-foreground">বন্ধ</span>
                               )}
@@ -274,6 +295,9 @@ export function Accounts() {
         >
           <SheetHeader>
             <SheetTitle>{selected?.name} · লেনদেনের ইতিহাস</SheetTitle>
+            {selected && accountProviderLabel(selected) && (
+              <p className="text-xs text-muted-foreground">{accountProviderLabel(selected)}</p>
+            )}
           </SheetHeader>
           {selected && activity && (
             <div className="space-y-4 p-4 pt-0">
@@ -292,7 +316,9 @@ export function Accounts() {
                 report={() => ({
                   title: "অ্যাকাউন্ট স্টেটমেন্ট",
                   filename: "mohra-account-statement",
-                  subtitle: selected.name + (selected.number ? " · " + selected.number : ""),
+                  subtitle: [selected.name, accountProviderLabel(selected), selected.number]
+                    .filter(Boolean)
+                    .join(" · "),
                   headers:
                     role === "owner"
                       ? ["তারিখ", "বিবরণ", "জমা / খরচ", "আগে", "পরে"]
@@ -470,11 +496,26 @@ export function Accounts() {
                   .filter((k) => k !== "cash")
                   .map((k) => ({ value: k, label: KIND_LABEL[k] }))}
               />
-              <TextInput
-                placeholder="নাম (যেমন: বিকাশ এজেন্ট ৩)"
-                value={nw.name}
-                onChange={(e) => setNw({ ...nw, name: e.target.value })}
-              />
+              <div>
+                <Label htmlFor="new-account-name">হিসাবের নাম</Label>
+                <TextInput
+                  id="new-account-name"
+                  placeholder="যেমন: বিকাশ এজেন্ট / ডাচ্-বাংলা ব্যাংক"
+                  value={nw.name}
+                  aria-describedby={numericAccountName ? "numeric-account-name-help" : undefined}
+                  onChange={(e) => setNw({ ...nw, name: e.target.value })}
+                />
+                {numericAccountName && (
+                  <p
+                    id="numeric-account-name-help"
+                    role="status"
+                    className="mt-2 text-sm text-amber-700"
+                  >
+                    শুধু সংখ্যা লিখেছেন—এটি হিসাবের নাম হবে, টাকার অঙ্ক নয়। টাকা নিচের শুরুর
+                    ব্যালেন্স ঘরে লিখুন।
+                  </p>
+                )}
+              </div>
               {nw.kind.startsWith("mfs") && (
                 <Chips
                   value={nw.provider}
@@ -500,24 +541,48 @@ export function Accounts() {
                   ]}
                 />
               )}
+              <div>
+                <Label htmlFor="new-account-opening-balance">
+                  শুরুর ব্যালেন্স · এখন এই হিসাবে কত টাকা আছে?
+                </Label>
+                <NumInput
+                  id="new-account-opening-balance"
+                  value={nw.openingBalance}
+                  onChange={(openingBalance) => setNw({ ...nw, openingBalance })}
+                  placeholder="যেমন: ১০৭০; টাকা না থাকলে ০ লিখুন"
+                  aria-invalid={!!nw.openingBalance.trim() && !newBalanceReady}
+                  aria-describedby="new-account-opening-help new-account-opening-error"
+                />
+                <p id="new-account-opening-help" className="mt-2 text-xs text-muted-foreground">
+                  আগে থেকেই এই হিসাবে থাকা আসল টাকা লিখুন; টাকা না থাকলে ০ লিখুন। এটি নতুন আয় বা
+                  লাভ নয়। পরে নতুন মূলধন জমা দিতে ‘খরচ ও মূলধন’ ব্যবহার করুন।
+                </p>
+                <p
+                  id="new-account-opening-error"
+                  className="mt-1 text-xs text-destructive"
+                  aria-live="polite"
+                >
+                  {nw.openingBalance.trim() && !newBalanceReady
+                    ? "সঠিক টাকার অঙ্ক দিন: ০ বা তার বেশি, পয়সা সর্বোচ্চ ২ ঘর।"
+                    : ""}
+                </p>
+              </div>
               <BigButton
-                disabled={
-                  !nw.name.trim() ||
-                  ((nw.kind.startsWith("mfs") || nw.kind === "recharge") && !nw.provider)
-                }
+                disabled={!newAccountReady}
                 onClick={async () => {
+                  if (!newAccountReady || busy) return;
                   try {
                     await confirmed(() =>
                       addAccount({
                         name: nw.name,
                         kind: nw.kind,
                         provider: nw.provider || undefined,
-                        balance: 0,
+                        balance: newBalance,
                       }),
                     );
                     setNw(null);
                     setTab("accounts");
-                    toast.success("হিসাব যোগ হয়েছে। ব্যালেন্স বসাতে হিসাবটি খুলুন।");
+                    toast.success(`হিসাব যোগ হয়েছে · শুরুর ব্যালেন্স ${taka(newBalance)}`);
                   } catch (error) {
                     toast.error(actionError(error));
                   }
